@@ -106,6 +106,61 @@ async function resolveCompany(name) {
   return { name, resolved: false };
 }
 
+// ── Workday + careers-URL resolution ────────────────────────────────
+// Workday/Taleo/etc. can't be guessed from a name, so the finder supplies the careers_url
+// (the LLM web-search step finds it). We classify + validate that URL instead.
+
+const WORKDAY_HOST_RE = /^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/i;
+const LOCALE_RE = /^[a-z]{2}-[A-Z]{2}$/;
+// Default source-side searches for big Workday boards (your green-list titles).
+const DEFAULT_WORKDAY_SEARCH = [
+  'backend engineer', 'platform engineer', 'infrastructure engineer',
+  'mlops', 'data engineer', 'cloud engineer', 'devops engineer',
+];
+
+function parseWorkdayUrl(url) {
+  let parsed;
+  try { parsed = new URL(url); } catch { return null; }
+  const m = parsed.hostname.match(WORKDAY_HOST_RE);
+  if (!m) return null;
+  const segments = parsed.pathname.split('/').filter(Boolean);
+  if (segments[0] && LOCALE_RE.test(segments[0])) segments.shift();
+  const site = segments[0];
+  if (!site) return null;
+  return { hostname: parsed.hostname, tenant: m[1], site, cxs: `https://${parsed.hostname}/wday/cxs/${m[1]}/${site}/jobs` };
+}
+
+async function validateWorkday(url) {
+  const info = parseWorkdayUrl(url);
+  if (!info) return null;
+  const json = await getJson(info.cxs, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ appliedFacets: {}, limit: 1, offset: 0, searchText: '' }),
+  });
+  const count = Number(json?.total) || (Array.isArray(json?.jobPostings) ? json.jobPostings.length : 0);
+  if (count > 0) return { provider: 'workday', careers_url: url, count };
+  return null;
+}
+
+// Classify a careers_url to a provider (Workday first, then the slug ATSs by their host).
+async function resolveByUrl(name, url) {
+  const wd = await validateWorkday(url);
+  if (wd) return { name, resolved: true, ...wd };
+  // slug ATSs embedded in the URL
+  const patterns = [
+    [/job-boards(?:\.eu)?\.greenhouse\.io\/([^/?#]+)/, 'greenhouse'],
+    [/jobs\.ashbyhq\.com\/([^/?#]+)/, 'ashby'],
+    [/jobs\.lever\.co\/([^/?#]+)/, 'lever'],
+    [/([^.]+)\.recruitee\.com/, 'recruitee'],
+  ];
+  for (const [re, provider] of patterns) {
+    const m = url.match(re);
+    if (m) { const hit = await PROVIDERS[provider](m[1]); if (hit) return { name, resolved: true, ...hit }; }
+  }
+  return { name, resolved: false, careers_url: url };
+}
+
 function existingPortalNames() {
   if (!existsSync(PORTALS_PATH)) return new Set();
   const text = readFileSync(PORTALS_PATH, 'utf-8');
@@ -123,13 +178,16 @@ function appendToPortals(resolved) {
     console.error('No new resolved companies to append (all duplicates or unresolved).');
     return 0;
   }
-  const block = '\n' + toAdd.map(r =>
-    `  - name: ${r.name}\n` +
-    `    careers_url: ${r.careers_url}\n` +
-    `    api: ${r.api}\n` +
-    `    enabled: true\n` +
-    `    notes: "added by find-companies (${r.provider}, ${r.count} live jobs)"\n`
-  ).join('\n');
+  const block = '\n' + toAdd.map(r => {
+    const head = `  - name: ${r.name}\n    careers_url: ${r.careers_url}\n`;
+    const tail = `    enabled: true\n    notes: "added by find-companies (${r.provider}, ${r.count} live jobs)"\n`;
+    if (r.provider === 'workday') {
+      // Workday is identified by careers_url; narrow huge boards at the source.
+      const search = JSON.stringify(DEFAULT_WORKDAY_SEARCH);
+      return head + `    provider: workday\n    workday_search: ${search}\n` + tail;
+    }
+    return head + `    api: ${r.api}\n` + tail;
+  }).join('\n');
   // tracked_companies is the last top-level key, so appending at EOF extends its list.
   writeFileSync(PORTALS_PATH, readFileSync(PORTALS_PATH, 'utf-8').trimEnd() + '\n' + block, 'utf-8');
   console.error(`✓ appended ${toAdd.length} companies to ${PORTALS_PATH}: ${toAdd.map(r => r.name).join(', ')}`);
@@ -142,23 +200,44 @@ async function main() {
 
   const one = get('--resolve');
   const file = get('--resolve-file');
+  const oneUrl = get('--resolve-url');        // "Company Name|https://careers-url"
+  const urlsFile = get('--urls-file');         // lines: "Company Name<TAB>careers_url"
   const appendArg = args.includes('--append') ? (get('--append') || '-') : null;
+
+  const splitNameUrl = (s, sep) => { const i = s.indexOf(sep); return [s.slice(0, i).trim(), s.slice(i + 1).trim()]; };
 
   let resolved = [];
   if (one) {
     resolved = [await resolveCompany(one)];
   } else if (file) {
     const names = readFileSync(file, 'utf-8').split('\n').map(s => s.trim()).filter(Boolean);
-    console.error(`Resolving ${names.length} companies...`);
+    console.error(`Resolving ${names.length} companies by name...`);
     for (const n of names) {
       const r = await resolveCompany(n);
       console.error(`  ${r.resolved ? '✓' : '·'} ${n}${r.resolved ? ` → ${r.provider} (${r.count})` : ' (no public board)'}`);
       resolved.push(r);
     }
+  } else if (oneUrl) {
+    const [n, u] = splitNameUrl(oneUrl, '|');
+    resolved = [await resolveByUrl(n, u)];
+  } else if (urlsFile) {
+    const rows = readFileSync(urlsFile, 'utf-8').split('\n').map(s => s.trim()).filter(Boolean);
+    console.error(`Resolving ${rows.length} companies by careers_url...`);
+    for (const row of rows) {
+      const [n, u] = row.includes('\t') ? splitNameUrl(row, '\t') : splitNameUrl(row, ' ');
+      const r = await resolveByUrl(n, u);
+      console.error(`  ${r.resolved ? '✓' : '·'} ${n}${r.resolved ? ` → ${r.provider} (${r.count})` : ' (could not validate)'}`);
+      resolved.push(r);
+    }
   } else if (appendArg && appendArg !== '-') {
     resolved = JSON.parse(readFileSync(appendArg, 'utf-8'));
   } else {
-    console.error('Usage: node find-companies.mjs --resolve "Name" | --resolve-file file.txt [--append -]');
+    console.error('Usage:\n' +
+      '  --resolve "Name"                  resolve one slug-ATS company by name\n' +
+      '  --resolve-file names.txt          resolve many by name (Greenhouse/Ashby/Lever/SR/Recruitee)\n' +
+      '  --resolve-url "Name|careers_url"   resolve one company by careers URL (Workday + slug ATSs)\n' +
+      '  --urls-file rows.txt              resolve many by "Name<TAB>careers_url"\n' +
+      '  --append <file.json | ->          append resolved hits to portals.yml');
     process.exit(1);
   }
 

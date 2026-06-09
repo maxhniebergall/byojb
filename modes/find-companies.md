@@ -18,13 +18,26 @@ resolution and writing to `portals.yml` are **zero-token** (the `find-companies.
    For each, note: company name, why it matches (1 line), and any obvious red flag vs the
    `exclusions` list. Drop excluded companies.
 
-3. **Resolve to ATS boards (zero-token).** Write the candidate names to a temp file (one per
-   line) and run:
-   ```bash
-   node find-companies.mjs --resolve-file <tmp-names.txt> > /tmp/resolved.json
-   ```
-   This probes Greenhouse/Ashby/Lever/SmartRecruiters/Recruitee and marks each
-   `resolved:true` (with a live job count) or `resolved:false`.
+3. **Resolve to ATS boards (zero-token).** Two tracks:
+
+   a. **By name** — for startups / tech companies on the single-slug ATSs
+      (Greenhouse/Ashby/Lever/SmartRecruiters/Recruitee). Write candidate names to a temp
+      file (one per line):
+      ```bash
+      node find-companies.mjs --resolve-file <tmp-names.txt> > /tmp/resolved.json
+      ```
+
+   b. **By careers URL** — for enterprise/Workday employers (banks, telecom, big tech), which
+      CANNOT be guessed from a name. For each such company, WebSearch "<company> careers" to
+      get its `*.myworkdayjobs.com` (or other ATS) URL, then write `Name<TAB>careers_url` rows:
+      ```bash
+      node find-companies.mjs --urls-file <tmp-urls.txt> > /tmp/resolved-url.json
+      ```
+      This validates Workday boards via the public CXS endpoint (and also classifies slug-ATS
+      URLs). Workday entries get a default `workday_search` (your green-list titles) to narrow
+      large boards at the source.
+
+   Each result is `resolved:true` (with a live job count) or `resolved:false`.
 
 4. **Present for confirmation.** Show the user a table: Company | Why it matches | Board
    (provider + live job count) | Resolved?. Group unresolved companies separately and note

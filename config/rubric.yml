@@ -1,47 +1,43 @@
 # config/rubric.yml — YOUR job-evaluation rubric (single source of truth).
 #
-# This is THE file to edit when you want to change how jobs are scored and ranked.
-# After editing, run:   npm run rubric
-# That regenerates the rubric blocks (between AUTO-GENERATED markers) in:
-#   - modes/_profile.md   (authoritative override — survives `npm run update`)
-#   - modes/ofertas.md    (multi-job comparison mode)
-#   - modes/_shared.md    (single-job evaluation default)
-# The web dashboard also reads this file to show the active rubric next to scores.
+# Tuned for Max's philosophy: UTILITY & INFRASTRUCTURE over PRODUCT & GROWTH.
+# Rewards well-scoped, asynchronous, internal-facing, stable "plumbing" roles; penalizes
+# scope-creep, hustle culture, and chaos. Remote-only + Canada/Mountain-Time fit matters.
 #
-# Each dimension is scored 1-5; the global score is the weighted average.
-# Weights should sum to 100. Add, remove, or re-weight dimensions freely.
+# After editing, run:   npm run rubric
+# (regenerates the rubric in modes/_profile.md, modes/ofertas.md, modes/_shared.md;
+#  the web dashboard also reads this file.)
+#
+# Each dimension is scored 1-5; the global score is the weighted average. Weights sum to 100.
 
 dimensions:
-  - name: "North Star alignment"
+  - name: "North Star alignment (infrastructure/utility role)"
     weight: 25
-    guidance: "5=exact target role, 1=unrelated"
+    guidance: "5=core backend/platform/MLOps/data/cloud-infra IC role; 1=product/growth/customer-facing"
   - name: "CV match"
     weight: 15
-    guidance: "5=90%+ skills/experience match, 1=<40% match"
-  - name: "Level"
+    guidance: "5=90%+ match to backend/ML-infra/cloud/Java experience; 1=<40% match"
+  - name: "Scope clarity & autonomy"
     weight: 15
-    guidance: "5=staff+, 4=senior, 3=mid-senior, 2=mid, 1=junior"
+    guidance: "5=rigidly-defined scope, async, internal/predictable customers, rare emergencies; 1=wear-many-hats, on-call firefighting, sales/deadline pressure"
+  - name: "Level (senior IC)"
+    weight: 10
+    guidance: "5=staff/principal IC, 4=senior IC, 3=mid-senior, 2=mid, 1=junior or people-management"
   - name: "Compensation"
     weight: 10
-    guidance: "5=top quartile, 1=below market"
-  - name: "Growth trajectory"
+    guidance: "5=>=$200K CAD-equiv, 4=$180-200K, 3=$160-180K, 2=$150-160K, 1=below $150K CAD / below market"
+  - name: "Remote & timezone fit"
     weight: 10
-    guidance: "5=clear path to next level, 1=dead end"
-  - name: "Remote quality"
+    guidance: "5=fully remote, hires in Canada, Mountain-Time-friendly hours; 1=onsite/hybrid, US-only, or hostile timezone"
+  - name: "Work-life & culture"
     weight: 5
-    guidance: "5=full remote async, 1=onsite only"
-  - name: "Company reputation"
+    guidance: "5=async, sustainable, builder/engineering culture; 1=hustle, 'fast-paced', sales-driven"
+  - name: "Company stability"
     weight: 5
-    guidance: "5=top employer, 1=red flags"
-  - name: "Tech stack modernity"
+    guidance: "5=stable/established (enterprise, public, profitable); 1=early/unstable startup, layoffs, hype-dependent"
+  - name: "Tech stack relevance"
     weight: 5
-    guidance: "5=modern/relevant stack, 1=legacy"
-  - name: "Time-to-offer speed"
-    weight: 5
-    guidance: "5=fast process, 1=6+ months"
-  - name: "Cultural signals"
-    weight: 5
-    guidance: "5=builder culture, 1=bureaucratic"
+    guidance: "5=Java/Python/Go/K8s/cloud/Postgres or stable enterprise stack; 1=unrelated stack. Legacy-enterprise is acceptable, not penalized."
 
 # Score interpretation — drives the recommendation wording in reports.
 # Highest matching `min` (descending) wins for a given global score.
