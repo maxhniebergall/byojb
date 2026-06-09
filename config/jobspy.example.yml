@@ -1,0 +1,32 @@
+# JobSpy broad-board ingestion config  (NEW — feeds career-ops via the local-parser provider)
+#
+# Workflow:
+#   1. Edit search_terms / locations / sites below to match your search.
+#   2. Refresh the cache (the slow network step — run on its own cadence):
+#        .venv/bin/python ingest/jobspy_pull.py --refresh
+#   3. Run the normal scanner — the "JobSpy Boards" entry in portals.yml reads the
+#      cached results instantly:  node scan.mjs
+#
+# Why split refresh/emit: scan.mjs's local-parser has a ~20s timeout, far too short
+# for live LinkedIn/Indeed scraping. --refresh fills data/jobspy-cache.json on its own
+# schedule; the scanner only ever reads that cache (--emit, sub-second).
+
+# Boards to scrape. Valid: indeed, linkedin, glassdoor, zip_recruiter, google
+sites:
+  - "indeed"
+  - "linkedin"
+  - "glassdoor"
+  - "zip_recruiter"
+
+country_indeed: "USA"      # required for indeed + glassdoor
+results_wanted: 25         # per (search_term × location × site)
+hours_old: 168             # only postings from the last N hours (168 = 1 week)
+is_remote: false
+distance: 50
+
+# Every search_term is run against every location.
+search_terms:
+  - "[FILL IN] e.g. software engineer"
+
+locations:
+  - "Remote"

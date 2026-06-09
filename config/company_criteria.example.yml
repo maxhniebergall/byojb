@@ -1,0 +1,32 @@
+# config/company_criteria.yml — what kinds of COMPANIES you want the finder to discover.
+#
+# The company finder (modes/find-companies.md, run inside Claude Code / Gemini CLI) reads
+# this file, web-researches companies that match, resolves each to a live ATS board via
+# find-companies.mjs, and (after you confirm) appends them to portals.yml.
+#
+# Fill in what matters to you; leave a field blank/empty to ignore it.
+
+industries:
+  - "[FILL IN] e.g. AI infrastructure, developer tools, fintech"
+
+# Headcount band (helps the finder judge stage/size).
+size:
+  min_employees: null      # e.g. 50
+  max_employees: null      # e.g. 2000
+
+funding_stage:
+  - "[FILL IN] e.g. Series A-C, public, bootstrapped"
+
+locations:
+  - "[FILL IN] e.g. Remote-US, San Francisco, Berlin"
+
+# Free-text signals that make a company a good fit for YOU.
+mission_keywords:
+  - "[FILL IN] e.g. applied AI, agentic workflows, climate"
+
+# Hard exclusions — companies matching these are dropped.
+exclusions:
+  - "[FILL IN] e.g. defense, gambling, crypto-only"
+
+# How many candidate companies to surface per run.
+target_count: 20

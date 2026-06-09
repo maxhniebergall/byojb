@@ -17,7 +17,10 @@
     "liveness": "node check-liveness.mjs",
     "scan": "node scan.mjs",
     "patterns": "node analyze-patterns.mjs",
-    "gemini:eval": "node gemini-eval.mjs"
+    "gemini:eval": "node gemini-eval.mjs",
+    "rubric": "node apply-rubric.mjs",
+    "jobspy:refresh": "./.venv/bin/python ingest/jobspy_pull.py --refresh",
+    "dashboard:web": "node web/server.mjs"
   },
   "keywords": [
     "ai",

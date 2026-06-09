@@ -1,0 +1,60 @@
+# config/rubric.yml — YOUR job-evaluation rubric (single source of truth).
+#
+# This is THE file to edit when you want to change how jobs are scored and ranked.
+# After editing, run:   npm run rubric
+# That regenerates the rubric blocks (between AUTO-GENERATED markers) in:
+#   - modes/_profile.md   (authoritative override — survives `npm run update`)
+#   - modes/ofertas.md    (multi-job comparison mode)
+#   - modes/_shared.md    (single-job evaluation default)
+# The web dashboard also reads this file to show the active rubric next to scores.
+#
+# Each dimension is scored 1-5; the global score is the weighted average.
+# Weights should sum to 100. Add, remove, or re-weight dimensions freely.
+
+dimensions:
+  - name: "North Star alignment"
+    weight: 25
+    guidance: "5=exact target role, 1=unrelated"
+  - name: "CV match"
+    weight: 15
+    guidance: "5=90%+ skills/experience match, 1=<40% match"
+  - name: "Level"
+    weight: 15
+    guidance: "5=staff+, 4=senior, 3=mid-senior, 2=mid, 1=junior"
+  - name: "Compensation"
+    weight: 10
+    guidance: "5=top quartile, 1=below market"
+  - name: "Growth trajectory"
+    weight: 10
+    guidance: "5=clear path to next level, 1=dead end"
+  - name: "Remote quality"
+    weight: 5
+    guidance: "5=full remote async, 1=onsite only"
+  - name: "Company reputation"
+    weight: 5
+    guidance: "5=top employer, 1=red flags"
+  - name: "Tech stack modernity"
+    weight: 5
+    guidance: "5=modern/relevant stack, 1=legacy"
+  - name: "Time-to-offer speed"
+    weight: 5
+    guidance: "5=fast process, 1=6+ months"
+  - name: "Cultural signals"
+    weight: 5
+    guidance: "5=builder culture, 1=bureaucratic"
+
+# Score interpretation — drives the recommendation wording in reports.
+# Highest matching `min` (descending) wins for a given global score.
+score_interpretation:
+  - min: 4.5
+    label: "Strong match"
+    action: "recommend applying immediately"
+  - min: 4.0
+    label: "Good match"
+    action: "worth applying"
+  - min: 3.5
+    label: "Decent but not ideal"
+    action: "apply only if there's a specific reason"
+  - min: 0
+    label: "Weak match"
+    action: "recommend against applying"
