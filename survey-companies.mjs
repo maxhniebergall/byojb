@@ -24,7 +24,7 @@ const OUT = join(ROOT, 'data', 'survey', 'results.jsonl');
 const REPORT = join(ROOT, 'data', 'survey', 'landscape.md');
 const CONCURRENCY = 25;
 const TIMEOUT_MS = 9000;
-const ALL_PROVIDERS = ['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee'];
+const ALL_PROVIDERS = ['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee', 'bamboohr', 'workable', 'breezy', 'rippling'];
 // Workday is opt-in (heavier: enterprise boards are huge, so we run targeted searches
 // instead of fetching every posting). Run with: node survey-companies.mjs workday
 const WORKDAY_SEARCHES = ['backend engineer', 'platform engineer', 'infrastructure engineer', 'data engineer', 'mlops', 'devops engineer'];
@@ -55,17 +55,45 @@ function buildLocationFilter(lf) {
   };
 }
 
-// ── HTTP ─────────────────────────────────────────────────────────────
-async function getJson(url) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { headers: { 'user-agent': 'career-ops-survey/1.0', accept: 'application/json' }, signal: ctrl.signal, redirect: 'follow' });
-    if (!res.ok) return { __error: `HTTP ${res.status}` };
-    return await res.json();
-  } catch (e) { return { __error: String(e.name || e.message || e).slice(0, 40) }; }
-  finally { clearTimeout(t); }
+// ── HTTP (with 429 backoff) ─────────────────────────────────────────
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function fetchRaw(url, opts = {}) {
+  // retries on HTTP 429 with exponential backoff (shared-host throttlers like Recruitee).
+  for (let attempt = 0; ; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        method: opts.method || 'GET',
+        headers: { 'user-agent': 'career-ops-survey/1.0', accept: opts.accept || 'application/json', ...(opts.headers || {}) },
+        body: opts.body, signal: ctrl.signal, redirect: 'follow',
+      });
+      if (res.status === 429 && attempt < 3) { clearTimeout(t); await sleep(1000 * 2 ** attempt); continue; }
+      if (!res.ok) return { __error: `HTTP ${res.status}` };
+      return { __res: res };
+    } catch (e) { return { __error: String(e.name || e.message || e).slice(0, 40) }; }
+    finally { clearTimeout(t); }
+  }
 }
+async function getJson(url, opts) {
+  const r = await fetchRaw(url, opts);
+  if (r.__error) return r;
+  try { return await r.__res.json(); } catch { return { __error: 'bad-json' }; }
+}
+async function getText(url, opts) {
+  const r = await fetchRaw(url, opts);
+  if (r.__error) return r;
+  try { return { text: await r.__res.text() }; } catch { return { __error: 'bad-text' }; }
+}
+
+// Per-provider in-flight cap (on top of the global pool) — for shared-host throttlers.
+function makeSema(max) {
+  let active = 0; const q = [];
+  const next = () => { if (active < max && q.length) { active++; q.shift()(); } };
+  return { run(fn) { return new Promise(res => { q.push(res); next(); }).then(async () => { try { return await fn(); } finally { active--; next(); } }); } };
+}
+const PROVIDER_SEMA = { recruitee: makeSema(3) };
 
 // ── per-provider fetchers → array of {title, location} ──────────────
 const FETCH = {
@@ -103,6 +131,52 @@ const FETCH = {
     const j = await getJson(`https://${slug}.recruitee.com/api/offers/`);
     if (j.__error) return j;
     return (j.offers || []).map(x => ({ title: x.title, location: x.location || [x.city, x.country].filter(Boolean).join(', ') }));
+  },
+  async bamboohr(slug) {
+    const j = await getJson(`https://${slug}.bamboohr.com/careers/list`);
+    if (j.__error) return j;
+    return (j.result || []).map(x => {
+      const loc = x.location || {};
+      const isRemote = x.isRemote === 'yes' || x.atsLocation?.isRemote;
+      return { title: x.jobOpeningName, location: [loc.city, loc.state, loc.country].filter(Boolean).join(', ') + (isRemote ? ' Remote' : '') };
+    });
+  },
+  async breezy(slug) {
+    const j = await getJson(`https://${slug}.breezy.hr/json`);
+    if (j.__error) return j;
+    if (!Array.isArray(j)) return { __error: 'not-array' };
+    return j.map(x => {
+      const loc = x.location || {};
+      return { title: x.name, location: (loc.name || [loc.city?.name, loc.country?.name].filter(Boolean).join(', ')) + (loc.is_remote ? ' Remote' : '') };
+    });
+  },
+  async workable(slug) {
+    const j = await getJson(`https://apply.workable.com/api/v1/widget/accounts/${slug}?details=true`);
+    if (j.__error) return j;
+    return (j.jobs || []).map(x => ({
+      title: x.title,
+      location: x.location_str || [x.city, x.region, x.country].filter(Boolean).join(', ') + (x.telecommuting || x.remote ? ' Remote' : ''),
+    }));
+  },
+  async rippling(slug, url) {
+    const r = await getText(url || `https://ats.rippling.com/${slug}/jobs`, { accept: 'text/html' });
+    if (r.__error) return r;
+    const m = r.text.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    if (!m) return { __error: 'no-next-data' };
+    let data; try { data = JSON.parse(m[1]); } catch { return { __error: 'bad-next-data' }; }
+    const queries = data?.props?.pageProps?.dehydratedState?.queries || [];
+    for (const q of queries) {
+      const items = q?.state?.data?.items;
+      if (Array.isArray(items) && items.length && items[0] && (items[0].url || items[0].name)) {
+        return items.map(x => ({
+          title: x.name,
+          location: Array.isArray(x.locations)
+            ? x.locations.map(l => [l.city, l.state, l.country].filter(Boolean).join(', ') + (l.workplaceType === 'REMOTE' ? ' Remote' : '')).join('; ')
+            : '',
+        }));
+      }
+    }
+    return []; // parsed but no postings
   },
   async workday(_slug, url) {
     const m = String(url).match(/^https?:\/\/([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com\/(?:([a-z]{2}-[A-Z]{2})\/)?([^/?#]+)/i);
@@ -176,7 +250,10 @@ async function survey(providers, limit) {
   async function worker() {
     while (i < tasks.length) {
       const task = tasks[i++];
-      const jobs = await FETCH[task.provider](task.slug, task.url);
+      const sema = PROVIDER_SEMA[task.provider];
+      const jobs = sema
+        ? await sema.run(() => FETCH[task.provider](task.slug, task.url))
+        : await FETCH[task.provider](task.slug, task.url);
       let rec;
       if (jobs && jobs.__error) {
         errors++;

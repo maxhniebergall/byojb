@@ -48,36 +48,52 @@ resolution and writing to `portals.yml` are **zero-token** (the `find-companies.
       in the `sources` priority order): its careers/values/culture page, engineering blog or
       handbook, a few of its actual JDs (watch the language — "fast-paced"? "ownership"?
       "scope"?), and recent news (funding stage, layoffs, remote policy).
-   c. Compare that self-description to the user's criteria — `config/company_fit.yml` plus
-      `config/profile.yml` (`anti_targets`, `work_style_priorities`). Write a short **fit brief**
-      to `data/company-fit/<slug>.md`:
+   c. Write **TWO separated outputs** (this keeps the project publishable — objective research
+      is shareable, the fit judgement is personal):
+
+      **(i) Objective research note** → `data/company-research/<key>.md` (SHAREABLE — no rubric
+      references, just facts anyone could reuse):
       ```
-      # <Company> — fit brief
-      Fit: <1-5> | Provider: <ats> (<live jobs>) | Recommend: keep|skip
-      How they describe themselves: <2-3 sentences quoting/citing their own language>
-      Aligns: <green signals matched>
-      Concerns: <red signals matched>
-      Verdict: <one line: why keep or skip vs the criteria>
+      # <Company> — research
+      Provider: <ats> (<live relevant openings>) | company_type: product|consulting|outsourcing|staffing
+      Remote-Canada eligibility: <verified yes/no/unclear, with evidence>
+      What they do: <1-2 sentences>
+      How they describe themselves: <2-3 sentences quoting/citing their OWN language>
+      Size / stage / stability: <facts>
+      Remote policy: <facts>
       ```
-   d. Record the score in the resolved JSON by adding a `fit_score` field to each entry, so the
-      append step can gate on it. (Edit /tmp/resolved.json to add `"fit_score": <n>` per company.)
+
+      **(ii) Personal fit verdict** → `data/company-fit/<key>.md` (PRIVATE — vs YOUR criteria in
+      `config/company_fit.yml` + `config/profile.yml` `anti_targets`/`work_style_priorities`):
+      ```
+      # <Company> — fit verdict
+      Fit: <1-5> | Recommend: keep|skip
+      Aligns: <green signals matched>   Concerns: <red signals matched>
+      Verdict: <one line vs the criteria>
+      ```
+   d. Record the verdict in the personal registry layer: set `llm_fit`, `fit_brief`, and
+      (on the user's decision) `decision` for that company's `key` in `data/companies-personal.jsonl`.
+      Add `fit_score` to the resolved JSON if you intend to use the optional `--append --min-fit` gate.
 
 5. **Present for confirmation.** Show a table: Company | How they self-describe (1 phrase) |
    Fit /5 | Board (provider, live jobs) | Recommend. Group unresolved companies separately —
    they can still be covered via JobSpy keyword search (`config/jobspy.yml` `search_terms`).
 
-6. **Append on approval (human-in-the-loop).** Only after the user confirms, append — gated by
-   the vetting score:
+6. **Add to the watchlist on approval (human-in-the-loop).** `portals.yml` is a **generated
+   artifact** — don't hand-edit company entries. On the user's approval, set `decision: keep`
+   for the company's `key` in `data/companies-personal.jsonl`, then regenerate the watchlist:
    ```bash
-   node find-companies.mjs --append /tmp/resolved.json --min-fit 3.5
+   node generate-watchlist.mjs        # personal decision=keep → portals.yml tracked_companies
+   node scan.mjs                       # pull current postings from the watchlist
    ```
-   `--min-fit` drops companies scored below `config/company_fit.yml`'s `min_fit`. Dedupes by
-   name. Then suggest `node scan.mjs` to pull jobs from the newly added companies.
+   (For ad-hoc one-offs not yet in the registry, `node find-companies.mjs --append <json>` still
+   works and can be gated with `--min-fit`.)
 
 ## Rules
-- NEVER append to `portals.yml` without explicit user confirmation.
-- NEVER add a company without a fit brief + `fit_score` — vetting is mandatory, not optional.
-- Ground the fit judgement in the company's OWN words (quote/cite), not assumptions.
-- Prefer companies with a resolvable public ATS board (the scanner reads those zero-token).
+- NEVER add a company to the watchlist without explicit user confirmation.
+- NEVER add a company without BOTH outputs (objective research note + personal fit verdict) — vetting is mandatory.
+- Keep the two layers separate: research notes carry NO rubric references; fit verdicts/scores stay in the personal layer.
+- `company_type` in {consulting, outsourcing, staffing} → landscape-only: keep in the research dataset, never vet or add to the watchlist.
+- Ground the research in the company's OWN words (quote/cite), not assumptions.
 - For strong-fit companies with no resolvable board, recommend adding their name/role to
   `config/jobspy.yml` search terms instead.

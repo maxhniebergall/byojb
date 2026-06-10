@@ -59,6 +59,13 @@ data/company-fit/
 # live user configs (your search terms / criteria) — commit the .example versions instead
 config/jobspy.yml
 config/company_criteria.yml
-# large ATS company corpus + survey output (generated/public data)
+# personal evaluation criteria (your rubric/fit) — commit the .example versions instead
+config/rubric.yml
+config/company_fit.yml
+# large ATS company corpus + survey output (third-party / regenerable — not redistributed)
 data/ats-companies/
 data/survey/
+# PERSONAL registry layer (relevance scores, fit, decisions) — keep private
+data/companies-personal.jsonl
+# NOTE: data/company-research.jsonl + data/company-research/ are the SHAREABLE objective
+# layer and are intentionally NOT ignored (committed for a public repo).
