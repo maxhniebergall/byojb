@@ -93,7 +93,8 @@ function makeSema(max) {
   const next = () => { if (active < max && q.length) { active++; q.shift()(); } };
   return { run(fn) { return new Promise(res => { q.push(res); next(); }).then(async () => { try { return await fn(); } finally { active--; next(); } }); } };
 }
-const PROVIDER_SEMA = { recruitee: makeSema(3) };
+// Shared-host throttlers (one host serves all tenants) get a low in-flight cap.
+const PROVIDER_SEMA = { recruitee: makeSema(3), workable: makeSema(4) };
 
 // ── per-provider fetchers → array of {title, location} ──────────────
 const FETCH = {
