@@ -100,6 +100,8 @@ function main() {
     const relevance_score = Number(((r.remote_ca || 0) + 0.5 * seniorityBonus(r.samples) + 0.01 * r.relevant).toFixed(2));
     personal.push({
       key,
+      // self-contained identity so the watchlist survives even when a company has 0 current openings
+      name: r.name, provider: r.provider, careers_url: urls[r.provider]?.[r.slug] || prev.careers_url || '',
       relevance_score,
       excluded_by_type: EXCLUDED_TYPES.has(company_type),
       decision: prev.decision || 'undecided',
@@ -108,6 +110,23 @@ function main() {
       last_reviewed: prev.last_reviewed || null,
     });
   }
+
+  // Carry forward DECIDED companies (keep/skip) that fell out of the current survey
+  // (e.g. 0 relevant openings right now). Listings are ephemeral; a vetted decision is durable —
+  // a kept company must stay on the watchlist and keep being re-checked over time.
+  const currentKeys = new Set(personal.map(p => p.key));
+  let carried = 0;
+  for (const [key, prev] of prior) {
+    if (currentKeys.has(key) || !prev.decision || prev.decision === 'undecided') continue;
+    personal.push({
+      key, name: prev.name, provider: prev.provider, careers_url: prev.careers_url || '',
+      relevance_score: 0, excluded_by_type: prev.excluded_by_type || false,
+      decision: prev.decision, llm_fit: prev.llm_fit ?? null, fit_brief: prev.fit_brief || null,
+      last_reviewed: prev.last_reviewed || null, stale: true, // no relevant openings in latest survey
+    });
+    carried++;
+  }
+  if (carried) console.log(`  carried forward ${carried} decided companies absent from the latest survey`);
 
   research.sort((a, b) => b.remote_relevant - a.remote_relevant);
   // personal sorted by relevance, excluded types sink to the bottom

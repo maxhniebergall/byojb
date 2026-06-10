@@ -47,12 +47,17 @@ function main() {
 
   const entries = [], skippedUnscannable = [];
   for (const p of keep) {
-    const r = research.get(p.key);
-    if (!r || !r.careers_url) continue;
-    if (!SCANNABLE.has(r.provider)) { skippedUnscannable.push(r.name + ` (${r.provider})`); continue; }
-    let block = `  - name: ${r.name}\n    careers_url: ${r.careers_url}\n`;
-    if (r.provider === 'workday') block += `    provider: workday\n    workday_search: ${JSON.stringify(WORKDAY_SEARCH)}\n`;
-    block += `    enabled: true\n    notes: "watchlist — fit ${p.llm_fit ?? '?'}/5 (${r.provider})"\n`;
+    // Prefer the personal layer's stored identity (durable); fall back to current research.
+    const r = research.get(p.key) || {};
+    const name = p.name || r.name;
+    const provider = p.provider || r.provider;
+    const careers_url = p.careers_url || r.careers_url;
+    if (!name || !careers_url) continue;
+    if (!SCANNABLE.has(provider)) { skippedUnscannable.push(name + ` (${provider})`); continue; }
+    const staleNote = p.stale ? ', no current openings — re-checked over time' : '';
+    let block = `  - name: ${name}\n    careers_url: ${careers_url}\n`;
+    if (provider === 'workday') block += `    provider: workday\n    workday_search: ${JSON.stringify(WORKDAY_SEARCH)}\n`;
+    block += `    enabled: true\n    notes: "watchlist — fit ${p.llm_fit ?? '?'}/5 (${provider}${staleNote})"\n`;
     entries.push(block);
   }
 

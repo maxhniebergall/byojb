@@ -268,6 +268,8 @@ async function survey(providers, limit) {
           provider: task.provider, slug: task.slug, name: task.name,
           total: jobs.length, relevant: relevant.length, remote_ca: remoteCa.length,
           samples: remoteCa.slice(0, 3).map(j => j.title),
+          // raw titles+locations (capped) so filter changes can re-score WITHOUT re-crawling (--rescore)
+          jobs: jobs.slice(0, 500).map(j => ({ t: j.title, l: j.location })),
         };
       }
       appendFileSync(OUT, JSON.stringify(rec) + '\n');
@@ -320,10 +322,34 @@ function report() {
   console.log(`\n✓ full report → ${REPORT} (${withCa.length} companies in shortlist)`);
 }
 
+// ── rescore (no re-crawl) — recompute counts from stored raw titles vs current filter ──
+function rescore() {
+  const portals = yaml.load(readFileSync(join(ROOT, 'portals.yml'), 'utf-8'));
+  const titleMatch = buildTitleFilter(portals.title_filter);
+  const locMatch = buildLocationFilter(portals.location_filter);
+  const out = [];
+  let changed = 0, noTitles = 0;
+  for (const line of readFileSync(OUT, 'utf-8').split('\n')) {
+    if (!line) continue;
+    let r; try { r = JSON.parse(line); } catch { continue; }
+    if (r.error || !Array.isArray(r.jobs)) { if (!r.error) noTitles++; out.push(r); continue; }
+    const relevant = r.jobs.filter(j => titleMatch(j.t));
+    const remoteCa = relevant.filter(j => locMatch(j.l));
+    if (relevant.length !== r.relevant || remoteCa.length !== r.remote_ca) changed++;
+    r.relevant = relevant.length; r.remote_ca = remoteCa.length;
+    r.samples = remoteCa.slice(0, 3).map(j => j.t);
+    out.push(r);
+  }
+  writeFileSync(OUT, out.map(r => JSON.stringify(r)).join('\n') + '\n');
+  console.error(`✓ rescored ${out.length} rows against current title/location filter (${changed} changed). ${noTitles} rows lack stored titles (re-survey to populate).`);
+}
+
 // ── main ─────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
 if (args.includes('--report')) {
   report();
+} else if (args.includes('--rescore')) {
+  rescore();
 } else {
   const limIdx = args.indexOf('--limit');
   const limit = limIdx >= 0 ? Number(args[limIdx + 1]) : 0;
