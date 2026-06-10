@@ -20,7 +20,8 @@
     "gemini:eval": "node gemini-eval.mjs",
     "rubric": "node apply-rubric.mjs",
     "jobspy:refresh": "./.venv/bin/python ingest/jobspy_pull.py --refresh",
-    "dashboard:web": "node web/server.mjs"
+    "dashboard:web": "node web/server.mjs",
+    "dashboard:decisions": "node web/decision-server.mjs"
   },
   "keywords": [
     "ai",
