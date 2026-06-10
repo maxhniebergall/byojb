@@ -69,3 +69,5 @@ data/survey/
 data/companies-personal.jsonl
 # NOTE: data/company-research.jsonl + data/company-research/ are the SHAREABLE objective
 # layer and are intentionally NOT ignored (committed for a public repo).
+# bulk-curated test-case set (validation artifact)
+data/company-tests.json
