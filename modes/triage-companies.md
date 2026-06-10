@@ -35,15 +35,15 @@ Fast and scalable. Deep web research is reserved for the manual vetting step
 4. Repeat (`--offset`/next `--emit`) across the eligible set. Check progress with
    `node llm-triage.mjs --stats`.
 
-5. When done, hand the top of the ranked queue to manual vetting:
+5. When done, hand the top of the ranked queue to **Stage 3 web research** (`modes/research-companies.md`),
+   which fetches each company's careers/about pages and writes a report + fit score. The user's
+   keep/skip (Stage 4, `decide.mjs`) comes only AFTER, by reading those reports.
    ```bash
    node llm-triage.mjs --queue 30
    ```
-   Then deep-vet those via `modes/find-companies.md` (objective note + personal verdict) and,
-   on the user's approval, `decision=keep` → `generate-watchlist.mjs`.
 
 ## Rules
-- Metadata + knowledge only in this mode — no web fetch (that's the manual step).
+- Metadata + knowledge only in THIS mode — no web fetch. Web research is Stage 3, not the user's job.
 - `llm_rank`/`llm_reason` are PERSONAL (a judgement vs the user's rubric) — they live in
   `data/companies-personal.jsonl`, never in the shareable research layer.
 - Be calibrated, not generous: most companies are 2-3; reserve 4-5 for genuine infra/utility fit.
