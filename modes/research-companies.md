@@ -15,10 +15,14 @@ Pipeline position: Stage 1 survey/heuristic → Stage 2 prerank (`triage-compani
    ```
 
 2. For EACH company, **web-research it** (this is the point — fetch its own words):
-   - **Fetch the careers page** and, where useful, the **about / values / engineering** page.
+   - **Find the URL first** with a quick WebSearch ("<company> careers" / "<company> about") —
+     don't guess `/careers`; calibration showed ~⅓ of guesses 404/redirect. Then fetch the
+     **about / values / engineering** page (more substance than the marketing careers landing
+     page — you already have the job titles from the registry).
    - Read how they describe themselves, the work, pace, stability, and remote policy; check a
      couple of real JDs. Verify **remote-Canada eligibility** specifically.
    - Compare to `config/company_fit.yml` + `config/profile.yml` (`anti_targets`, `work_style_priorities`).
+   - Budget ~2-4 fetches/company; mind subscription limits (Gemini free tier ~15 req/min).
 
 3. Write TWO separated outputs per company (publishable split):
    - **Objective research note** → `data/company-research/<key>.md` (shareable; the company's own
