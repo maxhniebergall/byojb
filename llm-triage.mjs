@@ -102,7 +102,23 @@ function main() {
     return;
   }
 
-  // default: --emit
+  // --emit-research: top preranked-but-unresearched (llm_rank set, llm_fit null), by llm_rank desc.
+  // This is the Stage-3 work queue (web-research these next).
+  if (args.includes('--emit-research')) {
+    const n = num('--emit-research', 20);
+    const titles = relevantTitlesByKey();
+    const todo = personal
+      .filter(p => !p.excluded_by_type && p.decision === 'undecided' && p.llm_rank != null && p.llm_fit == null)
+      .sort((a, b) => b.llm_rank - a.llm_rank)
+      .slice(0, n);
+    console.log(JSON.stringify(todo.map(p => {
+      const r = research.get(p.key) || {};
+      return { key: p.key, name: p.name || r.name, careers_url: r.careers_url || p.careers_url || '', llm_rank: p.llm_rank, titles: titles.get(p.key) || (r.sample_titles || []) };
+    }), null, 1));
+    return;
+  }
+
+  // default: --emit (top heuristic-ranked, not yet preranked by the LLM)
   const n = num('--emit', 50), offset = num('--offset', 0);
   const titles = relevantTitlesByKey();
   const eligible = personal

@@ -7,7 +7,8 @@ First read and follow `modes/research-companies.md` exactly. Also read `config/c
 `config/profile.yml` (anti_targets, work_style_priorities, the remote-only + Canada constraints).
 
 Loop:
-1. Get the top of the prerank queue:  run `node llm-triage.mjs --queue 20`.
+1. Get the work-list (top pre-ranked companies NOT yet researched, with titles + careers_url):
+   run `node llm-triage.mjs --emit-research 20`.
 2. For EACH company, web-research it (this is the point — read its OWN words):
    - **WebSearch the careers/about URL first** ("<company> careers" / "<company> about") — don't
      guess `/careers` (~1/3 of guesses 404/redirect). Then fetch the about / values / engineering

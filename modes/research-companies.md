@@ -9,9 +9,9 @@ Pipeline position: Stage 1 survey/heuristic → Stage 2 prerank (`triage-compani
 
 ## Loop
 
-1. Take the top un-researched companies from the prerank queue:
+1. Take the work-list — top pre-ranked companies NOT yet researched (with titles + careers_url):
    ```bash
-   node llm-triage.mjs --queue 25          # top by llm_rank (prerank), undecided
+   node llm-triage.mjs --emit-research 20  # top by llm_rank, llm_fit still null
    ```
 
 2. For EACH company, **web-research it** (this is the point — fetch its own words):
