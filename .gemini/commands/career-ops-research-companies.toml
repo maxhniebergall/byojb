@@ -1,0 +1,33 @@
+description = "career-ops Stage 3 — LLM web-researches top-ranked companies (fetches careers/about) → reports + scores"
+
+prompt = """
+You are running the career-ops **research-companies** mode (Stage 3: web research).
+
+First read and follow `modes/research-companies.md` exactly. Also read `config/company_fit.yml` and
+`config/profile.yml` (anti_targets, work_style_priorities, the remote-only + Canada constraints).
+
+Loop:
+1. Get the top of the prerank queue:  run `node llm-triage.mjs --queue 20`.
+2. For EACH company, web-research it (this is the point — read its OWN words):
+   - **WebSearch the careers/about URL first** ("<company> careers" / "<company> about") — don't
+     guess `/careers` (~1/3 of guesses 404/redirect). Then fetch the about / values / engineering
+     pages (more substance than the marketing careers landing page).
+   - Verify **remote-Canada eligibility** specifically. Budget ~2-4 fetches/company.
+3. Write TWO files per company (let KEY be the company key; FILE = KEY with ':' and '/' replaced by '-'):
+   - **Objective research note** → `data/company-research/<FILE>.md` — COMPREHENSIVE dossier
+     (everything you learned: what they do, mission + the FULL set of values/tone, size/stage/funding,
+     locations, remote policy + Canada eligibility, eng/tech, notable/news, sample roles, sources).
+     Capture all of it, not just rubric-relevant bits. NO rubric references.
+   - **Personal fit verdict** → `data/company-fit/<FILE>.md` — qualitative only
+     (Recommend: keep|skip|consider; Aligns; Concerns; Verdict). **Do NOT write a numeric "Fit: X/5"
+     in the verdict text.**
+4. Record scores: write `/tmp/research.json` =
+   `[{"key": "...", "llm_fit": <1-5>, "fit_brief": "data/company-fit/<FILE>.md", "llm_reason": "<short>"}, ...]`
+   then run `node llm-triage.mjs --apply /tmp/research.json`.
+5. **Do NOT decide keep/skip** — that's the user's job in the decision console. When done, print a
+   table: Company | llm_fit | 1-line why | report path.
+
+Skip any company whose company_type is consulting/outsourcing/staffing (landscape-only).
+
+Arguments (how many companies to research): {{args}}
+"""

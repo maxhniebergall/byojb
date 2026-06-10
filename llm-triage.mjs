@@ -59,7 +59,13 @@ function main() {
     let n = 0;
     for (const p of personal) {
       const s = scores.get(p.key);
-      if (s) { p.llm_rank = s.llm_rank; p.llm_reason = s.llm_reason || ''; n++; }
+      if (!s) continue;
+      // set only the fields provided: prerank (llm_rank) or research (llm_fit/fit_brief)
+      if (s.llm_rank != null) p.llm_rank = s.llm_rank;
+      if (s.llm_fit != null) p.llm_fit = s.llm_fit;
+      if (s.fit_brief) p.fit_brief = s.fit_brief;
+      if (s.llm_reason != null) p.llm_reason = s.llm_reason;
+      n++;
     }
     writeFileSync(PERSONAL, personal.map(p => JSON.stringify(p)).join('\n') + '\n');
     console.error(`✓ applied ${n} llm_rank scores to the personal layer`);
