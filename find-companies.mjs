@@ -171,16 +171,26 @@ function existingPortalNames() {
   return names;
 }
 
-function appendToPortals(resolved) {
+function appendToPortals(resolved, minFit = 0) {
   const have = existingPortalNames();
-  const toAdd = resolved.filter(r => r.resolved && !have.has(String(r.name).toLowerCase()));
+  let toAdd = resolved.filter(r => r.resolved && !have.has(String(r.name).toLowerCase()));
+  // Vetting gate: if --min-fit is set, drop companies whose fit_score is below it.
+  // Entries with no fit_score are kept (not yet vetted) so the gate never silently
+  // discards un-scored companies.
+  if (minFit > 0) {
+    const before = toAdd.length;
+    toAdd = toAdd.filter(r => r.fit_score == null || Number(r.fit_score) >= minFit);
+    const dropped = before - toAdd.length;
+    if (dropped) console.error(`(--min-fit ${minFit}: dropped ${dropped} company(ies) below the fit threshold)`);
+  }
   if (toAdd.length === 0) {
-    console.error('No new resolved companies to append (all duplicates or unresolved).');
+    console.error('No new resolved companies to append (all duplicates, unresolved, or below min-fit).');
     return 0;
   }
   const block = '\n' + toAdd.map(r => {
     const head = `  - name: ${r.name}\n    careers_url: ${r.careers_url}\n`;
-    const tail = `    enabled: true\n    notes: "added by find-companies (${r.provider}, ${r.count} live jobs)"\n`;
+    const fit = r.fit_score != null ? `, fit ${r.fit_score}/5` : '';
+    const tail = `    enabled: true\n    notes: "added by find-companies (${r.provider}, ${r.count} live jobs${fit})"\n`;
     if (r.provider === 'workday') {
       // Workday is identified by careers_url; narrow huge boards at the source.
       const search = JSON.stringify(DEFAULT_WORKDAY_SEARCH);
@@ -237,12 +247,14 @@ async function main() {
       '  --resolve-file names.txt          resolve many by name (Greenhouse/Ashby/Lever/SR/Recruitee)\n' +
       '  --resolve-url "Name|careers_url"   resolve one company by careers URL (Workday + slug ATSs)\n' +
       '  --urls-file rows.txt              resolve many by "Name<TAB>careers_url"\n' +
-      '  --append <file.json | ->          append resolved hits to portals.yml');
+      '  --append <file.json> [--min-fit N] append resolved hits to portals.yml (optionally gated\n' +
+      '                                    by a fit_score field >= N from the vetting step)');
     process.exit(1);
   }
 
   if (appendArg) {
-    appendToPortals(resolved);
+    const minFit = Number(get('--min-fit') || 0);
+    appendToPortals(resolved, minFit);
   } else {
     console.log(JSON.stringify(resolved, null, 2));
   }

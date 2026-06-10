@@ -39,22 +39,45 @@ resolution and writing to `portals.yml` are **zero-token** (the `find-companies.
 
    Each result is `resolved:true` (with a live job count) or `resolved:false`.
 
-4. **Present for confirmation.** Show the user a table: Company | Why it matches | Board
-   (provider + live job count) | Resolved?. Group unresolved companies separately and note
-   they can still be covered via JobSpy keyword search (config/jobspy.yml `search_terms`)
-   since they have no public ATS board the scanner can hit directly.
+4. **VET — does the company fit, by how it talks about itself? (the critical step).**
+   Resolving a board only proves a company *has* jobs — not that it's a place the user wants
+   to work. Before adding any company, judge company-level fit:
 
-5. **Append on approval (human-in-the-loop).** Only after the user confirms, append the
-   resolved companies to `portals.yml`:
+   a. Load `config/company_fit.yml` (green_signals, red_signals, sources, min_fit, scoring).
+   b. For each resolved company, gather **how it describes itself** — read (WebSearch/WebFetch,
+      in the `sources` priority order): its careers/values/culture page, engineering blog or
+      handbook, a few of its actual JDs (watch the language — "fast-paced"? "ownership"?
+      "scope"?), and recent news (funding stage, layoffs, remote policy).
+   c. Compare that self-description to the user's criteria — `config/company_fit.yml` plus
+      `config/profile.yml` (`anti_targets`, `work_style_priorities`). Write a short **fit brief**
+      to `data/company-fit/<slug>.md`:
+      ```
+      # <Company> — fit brief
+      Fit: <1-5> | Provider: <ats> (<live jobs>) | Recommend: keep|skip
+      How they describe themselves: <2-3 sentences quoting/citing their own language>
+      Aligns: <green signals matched>
+      Concerns: <red signals matched>
+      Verdict: <one line: why keep or skip vs the criteria>
+      ```
+   d. Record the score in the resolved JSON by adding a `fit_score` field to each entry, so the
+      append step can gate on it. (Edit /tmp/resolved.json to add `"fit_score": <n>` per company.)
+
+5. **Present for confirmation.** Show a table: Company | How they self-describe (1 phrase) |
+   Fit /5 | Board (provider, live jobs) | Recommend. Group unresolved companies separately —
+   they can still be covered via JobSpy keyword search (`config/jobspy.yml` `search_terms`).
+
+6. **Append on approval (human-in-the-loop).** Only after the user confirms, append — gated by
+   the vetting score:
    ```bash
-   node find-companies.mjs --append /tmp/resolved.json
+   node find-companies.mjs --append /tmp/resolved.json --min-fit 3.5
    ```
-   It dedupes against existing entries by name. Then suggest running `node scan.mjs` to pull
-   jobs from the newly added companies.
+   `--min-fit` drops companies scored below `config/company_fit.yml`'s `min_fit`. Dedupes by
+   name. Then suggest `node scan.mjs` to pull jobs from the newly added companies.
 
 ## Rules
 - NEVER append to `portals.yml` without explicit user confirmation.
-- Prefer companies with a resolvable public ATS board (the scanner can read those zero-token).
+- NEVER add a company without a fit brief + `fit_score` — vetting is mandatory, not optional.
+- Ground the fit judgement in the company's OWN words (quote/cite), not assumptions.
+- Prefer companies with a resolvable public ATS board (the scanner reads those zero-token).
 - For strong-fit companies with no resolvable board, recommend adding their name/role to
   `config/jobspy.yml` search terms instead.
-- Keep the "why it matches" grounded in the criteria — no filler.

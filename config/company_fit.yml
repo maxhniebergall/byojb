@@ -1,0 +1,41 @@
+# config/company_fit.yml — how to judge whether a COMPANY (not a specific job) fits.
+#
+# Used by the VETTING step in modes/find-companies.md: between finding a company and adding
+# it to portals.yml, the finder reads how the company talks about itself and scores that
+# against these signals. Only companies scoring >= min_fit are added.
+#
+# This is company-level fit (mission, culture, stability, remote policy) — distinct from
+# config/rubric.yml, which scores individual job postings.
+
+min_fit: 3.5            # 1-5; companies below this are not added (reported as "skip")
+
+# Positive signals — how a GOOD-fit company describes itself.
+green_signals:
+  - "Infrastructure / platform / developer-tools / data / backend is the core product, or a first-class, well-resourced eng org"
+  - "Stable, profitable, or established — not burn-rate / runway dependent; or a 'boring', mission-critical domain"
+  - "Async, remote-first, documentation/handbook culture; sustainable pace"
+  - "Engineers own well-scoped systems with deep technical specialization"
+  - "Hires remote in Canada, or is explicitly Canada-friendly, with Mountain-Time-workable hours"
+
+# Negative signals — reasons to skip or score down.
+red_signals:
+  - "'Fast-paced', 'wear many hats', 'hustle', 'move fast', 'scrappy', 'do whatever it takes', '24/7'"
+  - "Hype framing: 'changing the world', 'rocketship', flashy AI-wrapper product chasing the cycle"
+  - "Early / unstable startup, recent layoffs, funding-driven urgency"
+  - "Customer-facing / sales-driven engineering culture (external pressure over internal scope)"
+  - "US-only / onsite / hostile timezone; will not employ a Canada-based remote worker"
+
+# What to read when vetting, in priority order.
+sources:
+  - "Careers / 'why work here' / values / culture page"
+  - "Engineering blog or public handbook — the tone, and how they describe the actual work"
+  - "A few of their real job descriptions (scope, autonomy, 'fast-paced' language)"
+  - "Recent news — funding stage, layoffs, profitability, remote policy"
+
+# Scoring guidance (1-5) for the overall company-fit score.
+scoring:
+  - "5 = strong infra/utility identity, stable, async/remote-Canada-friendly, no hustle language"
+  - "4 = mostly fits; minor concerns"
+  - "3 = mixed — some infra roles but product/growth-flavored or unclear stability"
+  - "2 = mostly anti-fit (hype/hustle/customer-facing) with a few possible roles"
+  - "1 = clear anti-fit (unstable, hustle culture, US-only/onsite)"
