@@ -14,6 +14,11 @@ Loop:
    for genuine infrastructure/utility/backend/data/platform fit; give 1 to staffing/gig/freelance/
    outsourcing/recruiting firms and pure hype/AI-wrapper companies.
 3. Write `/tmp/scores.json` = `[{"key": "...", "llm_rank": <1-5>, "llm_reason": "<<=12 words>"}, ...]`.
+   **If a company is actually a consulting / outsourcing / staffing / gig / freelance / recruiting
+   firm (NOT a genuine product employer)**, also add `"company_type": "consulting"|"outsourcing"|"staffing"`
+   to its entry — that permanently flags it landscape-only (excluded from the queue and the watchlist),
+   not merely ranked 1. (Use "staffing" for gig/freelance/recruiting platforms.) Omit company_type for
+   genuine product companies.
 4. Apply:  run `node llm-triage.mjs --apply /tmp/scores.json`.
 5. Repeat for the number of batches requested. Show progress with `node llm-triage.mjs --stats`.
 

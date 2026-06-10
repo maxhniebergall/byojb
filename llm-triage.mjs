@@ -23,6 +23,8 @@ const RESULTS = join(ROOT, 'data', 'survey', 'results.jsonl');
 const RESEARCH = join(ROOT, 'data', 'company-research.jsonl');
 const PERSONAL = join(ROOT, 'data', 'companies-personal.jsonl');
 
+const EXCLUDED_TYPES = new Set(['consulting', 'outsourcing', 'staffing']);
+
 function loadJsonl(path) {
   const out = [];
   if (!existsSync(path)) return out;
@@ -56,7 +58,7 @@ function main() {
   if (args.includes('--apply')) {
     const file = args[args.indexOf('--apply') + 1];
     const scores = new Map(JSON.parse(readFileSync(file, 'utf-8')).map(s => [s.key, s]));
-    let n = 0;
+    let n = 0, typeChanged = false, reclassified = 0;
     for (const p of personal) {
       const s = scores.get(p.key);
       if (!s) continue;
@@ -65,10 +67,19 @@ function main() {
       if (s.llm_fit != null) p.llm_fit = s.llm_fit;
       if (s.fit_brief) p.fit_brief = s.fit_brief;
       if (s.llm_reason != null) p.llm_reason = s.llm_reason;
+      // optional company_type correction → updates the OBJECTIVE layer + re-derives exclusion.
+      // Lets the LLM permanently flag staffing/gig/outsourcing the name-heuristic missed.
+      if (s.company_type) {
+        const r = research.get(p.key);
+        if (r && r.company_type !== s.company_type) { r.company_type = s.company_type; typeChanged = true; }
+        p.excluded_by_type = EXCLUDED_TYPES.has(s.company_type);
+        if (EXCLUDED_TYPES.has(s.company_type)) reclassified++;
+      }
       n++;
     }
     writeFileSync(PERSONAL, personal.map(p => JSON.stringify(p)).join('\n') + '\n');
-    console.error(`✓ applied ${n} llm_rank scores to the personal layer`);
+    if (typeChanged) writeFileSync(RESEARCH, [...research.values()].map(r => JSON.stringify(r)).join('\n') + '\n');
+    console.error(`✓ applied ${n} scores${reclassified ? ` (${reclassified} reclassified as consulting/outsourcing/staffing → landscape-only)` : ''}`);
     return;
   }
 

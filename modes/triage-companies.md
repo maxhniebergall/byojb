@@ -26,6 +26,9 @@ Fast and scalable. Deep web research is reserved for the manual vetting step
    - 5 = clear strong fit · 4 = good · 3 = mixed/unclear · 2 = mostly off · 1 = anti-fit.
    Write `/tmp/scores.json`: `[{ "key": "...", "llm_rank": <1-5>, "llm_reason": "<≤12 words>" }, ...]`.
    Keep reasons terse and grounded (company nature + title signal). Do NOT web-fetch.
+   **Reclassify services firms:** if a company is really consulting/outsourcing/staffing/gig/recruiting
+   (not a product employer), add `"company_type": "consulting"|"outsourcing"|"staffing"` to its entry —
+   `--apply` then flags it landscape-only (excluded), catching what the name-heuristic missed.
 
 3. Apply:
    ```bash
