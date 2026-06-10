@@ -25,6 +25,9 @@ const REPORT = join(ROOT, 'data', 'survey', 'landscape.md');
 const CONCURRENCY = 25;
 const TIMEOUT_MS = 9000;
 const ALL_PROVIDERS = ['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee'];
+// Workday is opt-in (heavier: enterprise boards are huge, so we run targeted searches
+// instead of fetching every posting). Run with: node survey-companies.mjs workday
+const WORKDAY_SEARCHES = ['backend engineer', 'platform engineer', 'infrastructure engineer', 'data engineer', 'mlops', 'devops engineer'];
 
 // ── matchers (replicated from scan.mjs for consistency) ─────────────
 function buildTitleFilter(tf) {
@@ -101,6 +104,30 @@ const FETCH = {
     if (j.__error) return j;
     return (j.offers || []).map(x => ({ title: x.title, location: x.location || [x.city, x.country].filter(Boolean).join(', ') }));
   },
+  async workday(_slug, url) {
+    const m = String(url).match(/^https?:\/\/([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com\/(?:([a-z]{2}-[A-Z]{2})\/)?([^/?#]+)/i);
+    if (!m) return { __error: 'unparseable-url' };
+    const [, tenant, , , site] = m;
+    const host = `${tenant}.${m[2]}.myworkdayjobs.com`;
+    const cxs = `https://${host}/wday/cxs/${tenant}/${site}/jobs`;
+    const seen = new Set(), out = [];
+    let anyOk = false;
+    for (const term of WORKDAY_SEARCHES) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+      let j;
+      try {
+        const res = await fetch(cxs, { method: 'POST', signal: ctrl.signal,
+          headers: { 'content-type': 'application/json', accept: 'application/json', 'user-agent': 'career-ops-survey/1.0' },
+          body: JSON.stringify({ appliedFacets: {}, limit: 20, offset: 0, searchText: term }) });
+        if (res.ok) { j = await res.json(); anyOk = true; }
+      } catch {} finally { clearTimeout(t); }
+      for (const p of (j?.jobPostings || [])) {
+        if (p?.externalPath && !seen.has(p.externalPath)) { seen.add(p.externalPath); out.push({ title: p.title, location: p.locationsText || '' }); }
+      }
+    }
+    return anyOk ? out : { __error: 'no-response' };
+  },
 };
 
 // ── CSV ──────────────────────────────────────────────────────────────
@@ -114,7 +141,8 @@ function loadSlugs(provider) {
     const parts = line.split(',');
     const name = parts[0];
     const slug = (parts[1] || '').trim();
-    if (slug) rows.push({ name, slug });
+    const url = (parts[2] || '').trim();
+    if (slug || url) rows.push({ name, slug, url });
   }
   return rows;
 }
@@ -148,7 +176,7 @@ async function survey(providers, limit) {
   async function worker() {
     while (i < tasks.length) {
       const task = tasks[i++];
-      const jobs = await FETCH[task.provider](task.slug);
+      const jobs = await FETCH[task.provider](task.slug, task.url);
       let rec;
       if (jobs && jobs.__error) {
         errors++;
@@ -221,6 +249,6 @@ if (args.includes('--report')) {
 } else {
   const limIdx = args.indexOf('--limit');
   const limit = limIdx >= 0 ? Number(args[limIdx + 1]) : 0;
-  const provs = args.filter(a => ALL_PROVIDERS.includes(a));
+  const provs = args.filter(a => [...ALL_PROVIDERS, 'workday'].includes(a));
   await survey(provs.length ? provs : ALL_PROVIDERS, limit);
 }
