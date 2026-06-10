@@ -51,26 +51,21 @@ resolution and writing to `portals.yml` are **zero-token** (the `find-companies.
    c. Write **TWO separated outputs** (this keeps the project publishable — objective research
       is shareable, the fit judgement is personal):
 
-      **(i) Objective research note** → `data/company-research/<key>.md` (SHAREABLE — no rubric
-      references, just facts anyone could reuse):
-      ```
-      # <Company> — research
-      Provider: <ats> (<live relevant openings>) | company_type: product|consulting|outsourcing|staffing
-      Remote-Canada eligibility: <verified yes/no/unclear, with evidence>
-      What they do: <1-2 sentences>
-      How they describe themselves: <2-3 sentences quoting/citing their OWN language>
-      Size / stage / stability: <facts>
-      Remote policy: <facts>
-      ```
+      **(i) Objective research note** → `data/company-research/<key>.md` — SHAREABLE, COMPREHENSIVE
+      (everything learned, not just rubric-relevant). Use the rich template in
+      `modes/research-companies.md` step 3(i): what they do, mission + FULL set of values/tone,
+      size/stage/funding, locations, remote policy + Canada eligibility, eng/tech, notable/news,
+      sample roles, sources. Breadth matters for re-use under other rubrics.
 
-      **(ii) Personal fit verdict** → `data/company-fit/<key>.md` (PRIVATE — vs YOUR criteria in
-      `config/company_fit.yml` + `config/profile.yml` `anti_targets`/`work_style_priorities`):
+      **(ii) Personal fit verdict** → `data/company-fit/<key>.md` (PRIVATE — vs `config/company_fit.yml`
+      + `config/profile.yml`):
       ```
       # <Company> — fit verdict
-      Fit: <1-5> | Recommend: keep|skip
+      Recommend: keep|skip|consider
       Aligns: <green signals matched>   Concerns: <red signals matched>
       Verdict: <one line vs the criteria>
       ```
+      **No numeric "Fit: X/5" in the verdict text** — the score is the structured `llm_fit` field.
    d. Record the verdict in the personal registry layer: set `llm_fit`, `fit_brief`, and
       (on the user's decision) `decision` for that company's `key` in `data/companies-personal.jsonl`.
       Add `fit_score` to the resolved JSON if you intend to use the optional `--append --min-fit` gate.
