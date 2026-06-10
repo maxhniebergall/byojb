@@ -30,6 +30,7 @@ Determine the mode from `$mode`:
 | `apply` | `apply` |
 | `scan` | `scan` |
 | `find-companies` | `find-companies` |
+| `triage-companies` | `triage-companies` |
 | `batch` | `batch` |
 | `patterns` | `patterns` |
 | `followup` | `followup` |
@@ -63,6 +64,7 @@ Available commands:
   /career-ops apply     → Live application assistant (reads form + generates answers)
   /career-ops scan      → Scan portals and discover new offers
   /career-ops find-companies → Discover NEW target companies by criteria → portals.yml
+  /career-ops triage-companies → LLM first-pass ranking of many companies before manual vetting
   /career-ops batch     → Batch processing with parallel workers
   /career-ops patterns  → Analyze rejection patterns and improve targeting
   /career-ops followup  → Follow-up cadence tracker: flag overdue, generate drafts
@@ -86,7 +88,7 @@ Applies to: `auto-pipeline`, `oferta`, `ofertas`, `pdf`, `contacto`, `apply`, `p
 ### Standalone modes (only their mode file):
 Read `modes/{mode}.md`
 
-Applies to: `tracker`, `deep`, `interview-prep`, `training`, `project`, `patterns`, `followup`, `find-companies`
+Applies to: `tracker`, `deep`, `interview-prep`, `training`, `project`, `patterns`, `followup`, `find-companies`, `triage-companies`
 
 ### Modes delegated to subagent:
 For `scan`, `apply` (with Playwright), and `pipeline` (3+ URLs): launch as Agent with the content of `_shared.md` + `modes/{mode}.md` injected into the subagent prompt.
