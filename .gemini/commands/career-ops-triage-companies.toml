@@ -3,6 +3,10 @@ description = "career-ops Stage 2 — LLM world-knowledge prerank of the company
 prompt = """
 You are running the career-ops **triage-companies** mode (Stage 2: world-knowledge prerank).
 
+SUBSCRIPTION ONLY: score the companies YOURSELF, here, in your own response. Do NOT use a
+`GEMINI_API_KEY`/`.env`, do NOT import `@google/generative-ai`, and do NOT write a script that calls
+an LLM API — those cost money and are forbidden. `llm-triage.mjs` is a deterministic helper only.
+
 First read and follow `modes/triage-companies.md` exactly. Also read the user's criteria:
 `config/rubric.yml`, `config/company_fit.yml`, and `config/profile.yml` (target_roles, anti_targets,
 work_style_priorities).

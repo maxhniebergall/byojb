@@ -28,6 +28,23 @@ DISABLED in this fork. Do NOT run `node update-system.mjs` (check/apply) and do 
 check on the first message — this is a private fork that does not track the upstream career-ops
 package version, so the check is irrelevant noise. Just proceed with the user's request.
 
+## LLM Access — SUBSCRIPTION ONLY (no API keys, ever)
+
+All LLM work in this project runs on YOUR coding-agent subscription (Antigravity / Gemini CLI /
+Claude Code). The agent does the reasoning, scoring, and research **directly in its own context**.
+
+**NEVER, under any circumstances:**
+- use, read, request, or set `GEMINI_API_KEY` / `GOOGLE_API_KEY` / any API key, or create a `.env`;
+- import or call `@google/generative-ai` (or any Gemini/OpenAI/Anthropic API SDK);
+- write a "batch script" that calls an LLM API to offload scoring/research.
+
+Those paths cost per-token money and are explicitly out of scope. `.mjs` scripts here are
+**deterministic helpers only** (read/transform/write files) — they never call an LLM.
+
+To do bulk work (triage/research), YOU (the agent) emit a batch with `node llm-triage.mjs --emit`/
+`--emit-research`, score or research it **yourself**, then `node llm-triage.mjs --apply`. Process
+in chunks; it's resumable. If a batch is large, do fewer companies per run — never reach for an API.
+
 ## What is career-ops
 
 AI-powered, CLI-agnostic job search automation: pipeline tracking, offer evaluation, CV generation, portal scanning, batch processing. Runs on any AI coding CLI that follows the [open agent skill standard](https://agentskills.io) (Claude Code, Codex, Gemini, OpenCode, Qwen, Copilot, Kimi).

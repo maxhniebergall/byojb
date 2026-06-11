@@ -3,6 +3,10 @@ description = "career-ops Stage 3 — LLM web-researches top-ranked companies (f
 prompt = """
 You are running the career-ops **research-companies** mode (Stage 3: web research).
 
+SUBSCRIPTION ONLY: do the web research and scoring YOURSELF with your own tools. Do NOT use a
+`GEMINI_API_KEY`/`.env`, do NOT import `@google/generative-ai`, and do NOT write a script that calls
+an LLM API — forbidden (costs money). `llm-triage.mjs` is a deterministic helper only.
+
 First read and follow `modes/research-companies.md` exactly. Also read `config/company_fit.yml` and
 `config/profile.yml` (anti_targets, work_style_priorities, the remote-only + Canada constraints).
 

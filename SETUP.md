@@ -27,7 +27,9 @@ Run `npm run doctor` anytime to check readiness.
 - **Gemini CLI** (your preference): `npm i -g @google/gemini-cli && gemini auth`, then run
   `gemini` in this folder and use `/career-ops-*` commands. Free tier covers a full search.
 - **Claude Code**: run `claude` here and use `/career-ops …`.
-- Avoid `npm run gemini:eval` — that path uses a `GEMINI_API_KEY` (per-token billing).
+- **No API keys, ever.** All LLM work runs on the agent subscription. There is no `GEMINI_API_KEY` /
+  `@google/generative-ai` path in this fork — agents score/research directly and use the `.mjs`
+  scripts only as deterministic helpers.
 
 ## 3. Daily flow
 

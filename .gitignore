@@ -73,3 +73,5 @@ data/companies-personal.jsonl
 data/company-tests.json
 # local state backups (contains personal data — never commit)
 backups/
+# agent (Antigravity/Gemini) scratch working dir — throwaway batch/score JSON
+scratch/

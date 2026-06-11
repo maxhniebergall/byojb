@@ -17,7 +17,6 @@
     "liveness": "node check-liveness.mjs",
     "scan": "node scan.mjs",
     "patterns": "node analyze-patterns.mjs",
-    "gemini:eval": "node gemini-eval.mjs",
     "rubric": "node apply-rubric.mjs",
     "jobspy:refresh": "./.venv/bin/python ingest/jobspy_pull.py --refresh",
     "dashboard:web": "node web/server.mjs",
@@ -40,7 +39,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "dotenv": "^17.0.0",
     "js-yaml": "^4.1.1",
     "playwright": "^1.58.1"
