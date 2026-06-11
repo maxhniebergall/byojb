@@ -52,15 +52,22 @@ export default {
     const apiUrl = resolveApiUrl(entry);
     if (!apiUrl) throw new Error(`greenhouse: cannot derive API URL for ${entry.name}`);
     assertGreenhouseUrl(apiUrl);
+    // `?content=true` makes the SAME list call also return each job's full HTML body —
+    // zero extra requests. Used to capture the JD for the postings registry.
+    const withContent = apiUrl + (apiUrl.includes('?') ? '&' : '?') + 'content=true';
     // redirect:'error' prevents SSRF via server-side redirects; combined with
     // assertGreenhouseUrl above it guarantees the final hostname stays in the allowlist.
-    const json = await ctx.fetchJson(apiUrl, { redirect: 'error' });
+    const json = await ctx.fetchJson(withContent, { redirect: 'error' });
     const jobs = Array.isArray(json?.jobs) ? json.jobs : [];
     return jobs.filter(j => j.absolute_url).map(j => ({
       title: j.title || '',
       url: j.absolute_url,
       company: entry.name,
       location: j.location?.name || '',
+      // additive (postings registry) — undefined when absent; never breaks the base shape
+      description: j.content || '',                       // HTML-escaped body
+      department: j.departments?.[0]?.name || '',
+      date_posted: j.updated_at || j.first_published || '',
     }));
   },
 };

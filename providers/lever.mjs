@@ -29,7 +29,13 @@ export default {
       title: j.text || '',
       url: j.hostedUrl || '',
       company: entry.name,
-      location: j.categories?.location || '',
+      location: j.categories?.location || j.workplaceType || '',
+      // additive (postings registry) — all present in the same postings call
+      description: j.descriptionPlain || j.description || '',
+      department: j.categories?.team || j.categories?.department || '',
+      date_posted: j.createdAt ? new Date(j.createdAt).toISOString().slice(0, 10) : '',
+      comp: j.salaryRange || null,
+      employment_type: j.categories?.commitment || '',
     }));
   },
 };

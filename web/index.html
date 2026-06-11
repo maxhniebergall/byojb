@@ -1,155 +1,259 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>career-ops — job dashboard</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>career-ops — dashboard</title>
 <style>
-  :root { --bg:#0f1020; --card:#1a1c33; --ink:#e8e9f3; --mut:#9aa0c0; --line:#2a2d4a; --accent:#7c8cff; --good:#3ec98a; --warn:#e0b341; }
-  * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.5 -apple-system,system-ui,Segoe UI,sans-serif; background:var(--bg); color:var(--ink); }
-  header { padding:1.2rem 1.5rem; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:1rem; flex-wrap:wrap; }
-  header h1 { font-size:1.25rem; margin:0; }
-  header .sub { color:var(--mut); font-size:.85rem; }
-  .wrap { display:grid; grid-template-columns: 280px 1fr; gap:1.25rem; padding:1.25rem 1.5rem; align-items:start; }
-  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1rem 1.1rem; }
-  .panel h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:0 0 .8rem; }
-  .dim { margin-bottom:.55rem; }
-  .dim .row { display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:.2rem; }
-  .dim .bar { height:6px; background:#0c0d1c; border-radius:4px; overflow:hidden; }
-  .dim .bar > i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),#a36bff); }
-  .interp { font-size:.78rem; color:var(--mut); margin-top:.8rem; border-top:1px solid var(--line); padding-top:.6rem; }
-  .controls { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.9rem; align-items:center; }
-  .tab { background:none; border:1px solid var(--line); color:var(--ink); padding:.45rem .9rem; border-radius:8px; cursor:pointer; font-size:.85rem; }
-  .tab.active { background:var(--accent); border-color:var(--accent); color:#0b0c18; font-weight:600; }
-  input, select { background:#0c0d1c; border:1px solid var(--line); color:var(--ink); padding:.45rem .6rem; border-radius:8px; font-size:.85rem; }
-  input[type=search]{ min-width:220px; }
-  table { width:100%; border-collapse:collapse; font-size:.86rem; }
-  th, td { text-align:left; padding:.55rem .6rem; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { color:var(--mut); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; }
-  th:hover { color:var(--ink); }
-  tr:hover td { background:#191b30; }
-  .score { font-weight:700; font-variant-numeric:tabular-nums; }
-  .score.s-high{ color:var(--good); } .score.s-mid{ color:var(--warn); } .score.s-low{ color:var(--mut); }
-  .pill { font-size:.72rem; padding:.12rem .5rem; border-radius:99px; background:#23264a; color:var(--mut); white-space:nowrap; }
-  .why { color:var(--mut); max-width:34rem; }
-  a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
-  .count { color:var(--mut); font-size:.8rem; }
-  .empty { color:var(--mut); padding:2rem; text-align:center; }
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  header h1{font-size:1.05rem;margin:0;} .seg{display:flex;gap:.3rem;}
+  .seg button{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;}
+  .seg button.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
+  .counts{color:var(--mut);font-size:.82rem;margin-left:auto;}
+  .wrap{display:grid;grid-template-columns:260px 1fr;gap:1rem;padding:1rem 1.25rem;align-items:start;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  .pad{padding:.9rem 1rem;} h2.lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 .7rem;}
+  input,select,textarea{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
+  input[type=search]{width:100%;} .ctrls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.7rem;border-bottom:1px solid var(--line);}
+  .ctrls select{font-size:.8rem;} label.chk{font-size:.76rem;color:var(--mut);display:flex;align-items:center;gap:.3rem;}
+  .dim{margin-bottom:.6rem;} .dim .r{display:flex;justify-content:space-between;font-size:.76rem;margin-bottom:.15rem;}
+  .dim input[type=range]{width:100%;} .dim small{color:var(--mut);}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;} th,td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:600;cursor:pointer;white-space:nowrap;} tr:hover td{background:#191b30;cursor:pointer;}
+  .badge{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .35rem;font-size:.82rem;}
+  .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
+  .chip{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);margin:0 .15rem .15rem 0;display:inline-block;}
+  .pill{font-size:.68rem;padding:.08rem .45rem;border-radius:99px;background:#23264a;color:var(--mut);}
+  .dec{font-size:.68rem;padding:.08rem .4rem;border-radius:6px;} .dec.shortlist,.dec.keep{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);}
+  .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);}
+  .hx{opacity:.45;} .hx td{text-decoration:line-through dotted rgba(224,85,110,.4);}
+  .row-excl{color:var(--bad);font-size:.66rem;}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  .detail{padding:1rem 1.1rem;} .detail.empty{color:var(--mut);text-align:center;padding:3rem;}
+  .detail h3{margin:.1rem 0;font-size:1.2rem;} .meta{color:var(--mut);font-size:.83rem;margin:.2rem 0 .8rem;} .meta a{color:var(--accent);text-decoration:none;}
+  .facets{display:grid;grid-template-columns:1fr 1fr;gap:.3rem .9rem;font-size:.8rem;margin:.6rem 0;}
+  .facets b{color:var(--mut);font-weight:600;}
+  .jd{max-height:280px;overflow:auto;background:#0c0d1c;border:1px solid var(--line);border-radius:8px;padding:.7rem;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:var(--mut);}
+  .actrow{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.7rem 0;}
+  textarea{width:100%;min-height:120px;font:12px/1.5 ui-monospace,monospace;}
+  .field{margin:.8rem 0;} .field label{display:block;font-size:.72rem;text-transform:uppercase;color:var(--mut);margin-bottom:.3rem;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+  .list{max-height:80vh;overflow:auto;} .crow{display:flex;gap:.5rem;align-items:center;padding:.5rem .65rem;border-bottom:1px solid var(--line);cursor:pointer;} .crow:hover{background:#191b30;} .crow.sel{background:#23264a;}
+  .nm{flex:1;min-width:0;} .nm b{font-weight:600;} .nm small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 </style>
 </head>
 <body>
 <header>
   <h1>career-ops</h1>
-  <span class="sub" id="subtitle">loading…</span>
+  <div class="seg"><button class="active" data-s="postings">Postings</button><button data-s="companies">Companies</button></div>
+  <span class="counts" id="counts">loading…</span>
 </header>
-<div class="wrap">
-  <aside class="panel" id="rubric"><h2>Active rubric</h2><div id="dims"></div></aside>
-  <main>
-    <div class="controls">
-      <button class="tab active" data-tab="ranked" id="tab-ranked">Ranked (evaluated)</button>
-      <button class="tab" data-tab="discovered" id="tab-discovered">Discovered (pending)</button>
-      <input type="search" id="q" placeholder="filter by company, title, source…">
-      <select id="srcFilter"><option value="">all sources</option></select>
+
+<!-- POSTINGS -->
+<div class="wrap" id="view-postings">
+  <aside class="panel pad">
+    <h2 class="lbl">Rubric weights (live)</h2>
+    <div id="sliders"></div>
+    <button class="btn sm" id="resetW" style="margin-top:.3rem">reset weights</button>
+    <h2 class="lbl" style="margin-top:1rem">Filters</h2>
+    <label class="chk"><input type="checkbox" id="liveOnly" checked> live only</label>
+    <label class="chk"><input type="checkbox" id="showExcl"> show hard-excluded</label>
+    <label class="chk"><input type="checkbox" id="resOnly"> researched only</label>
+    <div style="margin-top:.5rem"><small style="color:var(--mut)">min score <span id="minLbl">0</span></small><input type="range" id="minScore" min="0" max="5" step="0.5" value="0" style="width:100%"></div>
+  </aside>
+  <div>
+    <div class="panel">
+      <div class="ctrls">
+        <input type="search" id="q" placeholder="search company / title / reason…" style="flex:1;min-width:160px">
+        <select id="fLang"><option value="">any language</option></select>
+        <select id="fSen"><option value="">any seniority</option></select>
+        <select id="fRemote"><option value="">any remote</option></select>
+        <select id="fGeo"><option value="">any geo</option></select>
+        <select id="fDec"><option value="">any decision</option><option>undecided</option><option>shortlist</option><option>skip</option></select>
+      </div>
+      <div id="pcount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
+      <div id="ptable"></div>
     </div>
-    <div class="count" id="count"></div>
-    <div id="view"></div>
-  </main>
+    <div class="panel" style="margin-top:1rem"><div class="detail empty" id="pdetail">Select a posting →</div></div>
+  </div>
 </div>
+
+<!-- COMPANIES -->
+<div class="wrap" id="view-companies" style="display:none">
+  <div class="panel">
+    <div class="ctrls">
+      <button class="btn sm" data-cf="undecided">To decide</button><button class="btn sm" data-cf="keep">Kept</button>
+      <button class="btn sm" data-cf="skip">Skipped</button><button class="btn sm" data-cf="all">All</button>
+      <input type="search" id="cq" placeholder="filter…" style="flex:1;min-width:120px">
+    </div>
+    <div class="list" id="clist"></div>
+  </div>
+  <div class="panel"><div class="detail empty" id="cdetail">Select a company →</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
 <script>
-let DATA = { rubric:{dimensions:[]}, evaluated:[], discovered:[] };
-let tab = 'ranked';
-let sort = { ranked:{key:'score',dir:-1}, discovered:{key:'date',dir:-1} };
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bcls=v=>v==null?'b-lo':v>=4?'b-hi':v>=3?'b-mid':'b-lo';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
 
-const $ = s => document.querySelector(s);
-const esc = s => (s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// ---------- section switch ----------
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.seg button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  const s=b.dataset.s; $('#view-postings').style.display=s==='postings'?'grid':'none'; $('#view-companies').style.display=s==='companies'?'grid':'none';
+  if(s==='companies'&&!CQUEUE.length) loadCompanies();
+});
 
-function scoreClass(s){ if(s==null) return 's-low'; if(s>=4) return 's-high'; if(s>=3.5) return 's-mid'; return 's-low'; }
+// ==================== POSTINGS ====================
+let RUBRIC={dimensions:[]}, ROWS=[], WEIGHTS={}, psort={key:'display',dir:-1}, psel=null;
 
-function renderRubric(){
-  const dims = DATA.rubric.dimensions || [];
-  const max = Math.max(1, ...dims.map(d=>+d.weight||0));
-  $('#dims').innerHTML = dims.map(d=>`
-    <div class="dim"><div class="row"><span>${esc(d.name)}</span><span>${esc(d.weight)}%</span></div>
-    <div class="bar"><i style="width:${(100*(+d.weight||0)/max)}%"></i></div></div>`).join('')
-    + (DATA.rubric.score_interpretation?.length
-        ? `<div class="interp">${DATA.rubric.score_interpretation.map(s=>`<div><b>${esc(s.min)}+</b> ${esc(s.label)}</div>`).join('')}</div>`
-        : '');
+function weightedScore(dim){ if(!dim) return null; let w=0,a=0; for(const id in WEIGHTS){const s=dim[id]; if(s!=null){w+=WEIGHTS[id];a+=WEIGHTS[id]*s;}} return w?+(a/w).toFixed(2):null; }
+function liveScore(r){ if(r.manual_score!=null) return r.manual_score; const ws=weightedScore(r.dim_scores); if(ws!=null) return ws; return r.llm_rank!=null?r.llm_rank:null; }
+
+async function loadPostings(){
+  const d=await (await fetch('/api/postings')).json();
+  RUBRIC=d.rubric||{dimensions:[]}; ROWS=d.rows||[];
+  WEIGHTS={}; for(const dm of RUBRIC.dimensions) WEIGHTS[dm.id||dm.name]=+dm.weight||0;
+  renderSliders(); fillFacetFilters(); renderCounts(); renderPostings();
 }
+function renderSliders(){
+  $('#sliders').innerHTML=RUBRIC.dimensions.map(d=>{const id=d.id||d.name;return `<div class="dim"><div class="r"><span title="${esc(d.guidance||'')}">${esc(d.name)}${d.compute?'':' <small>·llm</small>'}</span><span id="w-${id}">${WEIGHTS[id]}</span></div><input type="range" min="0" max="50" step="1" value="${WEIGHTS[id]}" data-id="${id}"></div>`;}).join('');
+  $('#sliders').querySelectorAll('input[type=range]').forEach(el=>el.oninput=()=>{WEIGHTS[el.dataset.id]=+el.value;$('#w-'+el.dataset.id).textContent=el.value;renderPostings();});
+}
+$('#resetW').onclick=()=>{for(const d of RUBRIC.dimensions){const id=d.id||d.name;WEIGHTS[id]=+d.weight||0;}renderSliders();renderPostings();};
 
-function rows(){
-  const q = $('#q').value.trim().toLowerCase();
-  const src = $('#srcFilter').value;
-  let list = tab==='ranked' ? DATA.evaluated.slice() : DATA.discovered.slice();
-  if(q) list = list.filter(r => JSON.stringify(r).toLowerCase().includes(q));
-  if(src) list = list.filter(r => (r.source||r.archetype||'')===src);
-  const s = sort[tab];
+function fillFacetFilters(){
+  const langs=new Set(),sen=new Set(),rem=new Set(),geo=new Set();
+  for(const r of ROWS){(r.languages||[]).forEach(l=>langs.add(l));if(r.seniority)sen.add(r.seniority);if(r.remote_policy)rem.add(r.remote_policy);if(r.geo_eligibility)geo.add(r.geo_eligibility);}
+  const opt=(s,sel)=>[...s].sort().map(v=>`<option ${sel?'':''}>${esc(v)}</option>`).join('');
+  $('#fLang').innerHTML='<option value="">any language</option>'+opt(langs);
+  $('#fSen').innerHTML='<option value="">any seniority</option>'+opt(sen);
+  $('#fRemote').innerHTML='<option value="">any remote</option>'+opt(rem);
+  $('#fGeo').innerHTML='<option value="">any geo</option>'+opt(geo);
+}
+function renderCounts(){
+  const live=ROWS.filter(r=>r.live).length,sl=ROWS.filter(r=>r.decision==='shortlist').length,sk=ROWS.filter(r=>r.decision==='skip').length,rs=ROWS.filter(r=>r.researched).length;
+  $('#counts').textContent=`${ROWS.length} postings · ${live} live · ${rs} facet-extracted · ${sl} shortlisted · ${sk} skipped`;
+}
+function pfiltered(){
+  const q=$('#q').value.trim().toLowerCase(),lang=$('#fLang').value,sen=$('#fSen').value,rem=$('#fRemote').value,geo=$('#fGeo').value,dec=$('#fDec').value;
+  const minS=+$('#minScore').value,liveOnly=$('#liveOnly').checked,showExcl=$('#showExcl').checked,resOnly=$('#resOnly').checked;
+  let list=ROWS.map(r=>({...r,_s:liveScore(r)}));
+  if(liveOnly) list=list.filter(r=>r.live);
+  if(!showExcl) list=list.filter(r=>!r.hard_excluded);
+  if(resOnly) list=list.filter(r=>r.researched);
+  if(lang) list=list.filter(r=>(r.languages||[]).includes(lang));
+  if(sen) list=list.filter(r=>r.seniority===sen);
+  if(rem) list=list.filter(r=>r.remote_policy===rem);
+  if(geo) list=list.filter(r=>r.geo_eligibility===geo);
+  if(dec) list=list.filter(r=>r.decision===dec);
+  if(minS>0) list=list.filter(r=>(r._s??-1)>=minS);
+  if(q) list=list.filter(r=>(r.company+r.title+r.reason+(r.languages||[]).join()+(r.technologies||[]).join()).toLowerCase().includes(q));
+  const k=psort.key,dir=psort.dir;
+  const numeric=['display','llm_holistic_fit','yoe_min','relevance_score','computed_score'].includes(k);
   list.sort((a,b)=>{
-    let av=a[s.key], bv=b[s.key];
-    if(s.key==='score'){ av=av??-1; bv=bv??-1; return (bv-av)*-s.dir; }
-    return String(av??'').localeCompare(String(bv??''))*s.dir;
+    const av=k==='display'?a._s:a[k], bv=k==='display'?b._s:b[k];
+    if(numeric) return ((av??-1)-(bv??-1))*dir;          // dir=-1 → descending
+    return String(av??'').localeCompare(String(bv??''))*dir;
   });
   return list;
 }
-
-function th(key,label){ const s=sort[tab]; const ar=s.key===key?(s.dir<0?' ▼':' ▲'):''; return `<th data-k="${key}">${label}${ar}</th>`; }
-
-function render(){
-  const list = rows();
-  $('#count').textContent = `${list.length} ${tab==='ranked'?'evaluated':'discovered'} job${list.length===1?'':'s'}`;
-  if(!list.length){ $('#view').innerHTML = `<div class="empty">${tab==='ranked'?'No evaluations yet. Run <code>/career-ops pipeline</code> to score discovered jobs.':'No discovered jobs. Run <code>node scan.mjs</code>.'}</div>`; return; }
-  let html='<table><thead><tr>';
-  if(tab==='ranked'){
-    html += th('score','Score')+th('company','Company')+th('role','Role')+th('archetype','Archetype')+'<th>Why it matched</th><th>Report</th>';
-    html += '</tr></thead><tbody>';
-    for(const r of list){
-      html += `<tr>
-        <td class="score ${scoreClass(r.score)}">${r.score!=null?r.score.toFixed(1):'—'}</td>
-        <td>${esc(r.company)}${r.url?` <a href="${esc(r.url)}" target="_blank" title="job posting">↗</a>`:''}</td>
-        <td>${esc(r.role)}</td>
-        <td><span class="pill">${esc(r.archetype||'—')}</span></td>
-        <td class="why">${esc(r.why||'')}</td>
-        <td>${r.report?`<a href="/report?f=${encodeURIComponent(r.report)}" target="_blank">view</a>`:'—'}</td>
-      </tr>`;
-    }
-  } else {
-    html += th('company','Company')+th('title','Title')+th('location','Location')+th('source','Source')+th('date','Found')+'<th>Link</th>';
-    html += '</tr></thead><tbody>';
-    for(const r of list){
-      html += `<tr>
-        <td>${esc(r.company)}</td><td>${esc(r.title)}</td><td>${esc(r.location||'—')}</td>
-        <td><span class="pill">${esc(r.source)}</span></td><td>${esc(r.date)}</td>
-        <td><a href="${esc(r.url)}" target="_blank">open ↗</a></td>
-      </tr>`;
-    }
+function comp(c){ if(!c) return ''; if(typeof c!=='object')return String(c); const f=n=>n!=null?('$'+Math.round(n/1000)+'k'):''; const r=[f(c.min),f(c.max)].filter(Boolean).join('–'); return r?(r+(c.currency?(' '+c.currency):'')):''; }
+function th(k,l){const ar=psort.key===k?(psort.dir<0?' ▼':' ▲'):'';return `<th data-k="${k}">${l}${ar}</th>`;}
+function renderPostings(){
+  const list=pfiltered();
+  $('#pcount').textContent=`${list.length} shown`;
+  let h='<table><thead><tr>'+th('display','Score')+th('llm_holistic_fit','LLM')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('status','Status')+'<th>Dec</th></tr></thead><tbody>';
+  for(const r of list){
+    const stack=[...(r.languages||[]),...(r.technologies||[])].slice(0,4).map(x=>`<span class="chip">${esc(x)}</span>`).join('');
+    h+=`<tr class="${r.hard_excluded?'hx':''}" data-k="${esc(r.key)}">
+      <td><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}</td>
+      <td>${r.llm_holistic_fit!=null?r.llm_holistic_fit:'·'}</td>
+      <td>${esc(r.company)}${!r.live?' <span class="pill">expired</span>':''}</td>
+      <td>${esc(r.title)}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
+      <td>${stack||'·'}</td><td>${esc(comp(r.comp))||'·'}</td>
+      <td>${esc(r.remote_policy||'·')}${r.geo_eligibility?' / '+esc(r.geo_eligibility):''}</td>
+      <td>${r.status?`<span class="st">${esc(r.status)}</span>`:'·'}</td>
+      <td>${r.decision!=='undecided'?`<span class="dec ${r.decision}">${r.decision}</span>`:'·'}</td></tr>`;
   }
-  html+='</tbody></table>';
-  $('#view').innerHTML = html;
-  $('#view').querySelectorAll('th[data-k]').forEach(el=>el.onclick=()=>{
-    const k=el.dataset.k, s=sort[tab];
-    if(s.key===k) s.dir*=-1; else { s.key=k; s.dir = k==='score'?-1:1; }
-    render();
-  });
+  h+='</tbody></table>';
+  $('#ptable').innerHTML=list.length?h:'<div class="detail empty">no postings match</div>';
+  $('#ptable').querySelectorAll('th[data-k]').forEach(el=>el.onclick=()=>{const k=el.dataset.k;if(psort.key===k)psort.dir*=-1;else psort={key:k,dir:k==='company'||k==='title'?1:-1};renderPostings();});
+  $('#ptable').querySelectorAll('tr[data-k]').forEach(el=>el.onclick=()=>openPosting(el.dataset.k));
+}
+async function openPosting(key){
+  psel=key;
+  const c=await (await fetch('/api/posting?key='+encodeURIComponent(key))).json();
+  const ex=c.extracted||{};
+  const facet=(l,v)=>`<div><b>${l}</b> ${esc(v??'·')}</div>`;
+  $('#pdetail').className='detail';
+  $('#pdetail').innerHTML=`<h3>${esc(c.company)} — ${esc(c.title)} ${c.hard_excluded?'<span class="row-excl">⛔ hard-excluded</span>':''}</h3>
+    <div class="meta">${esc(c.provider||'')} · ${esc(c.location||'')} ${c.date_posted?'· '+esc(c.date_posted.slice(0,10)):''} ${c.url?`· <a href="${esc(c.url)}" target="_blank">open posting ↗</a>`:''} ${c.report?`· <a href="/report?f=${encodeURIComponent(c.report)}" target="_blank">report ↗</a>`:''}</div>
+    ${c.extracted?`<div class="facets">
+      ${facet('Seniority',ex.seniority)}${facet('YOE',ex.yoe_min!=null?(ex.yoe_min+(ex.yoe_max?'–'+ex.yoe_max:'+')):'·')}
+      ${facet('Employment',ex.employment_type)}${facet('Remote',ex.remote_policy)}
+      ${facet('Geo-eligibility',ex.geo_eligibility)}${facet('On-call',ex.on_call)}
+      ${facet('Comp',comp(ex.comp)||'·')}${facet('Degree',ex.degree_required)}
+      ${facet('Domain',ex.domain)}${facet('PTO',ex.pto_policy)}
+      <div style="grid-column:1/3"><b>Languages</b> ${(ex.languages||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('')||'·'}</div>
+      <div style="grid-column:1/3"><b>Technologies</b> ${(ex.technologies||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('')||'·'}</div>
+      <div style="grid-column:1/3"><b>WLB signals</b> ${(ex.wlb_signals||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('')||'·'}</div>
+    </div>`:'<p style="color:var(--mut)">No facets yet — run <code>research-jobs</code> (Stage 3) to extract them.</p>'}
+    <div class="actrow">
+      <label style="font-size:.78rem;color:var(--mut)">Override score:</label>
+      <input id="ovr" type="number" min="0" max="5" step="0.1" value="${c.manual_score??''}" placeholder="${c.computed_score??''}" style="width:5rem">
+      <button class="btn sm" id="saveOvr">Save</button><span style="flex:1"></span>
+      <button class="btn good" id="bSL">Shortlist</button><button class="btn bad" id="bSK">Skip</button><button class="btn sm" id="bUN">Reset</button>
+    </div>
+    ${c.fit_verdict?`<div class="field"><label>Fit verdict</label><div class="jd">${esc(c.fit_verdict)}</div></div>`:''}
+    ${c.jd_body?`<div class="field"><label>Job description</label><div class="jd">${esc(c.jd_body)}</div></div>`:''}`;
+  $('#saveOvr').onclick=async()=>{const r=await post('/api/posting/override',{key,manual_score:$('#ovr').value});toast((await r.json()).ok?'override saved':'0–5 only');await loadPostings();openPosting(key);};
+  $('#bSL').onclick=async()=>{await post('/api/posting/decision',{key,decision:'shortlist'});toast('shortlisted');await loadPostings();openPosting(key);};
+  $('#bSK').onclick=async()=>{await post('/api/posting/decision',{key,decision:'skip'});toast('skipped');await loadPostings();openPosting(key);};
+  $('#bUN').onclick=async()=>{await post('/api/posting/decision',{key,decision:'undecided'});toast('reset');await loadPostings();openPosting(key);};
+}
+['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly'].forEach(id=>{const e=$('#'+id);e.oninput=renderPostings;e.onchange=renderPostings;});
+$('#minScore').oninput=()=>{$('#minLbl').textContent=$('#minScore').value;renderPostings();};
+
+// ==================== COMPANIES ====================
+let CQUEUE=[],cfilter='undecided',csel=null;
+async function loadCompanies(){CQUEUE=await (await fetch('/api/companies')).json();renderCList();}
+document.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{cfilter=b.dataset.cf;renderCList();});
+$('#cq').oninput=renderCList;
+function renderCList(){
+  const q=$('#cq').value.trim().toLowerCase();
+  let list=CQUEUE.filter(r=>cfilter==='all'?true:r.decision===cfilter);
+  if(q)list=list.filter(r=>(r.name+r.company_type+r.reason).toLowerCase().includes(q));
+  $('#clist').innerHTML=list.map(r=>`<div class="crow ${csel===r.key?'sel':''}" data-k="${esc(r.key)}">
+    <span class="badge ${bcls(r.score)}">${r.score!=null?Number(r.score).toFixed(1):'·'}</span>
+    <span class="nm"><b>${esc(r.name)}</b><small>${esc(r.provider)} · ${r.remote_relevant??'?'} remote${r.reason?' · '+esc(r.reason):''}</small></span>
+    <span class="pill">${esc(r.company_type)}</span>${r.decision!=='undecided'?`<span class="dec ${r.decision}">${r.decision}</span>`:''}</div>`).join('')||'<div class="detail empty">nothing here</div>';
+  $('#clist').querySelectorAll('.crow').forEach(el=>el.onclick=()=>openCompany(el.dataset.k));
+}
+async function openCompany(key){
+  csel=key;renderCList();
+  const c=await (await fetch('/api/company?key='+encodeURIComponent(key))).json();
+  $('#cdetail').className='detail';
+  $('#cdetail').innerHTML=`<h3>${esc(c.name)} ${c.decision!=='undecided'?`<span class="dec ${c.decision}">${c.decision}</span>`:''}</h3>
+    <div class="meta">${esc(c.provider)} · ${esc(c.company_type||'')} · ${c.remote_relevant??'?'} remote-eligible ${c.careers_url?`· <a href="${esc(c.careers_url)}" target="_blank">careers ↗</a>`:''}</div>
+    <div style="margin:.3rem 0">${(c.sample_titles||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div>
+    ${c.links&&c.links.length?`<div style="margin:.3rem 0">${c.links.map(l=>`<a class="pill" style="color:var(--accent)" href="${esc(l.url)}" target="_blank">${l.tag?'['+esc(l.tag)+'] ':''}${esc(l.label)} ↗</a>`).join(' ')}</div>`:''}
+    <div class="actrow"><label style="font-size:.78rem;color:var(--mut)">Rank 0–5:</label><input id="cRank" type="number" min="0" max="5" step="0.1" value="${c.llm_fit??c.llm_rank??''}" style="width:5rem"><button class="btn sm" id="cSaveRank">Save</button><span style="flex:1"></span><button class="btn good" id="cKeep">Keep</button><button class="btn bad" id="cSkip">Skip</button><button class="btn sm" id="cUndo">Reset</button></div>
+    <div class="field"><label>Fit verdict</label><textarea id="cFit">${esc(c.fit_verdict)}</textarea><button class="btn sm" id="cSaveFit" style="margin-top:.3rem">Save fit</button></div>
+    <div class="field"><label>Research note</label><textarea id="cRes">${esc(c.research_note)}</textarea><button class="btn sm" id="cSaveRes" style="margin-top:.3rem">Save note</button></div>`;
+  $('#cKeep').onclick=async()=>{await post('/api/company/decision',{key,decision:'keep'});toast('kept');await loadCompanies();openCompany(key);};
+  $('#cSkip').onclick=async()=>{await post('/api/company/decision',{key,decision:'skip'});toast('skipped');await loadCompanies();openCompany(key);};
+  $('#cUndo').onclick=async()=>{await post('/api/company/decision',{key,decision:'undecided'});toast('reset');await loadCompanies();openCompany(key);};
+  $('#cSaveRank').onclick=async()=>{const r=await post('/api/company/rank',{key,llm_fit:$('#cRank').value});toast((await r.json()).ok?'rank saved':'0–5 only');await loadCompanies();};
+  $('#cSaveFit').onclick=async()=>{await post('/api/company/report',{key,which:'fit',content:$('#cFit').value});toast('fit saved');};
+  $('#cSaveRes').onclick=async()=>{await post('/api/company/report',{key,which:'research',content:$('#cRes').value});toast('note saved');};
 }
 
-function refreshSources(){
-  const set = new Set();
-  (tab==='ranked'?DATA.evaluated.map(r=>r.archetype):DATA.discovered.map(r=>r.source)).forEach(v=>v&&set.add(v));
-  $('#srcFilter').innerHTML = '<option value="">all sources</option>'+[...set].sort().map(v=>`<option>${esc(v)}</option>`).join('');
-}
-
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active'); tab=b.dataset.tab; $('#q').value=''; refreshSources(); render();
-});
-$('#q').oninput = render;
-$('#srcFilter').onchange = render;
-
-fetch('/api/data').then(r=>r.json()).then(d=>{
-  DATA=d;
-  $('#subtitle').textContent = `${d.evaluated.length} evaluated · ${d.discovered.length} discovered · rubric: ${d.rubric.dimensions?.length||0} dimensions`;
-  renderRubric(); refreshSources(); render();
-}).catch(e=>{ $('#subtitle').textContent='failed to load data'; console.error(e); });
+loadPostings();
 </script>
 </body>
 </html>

@@ -55,6 +55,33 @@ AI-powered job search automation built on Claude Code: pipeline tracking, offer 
 | `liveness-core.mjs` | Shared liveness logic (expired signals win over generic Apply text) |
 | `reports/` | Evaluation reports (format: `{###}-{company-slug}-{YYYY-MM-DD}.md`). Blocks A-F + G (Posting Legitimacy), plus `## Machine Summary` YAML for downstream scripts. Header includes `**Legitimacy:** {tier}`. |
 
+### Job-Postings Pipeline (individual postings — mirrors the company pipeline, one grain finer)
+
+Companies change slowly; postings change often. This pipeline turns raw scanned postings into a
+sortable/ratable queue scored on a **recomputable, facet-weighted** model (never a frozen LLM
+number), then funnels shortlisted postings into the existing `oferta` evaluation.
+
+| File | Function |
+|------|----------|
+| `posting-core.mjs` | Shared helpers: `canonicalUrl()` (registry + lifecycle join key), `sk()`, JSONL io, `deriveCompanyKey()` |
+| `scan.mjs` | Also captures the full JD body + department/date/comp at fetch (zero extra requests) → `data/postings/raw-latest.jsonl` |
+| `rank-postings.mjs` | Raw cache → two-layer registry: `data/posting-research.jsonl` (objective + JD body files) + `data/postings-personal.jsonl` (scores/decision, merge-preserving, live/expired) |
+| `llm-triage-jobs.mjs` | Deterministic driver: `--emit`/`--apply`/`--emit-research`/`--queue`/`--stats`. NEVER calls an LLM |
+| `score-postings.mjs` | Recomputable score: `computeScores(extracted, rubric)` → dim_scores + computed_score + hard_excluded (pure; the dashboard mirrors it) |
+| `modes/triage-jobs.md` | Stage 2: LLM preranks postings 1-5 (no web fetch) |
+| `modes/research-jobs.md` | Stage 3: LLM reads each full JD and extracts the structured facet schema |
+| `web/server.mjs` | The **single** dashboard (port 4173): Postings (faceted, live weight sliders, shortlist/skip) + Companies console + rubric. Replaces the old `decision-server.mjs` |
+
+**Stages:** `scan.mjs` → `rank-postings.mjs` (Stage 1 heuristic) → `triage-jobs` (Stage 2 prerank)
+→ `research-jobs` (Stage 3 facet extraction) → `score-postings.mjs` → **dashboard** (Stage 4: human
+shortlist/skip) → shortlisted go through `oferta` → `applications.md` (lifecycle, joined back by URL).
+
+**Scoring:** `extracted` facets live in the objective layer; rubric dimensions with a `compute:`
+binding (comp/level/remote_tz/tech_stack) score deterministically from facets × `preferences`, the
+rest from the LLM's `llm_holistic_fit`. `hard_filters` set `hard_excluded`. Display score =
+`manual_score ?? computed_score`. **All postings data is gitignored** (verbatim JDs = live scraped
+data — regenerate via `node scan.mjs`).
+
 ### OpenCode Commands
 
 When using [OpenCode](https://opencode.ai), the following slash commands are available (defined in `.opencode/commands/`):
@@ -241,6 +268,7 @@ Default modes are in `modes/` (English). Additional language-specific modes are 
 | Asks about application status | `tracker` |
 | Fills out application form | `apply` |
 | Searches for new offers | `scan` |
+| Ranks/extracts facets from individual postings | `triage-jobs` (prerank) / `research-jobs` (extract) |
 | Processes pending URLs | `pipeline` |
 | Batch processes offers | `batch` |
 | Asks about rejection patterns or wants to improve targeting | `patterns` |

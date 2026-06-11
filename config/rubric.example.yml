@@ -1,46 +1,57 @@
-# config/rubric.yml — YOUR job-evaluation rubric (single source of truth).
+# config/rubric.yml — YOUR job-evaluation rubric (single source of truth). Copy to config/rubric.yml.
 #
-# Tuned for Max's philosophy: UTILITY & INFRASTRUCTURE over PRODUCT & GROWTH.
-# Rewards well-scoped, asynchronous, internal-facing, stable "plumbing" roles; penalizes
-# scope-creep, hustle culture, and chaos. Remote-only + Canada/Mountain-Time fit matters.
+# Drives BOTH:
+#   • the oferta/ofertas evaluation prose (run `npm run rubric` after editing), and
+#   • the postings pipeline's recomputable score (score-postings.mjs + the dashboard sliders).
 #
-# After editing, run:   npm run rubric
-# (regenerates the rubric in modes/_profile.md, modes/ofertas.md, modes/_shared.md;
-#  the web dashboard also reads this file.)
-#
-# Each dimension is scored 1-5; the global score is the weighted average. Weights sum to 100.
+# Each dimension is scored 1-5; the global score is the weighted average. Weights are relative.
+# `id` is the stable key score-postings.mjs / the dashboard use. `compute:` binds a dimension to
+# extracted facets so it scores deterministically; dimensions WITHOUT `compute:` are qualitative
+# (scored from the LLM's holistic read, llm_holistic_fit, at Stage 3).
 
 dimensions:
   - name: "North Star alignment (infrastructure/utility role)"
+    id: north_star
     weight: 25
     guidance: "5=core backend/platform/MLOps/data/cloud-infra IC role; 1=product/growth/customer-facing"
   - name: "CV match"
+    id: cv_match
     weight: 15
     guidance: "5=90%+ match to backend/ML-infra/cloud/Java experience; 1=<40% match"
   - name: "Scope clarity & autonomy"
+    id: scope
     weight: 15
     guidance: "5=rigidly-defined scope, async, internal/predictable customers, rare emergencies; 1=wear-many-hats, on-call firefighting, sales/deadline pressure"
   - name: "Level (senior IC)"
+    id: level
+    compute: level          # from extracted.seniority / yoe_min (vs preferences.yoe_ceiling)
     weight: 10
     guidance: "5=staff/principal IC, 4=senior IC, 3=mid-senior, 2=mid, 1=junior or people-management"
   - name: "Compensation"
+    id: comp
+    compute: comp           # from extracted.comp vs preferences.comp_tiers (CAD-equiv)
     weight: 10
     guidance: "5=>=$200K CAD-equiv, 4=$180-200K, 3=$160-180K, 2=$150-160K, 1=below $150K CAD / below market"
   - name: "Remote & timezone fit"
+    id: remote_tz
+    compute: remote_tz      # from extracted.remote_policy / geo_eligibility / timezone
     weight: 10
     guidance: "5=fully remote, hires in Canada, Mountain-Time-friendly hours; 1=onsite/hybrid, US-only, or hostile timezone"
   - name: "Work-life & culture"
+    id: wlb
     weight: 5
     guidance: "5=async, sustainable, builder/engineering culture; 1=hustle, 'fast-paced', sales-driven"
   - name: "Company stability"
+    id: stability
     weight: 5
     guidance: "5=stable/established (enterprise, public, profitable); 1=early/unstable startup, layoffs, hype-dependent"
   - name: "Tech stack relevance"
+    id: tech_stack
+    compute: tech_stack     # from extracted.languages + technologies vs preferences
     weight: 5
     guidance: "5=Java/Python/Go/K8s/cloud/Postgres or stable enterprise stack; 1=unrelated stack. Legacy-enterprise is acceptable, not penalized."
 
 # Score interpretation — drives the recommendation wording in reports.
-# Highest matching `min` (descending) wins for a given global score.
 score_interpretation:
   - min: 4.5
     label: "Strong match"
@@ -54,3 +65,33 @@ score_interpretation:
   - min: 0
     label: "Weak match"
     action: "recommend against applying"
+
+# ── Postings pipeline ───────────────────────────────────────────────────────
+# preferences: how score-postings.mjs turns extracted facets into the `compute:` scores above.
+# Edit, then `node score-postings.mjs` (or move the dashboard sliders) to re-rank — no LLM re-run.
+preferences:
+  languages:
+    love:  [Go, Python, Rust, Scala]
+    ok:    [Java, TypeScript, C++, Kotlin, C#]
+    avoid: [PHP]
+  technologies:
+    love:  [Kubernetes, Postgres, AWS, Kafka, Terraform, Docker, gRPC, Spark]
+    ok:    [GCP, Azure, Redis, Elasticsearch]
+    avoid: []
+  yoe_ceiling: 12        # roles demanding more YOE than this get a Level penalty
+  usd_to_cad: 1.35       # comp currency normalization before comp_tiers
+  comp_tiers:            # total comp (CAD-equiv) → 1-5 (highest matching `min` wins)
+    - { min: 200000, score: 5 }
+    - { min: 180000, score: 4 }
+    - { min: 160000, score: 3 }
+    - { min: 150000, score: 2 }
+    - { min: 0,      score: 1 }
+  timezone_ok: [Mountain, Pacific, Canada, "America/", MT, PT, MST, PST]
+
+# hard_filters: facets that, when matched, set hard_excluded=true (row hidden/flagged in the
+# dashboard, toggleable). Dealbreakers, NOT soft weights. facet = a key in `extracted`.
+hard_filters:
+  - { facet: geo_eligibility, in: [us_only, eu_only] }   # only roles open to Canadians in Canada
+  - { facet: remote_policy,   in: [onsite] }
+  - { facet: employment_type, in: [internship] }
+  - { facet: yoe_min,         gt: 14 }

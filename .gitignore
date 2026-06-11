@@ -69,6 +69,14 @@ data/survey/
 data/companies-personal.jsonl
 # NOTE: data/company-research.jsonl + data/company-research/ are the SHAREABLE objective
 # layer and are intentionally NOT ignored (committed for a public repo).
+# POSTINGS registry — ALL of it is private. Unlike company research notes (LLM-written
+# summaries), posting bodies are verbatim third-party JDs = live scraped job data, which the
+# data contract says NOT to redistribute. The whole dataset is regenerable via `node scan.mjs`.
+data/postings/
+data/posting-research.jsonl
+data/posting-research/
+data/postings-personal.jsonl
+data/posting-fit/
 # bulk-curated test-case set (validation artifact)
 data/company-tests.json
 # local state backups (contains personal data — never commit)
