@@ -107,9 +107,12 @@ function main() {
   if (args.includes('--emit-research')) {
     const n = num('--emit-research', 20);
     const titles = relevantTitlesByKey();
+    // Corroborate the (sometimes inflated) llm_rank with real opening-volume: a rank-5 with 1
+    // opening (likely a keyword-fallback false positive) sinks below a rank-5 with many openings.
+    const remoteOf = (p) => (research.get(p.key) || {}).remote_relevant || 0;
     const todo = personal
       .filter(p => !p.excluded_by_type && p.decision === 'undecided' && p.llm_rank != null && p.llm_fit == null)
-      .sort((a, b) => b.llm_rank - a.llm_rank)
+      .sort((a, b) => (b.llm_rank - a.llm_rank) || (remoteOf(b) - remoteOf(a)))
       .slice(0, n);
     console.log(JSON.stringify(todo.map(p => {
       const r = research.get(p.key) || {};
