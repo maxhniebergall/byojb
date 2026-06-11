@@ -28,6 +28,9 @@
   .detail h2{margin:.1rem 0;font-size:1.3rem;} .meta{color:var(--mut);font-size:.85rem;margin-bottom:.8rem;}
   .meta a{color:var(--accent);text-decoration:none;} .titles{display:flex;flex-wrap:wrap;gap:.3rem;margin:.4rem 0 1rem;}
   .titles span{font-size:.72rem;background:#0c0d1c;border:1px solid var(--line);border-radius:6px;padding:.12rem .45rem;color:var(--mut);}
+  .links{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:0 0 1rem;}
+  .lnk{font-size:.74rem;background:#0c0d1c;border:1px solid var(--line);border-radius:6px;padding:.18rem .5rem;color:var(--accent);text-decoration:none;}
+  .lnk:hover{border-color:var(--accent);} .lnk b{color:var(--good);text-transform:uppercase;font-size:.62rem;letter-spacing:.04em;}
   .field{margin:1rem 0;} .field label{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:.35rem;}
   textarea{width:100%;min-height:150px;resize:vertical;font:13px/1.5 ui-monospace,monospace;}
   .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.45rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;}
@@ -87,6 +90,7 @@ async function openCompany(key){
     <div class="meta">${esc(c.provider)} · ${esc(c.company_type||'unknown')} · ${c.relevant??'?'} relevant / ${c.remote_relevant??'?'} remote-eligible openings
       ${c.careers_url?` · <a href="${esc(c.careers_url)}" target="_blank">careers ↗</a>`:''}</div>
     <div class="titles">${(c.sample_titles||[]).map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+    ${c.links&&c.links.length?`<div class="links"><span style="font-size:.72rem;color:var(--mut)">pages:</span>${c.links.map(l=>`<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">${l.tag?`<b>${esc(l.tag)}</b> `:''}${esc(l.label)} ↗</a>`).join('')}</div>`:''}
     <div class="actrow">
       <label style="font-size:.78rem;color:var(--mut)">Ranking (0–5):</label>
       <input id="rankIn" type="number" min="0" max="5" step="0.1" value="${c.llm_fit??c.llm_rank??''}" style="width:5rem">

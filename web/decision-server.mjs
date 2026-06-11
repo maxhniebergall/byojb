@@ -35,6 +35,34 @@ function body(req) {
 }
 const json = (res, obj, code = 200) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
 
+// Pull careers/about/source links out of a research note. Subagent notes use full https URLs in
+// the "Sources:" line; older enriched notes use bare domains — handle both. Returns {url,label}.
+function extractLinks(md, name = '') {
+  if (!md) return [];
+  let urls = [...md.matchAll(/https?:\/\/[^\s,)<>"'\]]+/g)].map(m => m[0].replace(/[.,;)]+$/, ''));
+  if (urls.length === 0) {
+    const src = (md.match(/^Sources:.*/im) || [''])[0];
+    urls = [...src.matchAll(/[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/[^\s,]*)?/gi)].map(m => 'https://' + m[0].replace(/[.,;]+$/, ''));
+  }
+  const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  const mainLabel = (h) => { const p = h.split('.'); return p.length >= 2 ? p[p.length - 2] : h; };
+  // Keep only the COMPANY'S OWN domain (matched to its name) — drops job aggregators / data sites.
+  const nameNorm = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const isOwn = (u) => {
+    const ml = mainLabel(host(u));
+    return ml.length >= 3 && nameNorm.length >= 3 && (nameNorm.includes(ml) || ml.includes(nameNorm.slice(0, 8)));
+  };
+  let kept = urls.filter(isOwn);
+  if (kept.length === 0) kept = urls; // fallback: name didn't match any domain — show what we have
+  const label = (u) => {
+    const s = u.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const tag = /career|job/i.test(u) ? 'careers' : /about|values|culture|handbook|life-?at|company/i.test(u) ? 'about' : /blog|engineering/i.test(u) ? 'blog' : '';
+    return { url: u, label: s.length > 48 ? s.slice(0, 47) + '…' : s, tag };
+  };
+  const seen = new Set();
+  return kept.filter(u => !seen.has(u) && seen.add(u)).slice(0, 8).map(label);
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const personal = loadJsonl(PERSONAL);
@@ -65,12 +93,14 @@ const server = createServer(async (req, res) => {
     const p = personal.find(x => x.key === key);
     if (!p) return json(res, { error: 'not found' }, 404);
     const r = research.get(key) || {};
+    const research_note = readMd(researchPath(key));
     return json(res, {
       key, name: p.name || r.name, provider: p.provider || r.provider, careers_url: r.careers_url || p.careers_url || '',
       company_type: r.company_type, total: r.total, relevant: r.relevant, remote_relevant: r.remote_relevant,
       sample_titles: r.sample_titles || [], llm_fit: p.llm_fit ?? null, llm_rank: p.llm_rank ?? null,
       relevance_score: p.relevance_score ?? null, decision: p.decision || 'undecided', reason: p.llm_reason || '',
-      research_note: readMd(researchPath(key)), fit_verdict: readMd(fitPath(key, p)),
+      research_note, fit_verdict: readMd(fitPath(key, p)),
+      links: extractLinks(research_note, p.name || r.name || ''),   // company's own careers/about pages
     });
   }
 
