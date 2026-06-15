@@ -16,7 +16,12 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import yaml from 'js-yaml';
-import { loadJsonl, saveJsonl, sk, canonicalUrl } from '../posting-core.mjs';
+import { loadJsonl, saveJsonl, sk, canonicalUrl, deriveCompanyKey } from '../posting-core.mjs';
+import {
+  loadApplications, saveApplications, upsertApplication, syncTrackerMd, validateStatus,
+  CANONICAL_STATES, today, APPLICATIONS_JSONL, OPEN_STATUSES, isOpen,
+} from '../application-core.mjs';
+import { classifyForm, classifyField, normLabel, PROFILE_KEYS } from '../autofill-fields.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PORT = Number(process.env.DASHBOARD_PORT || process.env.DECISIONS_PORT || 4173);
@@ -33,6 +38,12 @@ const C_FIT_DIR = P('data', 'company-fit');
 const REPORTS_DIR = P('reports');
 const APPLICATIONS = P('data', 'applications.md');
 const RUBRIC = P('config', 'rubric.yml');
+const PROFILE_YML = P('config', 'profile.yml');
+const AUTOFILL_MAP = P('config', 'autofill-mapping.json');
+const ANSWER_MEMORY = P('config', 'answer-memory.json');
+const ESSAY_ANSWERS = P('data', 'essay-answers.jsonl');
+const POST_RESEARCH_PATH = POST_RESEARCH;
+const SNAPSHOT_DIR = P('data', 'application-snapshots');
 
 const readMd = (p) => existsSync(p) ? readFileSync(p, 'utf8') : '';
 const json = (res, obj, code = 200) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
@@ -42,9 +53,63 @@ function loadRubric() {
   try { return yaml.load(readFileSync(RUBRIC, 'utf8')) || { dimensions: [] }; } catch { return { dimensions: [] }; }
 }
 
-// ── lifecycle join: posting URL → applications.md Status (via reports' **URL:**) ──
+// Workflow knobs (live in rubric.yml under `workflow:`; defaults if absent).
+function workflowCfg() {
+  const w = (loadRubric().workflow) || {};
+  return { max_open_per_company: Number(w.max_open_per_company) || 3, apply_floor: Number(w.apply_floor) || 3.5 };
+}
+
+// company_key for an application: stored value wins, else join via posting-research, else derive
+// from the apply/url (deriveCompanyKey parses the slug regardless of provider).
+function companyKeyForApp(a, researchMap) {
+  if (a.company_key) return a.company_key;
+  const r = researchMap.get(a.key);
+  if (r && r.company_key) return r.company_key;
+  return deriveCompanyKey('', a.apply_url || a.key || '');
+}
+
+// { company_key: # of OPEN applications } — drives the per-company cap.
+function openCountByCompany(researchMap = new Map(loadJsonl(POST_RESEARCH).map(r => [r.key, r]))) {
+  const counts = {};
+  for (const a of loadApplications()) {
+    if (!isOpen(a.status)) continue;
+    const ck = companyKeyForApp(a, researchMap);
+    if (ck) counts[ck] = (counts[ck] || 0) + 1;
+  }
+  return counts;
+}
+
+// Funnel for the "what's next" panel: how much actionable work is left, and what feeds the queue.
+function funnelStats(rows) {
+  const { apply_floor, max_open_per_company } = workflowCfg();
+  const live = rows.filter(r => r.live).length;
+  const actionable = rows.filter(r => r.live && !r.hard_excluded && !r.capped && !r.applied && (r.display_score ?? -1) >= apply_floor).length;
+  const open_apps = loadApplications().filter(a => isOpen(a.status)).length;
+  const research = new Map(loadJsonl(POST_RESEARCH).map(r => [r.key, r]));
+  const capped_companies = Object.values(openCountByCompany(research)).filter(n => n >= max_open_per_company).length;
+  // company funnel: kept companies with no live postings yet, and researched-but-undecided ones
+  const liveCompanyKeys = new Set([...research.values()].filter(r => r.live !== false).map(r => r.company_key));
+  const cpersonal = loadJsonl(C_PERSONAL);
+  const companies_kept_unscanned = cpersonal.filter(c => c.decision === 'keep' && !liveCompanyKeys.has(c.key)).length;
+  const companies_to_research = cpersonal.filter(c => c.decision === 'undecided' && c.llm_fit != null && !c.excluded_by_type).length;
+  // Lever C — just-in-time vetting queue: undecided companies that already have a shortlisted live
+  // posting. These earned a vetting decision by surfacing a role you liked.
+  const undecidedKeys = new Set(cpersonal.filter(c => c.decision === 'undecided').map(c => c.key));
+  const pendingVetKeys = new Set(rows.filter(r => r.decision === 'shortlist' && r.live && undecidedKeys.has(r.company_key)).map(r => r.company_key));
+  const companies_pending_vet = pendingVetKeys.size;
+  return { live, actionable, open_apps, capped_companies, companies_kept_unscanned, companies_to_research, companies_pending_vet };
+}
+
+// ── lifecycle join: posting URL → application Status ──
+// applications.jsonl (keyed by canonicalUrl) is authoritative; fall back to the legacy
+// report-scan (reports' **URL:** → applications.md Status) for postings with no record.
 function lifecycleByUrl() {
   const map = new Map();
+  for (const a of loadApplications()) {
+    if (!a.key) continue;
+    const reportFile = (String(a.report || '').match(/([\w.\-]+\.md)/) || [])[1] || null;
+    map.set(a.key, { status: a.status || null, report: reportFile });
+  }
   if (!existsSync(REPORTS_DIR)) return map;
   // report file → its posting URL + score
   const reportInfo = new Map();
@@ -69,6 +134,7 @@ function lifecycleByUrl() {
     }
   }
   for (const [f, info] of reportInfo) {
+    if (map.has(info.url)) continue; // applications.jsonl already has the authoritative status
     map.set(info.url, { status: statusByNum.get(info.num) || 'Evaluated', report: f });
   }
   return map;
@@ -97,20 +163,32 @@ function postingsQueue() {
   const research = new Map(loadJsonl(POST_RESEARCH).map(r => [r.key, r]));
   const personal = loadJsonl(POST_PERSONAL);
   const life = lifecycleByUrl();
+  const openByCo = openCountByCompany(research);
+  const { max_open_per_company } = workflowCfg();
+  // company_key → vetting state (Lever C badge + Lever B transparency on each posting row).
+  const companyByKey = new Map(loadJsonl(C_PERSONAL).map(c => [c.key, c]));
   return personal.map(p => {
     const r = research.get(p.key) || {};
     const ex = r.extracted || {};
     const display = p.manual_score ?? p.computed_score ?? (p.llm_rank != null ? p.llm_rank : null);
+    const lc = life.get(p.key);
+    const open_count = openByCo[r.company_key] || 0;
+    const co = companyByKey.get(r.company_key) || {};
     return {
-      key: p.key, url: r.url, company: r.company, title: r.title, provider: r.provider,
+      key: p.key, url: r.url, apply_url: r.apply_url || r.url, company: r.company, company_key: r.company_key || null,
+      company_decision: co.decision || 'undecided', company_fit: co.llm_fit ?? null,
+      title: r.title, provider: r.provider,
       location: r.location, department: r.department, date_posted: r.date_posted, live: r.live !== false,
       researched: !!r.extracted, has_body: !!r.has_body,
+      // application/cap state
+      applied: !!lc, company_open_count: open_count, capped: open_count >= max_open_per_company,
       // facets surfaced for filtering/columns
       seniority: ex.seniority || null, yoe_min: ex.yoe_min ?? null, yoe_max: ex.yoe_max ?? null,
       languages: ex.languages || [], technologies: ex.technologies || [],
       remote_policy: ex.remote_policy || null, geo_eligibility: ex.geo_eligibility || null,
       employment_type: ex.employment_type || null, comp: ex.comp || r.comp || null,
       on_call: ex.on_call ?? null, domain: ex.domain || null,
+      autonomy: ex.autonomy || null, culture: ex.culture || null, company_stage: ex.company_stage || null,
       // scores
       dim_scores: p.dim_scores || null, computed_score: p.computed_score ?? null,
       manual_score: p.manual_score ?? null, llm_rank: p.llm_rank ?? null,
@@ -150,17 +228,96 @@ function companiesQueue() {
   }).sort((a, b) => (b.tier - a.tier) || ((b.score ?? -1) - (a.score ?? -1)) || (b.relevance_score - a.relevance_score));
 }
 
+// ── APPLICATIONS + AUTOFILL ─────────────────────────────────────────
+const reportFileOf = (a) => (String(a.report || '').match(/([\w.\-]+\.md)/) || [])[1] || null;
+
+// applications.jsonl × posting-research.jsonl (by key) → the Applications-tab queue.
+function applicationsQueue() {
+  const research = new Map(loadJsonl(POST_RESEARCH_PATH).map(r => [r.key, r]));
+  return loadApplications().map(a => {
+    const r = research.get(a.key) || {};
+    return {
+      key: a.key, tracker_num: a.tracker_num, company: a.company || r.company || '', title: a.title || r.title || '',
+      status: a.status, date_applied: a.date_applied, cv_pdf: a.cv_pdf || '',
+      apply_url: a.apply_url || r.apply_url || r.url || '', url: r.url || '',
+      provider: r.provider || '', location: r.location || '',
+      recruiter: a.recruiter || {}, confirmation: a.confirmation || '', notes: a.notes || '',
+      report: reportFileOf(a), has_body: !!r.has_body, last_updated: a.last_updated || '',
+    };
+  }).sort((x, y) => String(y.date_applied || '').localeCompare(String(x.date_applied || '')) || (y.tracker_num - x.tracker_num));
+}
+
+function applicationDetail(key) {
+  const a = loadApplications().find(x => x.key === key);
+  if (!a) return null;
+  const r = loadJsonl(POST_RESEARCH_PATH).find(x => x.key === key) || {};
+  return {
+    ...a, company: a.company || r.company || '', title: a.title || r.title || '',
+    provider: r.provider || '', location: r.location || '', url: r.url || '',
+    apply_url: a.apply_url || r.apply_url || r.url || '',
+    jd_body: r.has_body ? readMd(join(POST_BODY_DIR, sk(key) + '.md')) : '',
+    report_file: reportFileOf(a),
+  };
+}
+
+function loadAppProfile() {
+  try { return (yaml.load(readFileSync(PROFILE_YML, 'utf8')) || {}).application_profile || {}; } catch { return {}; }
+}
+function loadUserMap() {
+  try { return JSON.parse(readFileSync(AUTOFILL_MAP, 'utf8')).mappings || {}; } catch { return {}; }
+}
+// answer memory: normalized question → the exact answer the user gave last time (learned from
+// what they fill/submit). Auto-fills identical questions, no profile-key mapping needed.
+function loadAnswerMemory() {
+  try { return JSON.parse(readFileSync(ANSWER_MEMORY, 'utf8')).answers || {}; } catch { return {}; }
+}
+// Only memorize answers the profile DOESN'T already cover — custom (unmapped) and EEO (demographic)
+// questions. Keeps identity fields (name/email) sourced from the profile, not stale memory.
+function learnableAnswers(fields = [], userMap = loadUserMap()) {
+  return fields.filter(f => {
+    if (!String(f.value || '').trim()) return false;
+    const k = classifyField(f.label, f.type, f, userMap).kind;
+    return k === 'unmapped' || k === 'demographic';
+  }).map(f => ({ label: f.label, value: f.value, type: f.type }));
+}
+function rememberAnswers(items = []) {
+  let j = { answers: {} };
+  try { j = JSON.parse(readFileSync(ANSWER_MEMORY, 'utf8')); } catch { /* seed fresh */ }
+  j.answers = j.answers || {};
+  let saved = 0;
+  for (const { label, value, type } of items) {
+    const norm = normLabel(label);
+    const val = value == null ? '' : (typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value));
+    if (!norm || !val.trim()) continue;
+    j.answers[norm] = { value: val, type: type || '', label: String(label || ''), updated: today() };
+    saved++;
+  }
+  if (saved) writeFileSync(ANSWER_MEMORY, JSON.stringify(j, null, 2) + '\n');
+  return saved;
+}
+
 const server = createServer(async (req, res) => {
+  // Permissive CORS so the Chrome extension can call these localhost endpoints.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  // Disable caching for API and dynamic content — fresh data on every request
+  if (String(req.url).startsWith('/api/') || String(req.url).startsWith('/posting') || String(req.url) === '/') {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const path = url.pathname;
 
   // ----- POSTINGS -----
-  if (path === '/api/postings') return json(res, { rubric: loadRubric(), rows: postingsQueue() });
+  if (path === '/api/postings') { const rows = postingsQueue(); return json(res, { rubric: loadRubric(), workflow: workflowCfg(), funnel: funnelStats(rows), rows }); }
   if (path === '/api/posting') {
     const key = url.searchParams.get('key');
     const d = postingDetail(key);
     if (!d.title && !d.company) return json(res, { error: 'not found' }, 404);
-    return json(res, d);
+    return json(res, { ...d, rubric: loadRubric() });
   }
   if (req.method === 'POST' && path === '/api/posting/decision') {
     const { key, decision } = await body(req);
@@ -222,6 +379,111 @@ const server = createServer(async (req, res) => {
     return json(res, { ok: true });
   }
 
+  // ----- APPLICATIONS -----
+  if (path === '/api/applications') return json(res, applicationsQueue());
+  if (path === '/api/application') {
+    const d = applicationDetail(url.searchParams.get('key'));
+    if (!d) return json(res, { error: 'not found' }, 404);
+    return json(res, { ...d, states: CANONICAL_STATES });
+  }
+  if (req.method === 'POST' && path === '/api/application/status') {
+    const { key, status } = await body(req);
+    if (!loadApplications().some(a => a.key === key)) return json(res, { error: 'not found' }, 404);
+    const v = validateStatus(status);
+    upsertApplication(key, { status: v }); syncTrackerMd();
+    return json(res, { ok: true, status: v });
+  }
+  if (req.method === 'POST' && path === '/api/application/meta') {
+    const b = await body(req);
+    if (!loadApplications().some(a => a.key === b.key)) return json(res, { error: 'not found' }, 404);
+    const patch = {};
+    for (const k of ['recruiter', 'confirmation', 'notes', 'cv_pdf', 'apply_url']) if (k in b) patch[k] = b[k];
+    upsertApplication(b.key, patch); syncTrackerMd();
+    return json(res, { ok: true });
+  }
+  if (req.method === 'POST' && path === '/api/application/create') {
+    const { key, apply_url } = await body(req);
+    const rk = key || (apply_url ? canonicalUrl(apply_url) : '');
+    if (!rk) return json(res, { error: 'key or apply_url required' }, 400);
+    const r = loadJsonl(POST_RESEARCH_PATH).find(x => x.key === rk) || {};
+    const au = apply_url || r.apply_url || r.url;
+    const row = upsertApplication(rk, { status: 'Applied', company: r.company, title: r.title, apply_url: au, company_key: r.company_key || deriveCompanyKey('', au || rk) });
+    syncTrackerMd();
+    return json(res, { ok: true, tracker_num: row.tracker_num });
+  }
+  // The extension posts here after you submit: records the application + harvests free-text Q&A.
+  if (req.method === 'POST' && path === '/api/application/submitted') {
+    const { apply_url, company, title, fields = [], resume_name, submitted_at, snapshot } = await body(req);
+    if (!apply_url) return json(res, { error: 'apply_url required' }, 400);
+    const key = canonicalUrl(apply_url);
+    const r = loadJsonl(POST_RESEARCH_PATH).find(x => x.key === key || x.url === apply_url || canonicalUrl(x.apply_url || '') === key) || {};
+    const realKey = r.key || key;
+    const userMap = loadUserMap();
+    // Harvest free-text answers into the essay corpus (deferred drafting feature).
+    const essays = [];
+    for (const f of fields) {
+      if (classifyField(f.label, f.type, f, userMap).kind === 'free_text' && String(f.value || '').trim()) {
+        essays.push({ key: realKey, company: company || r.company || '', title: title || r.title || '', question: f.label, answer: f.value, date: String(submitted_at || '').slice(0, 10) || today() });
+      }
+    }
+    if (essays.length) saveJsonl(ESSAY_ANSWERS, [...loadJsonl(ESSAY_ANSWERS), ...essays]);
+    // Auto-learn reusable gap answers (custom selects, EEO) so identical questions auto-fill next
+    // time. learnableAnswers skips profile-covered fields, essays, files, and salary.
+    const learned = rememberAnswers(learnableAnswers(fields, userMap));
+    let snapPath;
+    if (snapshot) { mkdirSync(SNAPSHOT_DIR, { recursive: true }); snapPath = join('data', 'application-snapshots', sk(realKey) + '.txt'); writeFileSync(P(snapPath), String(snapshot)); }
+    const row = upsertApplication(realKey, {
+      status: 'Applied', company: company || r.company || undefined, title: title || r.title || undefined,
+      company_key: r.company_key || deriveCompanyKey('', apply_url), apply_url,
+      cv_pdf: resume_name || undefined, submitted_fields: fields, submitted_snapshot: snapPath,
+      date_applied: String(submitted_at || '').slice(0, 10) || undefined,
+    });
+    syncTrackerMd();
+    return json(res, { ok: true, tracker_num: row.tracker_num, key: realKey, essays_captured: essays.length, answers_learned: learned });
+  }
+
+  // ----- AUTOFILL (used by the Chrome extension) -----
+  // The extension enumerates the form's fields and posts them; we classify + attach fill values.
+  if (req.method === 'POST' && path === '/api/autofill/plan') {
+    const { fields = [] } = await body(req);
+    const profile = loadAppProfile(); const userMap = loadUserMap(); const memory = loadAnswerMemory();
+    const { fields: cf, allStandard, counts, requiredUnresolved } = classifyForm(fields, userMap);
+    const out = cf.map(f => {
+      // 1) standard profile value wins for identity fields it covers
+      if (f.kind === 'standard' && f.profileKey) {
+        const v = profile[f.profileKey];
+        return { name: f.name, label: f.label, type: f.type, required: !!f.required, kind: 'standard', profileKey: f.profileKey, value: v == null ? '' : v };
+      }
+      // 2) else a remembered answer for this exact question (learned from past forms) fills the gap
+      const mem = memory[normLabel(f.label)];
+      if (mem && f.kind !== 'file') {
+        return { name: f.name, label: f.label, type: f.type, required: !!f.required, kind: 'remembered', profileKey: null, value: mem.value };
+      }
+      // 3) else the heuristic classification (free_text / salary / demographic / unmapped / file)
+      return { name: f.name, label: f.label, type: f.type, required: !!f.required, kind: f.kind, profileKey: f.profileKey, value: '' };
+    });
+    return json(res, { fields: out, allStandard, counts, requiredUnresolved: requiredUnresolved.map(f => f.label), default_resume: profile.default_resume || '', profile_keys: PROFILE_KEYS });
+  }
+  // Memorize answers the user picked, so identical questions auto-fill next time. Bulk or single.
+  if (req.method === 'POST' && path === '/api/autofill/remember') {
+    const b = await body(req);
+    const items = Array.isArray(b.answers) ? b.answers : (b.label != null ? [{ label: b.label, value: b.value, type: b.type }] : []);
+    const saved = rememberAnswers(learnableAnswers(items));
+    return json(res, { ok: true, saved });
+  }
+  if (req.method === 'POST' && path === '/api/autofill/mapping') {
+    const { label, profileKey } = await body(req);
+    if (!PROFILE_KEYS.includes(profileKey)) return json(res, { error: 'unknown profileKey' }, 400);
+    const norm = normLabel(label);
+    if (!norm) return json(res, { error: 'empty label' }, 400);
+    let j = { mappings: {} };
+    try { j = JSON.parse(readFileSync(AUTOFILL_MAP, 'utf8')); } catch { /* seed fresh */ }
+    j.mappings = j.mappings || {}; j.mappings[norm] = profileKey;
+    writeFileSync(AUTOFILL_MAP, JSON.stringify(j, null, 2) + '\n');
+    return json(res, { ok: true, normalized: norm });
+  }
+  if (path === '/api/autofill/profile') return json(res, { profile: loadAppProfile(), profile_keys: PROFILE_KEYS });
+
   // ----- report viewer -----
   if (path === '/report') {
     const f = url.searchParams.get('f') || '';
@@ -232,7 +494,11 @@ const server = createServer(async (req, res) => {
     return res.end(`<!doctype html><meta charset=utf-8><title>${esc(f)}</title><style>body{font:14px/1.6 -apple-system,system-ui,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem;background:#0f1020;color:#e8e9f3}pre{white-space:pre-wrap}a{color:#7c8cff}</style><p><a href="/">← dashboard</a></p><pre>${esc(md)}</pre>`);
   }
 
-  if (path === '/') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'index.html'), 'utf8')); }
+  if (path === '/postings') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'postings.html'), 'utf8')); }
+  if (path === '/companies') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'companies.html'), 'utf8')); }
+  if (path === '/applications') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'applications.html'), 'utf8')); }
+  if (path === '/posting') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'posting.html'), 'utf8')); }
+  if (path === '/') { res.writeHead(302, { 'location': '/postings' }); return res.end(); }
   res.writeHead(404); res.end('not found');
 });
 server.listen(PORT, () => console.log(`career-ops dashboard → http://localhost:${PORT}`));
