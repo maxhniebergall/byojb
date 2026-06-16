@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Postings — career-ops</title>
+<style>
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  header h1{font-size:1.05rem;margin:0;} header a.nav{color:var(--accent);text-decoration:none;font-size:.9rem;margin:0 .5rem;}
+  .seg{display:flex;gap:.3rem;}
+  .seg a{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;text-decoration:none;}
+  .seg a.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
+  .counts{color:var(--mut);font-size:.82rem;margin-left:auto;}
+  .wrap{display:grid;grid-template-columns:260px 1fr;gap:1rem;padding:1rem 1.25rem;align-items:start;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  .pad{padding:.9rem 1rem;} h2.lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 .7rem;}
+  input,select,textarea{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
+  input[type=search]{width:100%;} .ctrls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.7rem;border-bottom:1px solid var(--line);}
+  .ctrls select{font-size:.8rem;} label.chk{font-size:.76rem;color:var(--mut);display:flex;align-items:center;gap:.3rem;}
+  .dim{margin-bottom:.6rem;} .dim .r{display:flex;justify-content:space-between;font-size:.76rem;margin-bottom:.15rem;}
+  .dim input[type=range]{width:100%;} .dim small{color:var(--mut);}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;} th,td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:600;cursor:pointer;white-space:nowrap;} tr:hover td{background:#191b30;cursor:pointer;}
+  .badge{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .35rem;font-size:.82rem;}
+  .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
+  .chip{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);margin:0 .15rem .15rem 0;display:inline-block;}
+  .pill{font-size:.68rem;padding:.08rem .45rem;border-radius:99px;background:#23264a;color:var(--mut);}
+  .dec{font-size:.68rem;padding:.08rem .4rem;border-radius:6px;} .dec.shortlist,.dec.keep{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);}
+  .cvet{font-size:.66rem;padding:.08rem .4rem;border-radius:6px;cursor:pointer;background:rgba(124,141,181,.16);color:var(--accent);border:1px dashed var(--accent);} .cvet:hover{background:rgba(124,141,181,.3);}
+  .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);}
+  .hx{opacity:.45;} .hx td{text-decoration:line-through dotted rgba(224,85,110,.4);}
+  .row-excl{color:var(--bad);font-size:.66rem;}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<header>
+  <h1>career-ops</h1>
+  <div class="seg"><a href="/postings" class="active">Postings</a><a href="/companies">Companies</a><a href="/applications">Applications</a></div>
+  <span class="counts" id="counts">loading…</span>
+</header>
+
+<div class="wrap">
+  <aside class="panel pad">
+    <h2 class="lbl">Rubric weights (live)</h2>
+    <div id="sliders"></div>
+    <button class="btn sm" id="resetW" style="margin-top:.3rem">reset weights</button>
+    <h2 class="lbl" style="margin-top:1rem">Filters</h2>
+    <label class="chk"><input type="checkbox" id="liveOnly" checked> live only</label>
+    <label class="chk"><input type="checkbox" id="showExcl"> show hard-excluded</label>
+    <label class="chk"><input type="checkbox" id="resOnly"> researched only</label>
+    <label class="chk"><input type="checkbox" id="hideCapped" checked> hide capped companies</label>
+    <label class="chk"><input type="checkbox" id="hideApplied" checked> hide applied</label>
+    <div style="margin-top:.5rem"><small style="color:var(--mut)">min score <span id="minLbl">0</span></small><input type="range" id="minScore" min="0" max="5" step="0.5" value="0" style="width:100%"></div>
+  </aside>
+  <div>
+    <div class="panel pad" id="funnel" style="margin-bottom:1rem;display:none"></div>
+    <div class="panel">
+      <div class="ctrls">
+        <input type="search" id="q" placeholder="search company / title / reason…" style="flex:1;min-width:160px">
+        <select id="fLang"><option value="">any language</option></select>
+        <select id="fSen"><option value="">any seniority</option></select>
+        <select id="fRemote"><option value="">any remote</option></select>
+        <select id="fGeo"><option value="">any geo</option></select>
+        <select id="fDec"><option value="">any decision</option><option>undecided</option><option>shortlist</option><option>skip</option></select>
+      </div>
+      <div id="pcount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
+      <div id="ptable"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bcls=v=>v==null?'b-lo':v>=4?'b-hi':v>=3?'b-mid':'b-lo';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+
+// Lever C — just-in-time vetting: jump from a posting straight to its company's vetting drawer.
+function vetCompany(key){ if(!key) return; window.location.href='/companies?vet='+encodeURIComponent(key); }
+
+// ==================== POSTINGS ====================
+let RUBRIC={dimensions:[]}, ROWS=[], WEIGHTS={}, psort={key:'display',dir:-1}, FUNNEL={}, WORKFLOW={max_open_per_company:3,apply_floor:3.5};
+const LEVEL_LADDER=['junior','mid','mid-senior','senior','staff','principal'];
+let DESIRED_LEVEL='senior';
+function levelScore(r){
+  const di=LEVEL_LADDER.indexOf((DESIRED_LEVEL||'').toLowerCase()); if(di<0) return r.dim_scores?(r.dim_scores.level??null):null;
+  const sen=(r.seniority||'').toLowerCase(); let li=LEVEL_LADDER.indexOf(sen);
+  if(li<0&&sen==='manager') return 1;
+  if(li<0&&r.yoe_min!=null){ li=r.yoe_min>=8?LEVEL_LADDER.indexOf('staff'):r.yoe_min>=5?LEVEL_LADDER.indexOf('senior'):r.yoe_min>=3?LEVEL_LADDER.indexOf('mid-senior'):LEVEL_LADDER.indexOf('mid'); }
+  if(li<0) return null;
+  return Math.max(1,5-Math.abs(li-di));
+}
+function effDims(r){ if(!r.dim_scores) return r.dim_scores; if(!('level' in r.dim_scores)) return r.dim_scores; return {...r.dim_scores, level:levelScore(r)}; }
+
+const LS_KEY='careerops.postings.v1';
+function saveState(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({
+    weights:WEIGHTS, psort, desired_level:DESIRED_LEVEL,
+    f:{ q:$('#q').value, fLang:$('#fLang').value, fSen:$('#fSen').value, fRemote:$('#fRemote').value,
+        fGeo:$('#fGeo').value, fDec:$('#fDec').value, liveOnly:$('#liveOnly').checked,
+        showExcl:$('#showExcl').checked, resOnly:$('#resOnly').checked, minScore:$('#minScore').value,
+        hideCapped:$('#hideCapped').checked, hideApplied:$('#hideApplied').checked },
+  })); }catch{}
+}
+function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch{ return null; } }
+function restoreFilters(f){
+  if(!f) return;
+  const set=(id,v)=>{ const e=$('#'+id); if(e&&v!=null&&v!=='') e.value=v; };
+  set('q',f.q); set('fLang',f.fLang); set('fSen',f.fSen); set('fRemote',f.fRemote); set('fGeo',f.fGeo); set('fDec',f.fDec);
+  if(f.liveOnly!=null)$('#liveOnly').checked=f.liveOnly;
+  if(f.showExcl!=null)$('#showExcl').checked=f.showExcl;
+  if(f.resOnly!=null)$('#resOnly').checked=f.resOnly;
+  if(f.hideCapped!=null)$('#hideCapped').checked=f.hideCapped;
+  if(f.hideApplied!=null)$('#hideApplied').checked=f.hideApplied;
+  if(f.minScore!=null){ $('#minScore').value=f.minScore; $('#minLbl').textContent=f.minScore; }
+}
+
+function weightedScore(dim){ if(!dim) return null; let w=0,a=0; for(const id in WEIGHTS){const s=dim[id]; if(s!=null){w+=WEIGHTS[id];a+=WEIGHTS[id]*s;}} return w?+(a/w).toFixed(2):null; }
+function liveScore(r){ if(r.manual_score!=null) return r.manual_score; const ws=weightedScore(effDims(r)); if(ws!=null) return ws; return r.llm_rank!=null?r.llm_rank:null; }
+
+async function loadPostings(){
+  const d=await (await fetch('/api/postings')).json();
+  RUBRIC=d.rubric||{dimensions:[]}; ROWS=d.rows||[]; FUNNEL=d.funnel||{}; WORKFLOW=d.workflow||WORKFLOW;
+  WEIGHTS={}; for(const dm of RUBRIC.dimensions) WEIGHTS[dm.id||dm.name]=+dm.weight||0;
+  const st=loadState();
+  if(st&&st.weights){ for(const id in WEIGHTS) if(st.weights[id]!=null) WEIGHTS[id]=+st.weights[id]; }
+  if(st&&st.psort&&st.psort.key) psort=st.psort;
+  DESIRED_LEVEL=(st&&st.desired_level)||(RUBRIC.preferences&&RUBRIC.preferences.desired_level)||'senior';
+  renderSliders(); fillFacetFilters(); restoreFilters(st&&st.f); renderCounts(); renderFunnel(); renderPostings();
+}
+function renderFunnel(){
+  const el=$('#funnel'); if(!el) return;
+  const f=FUNNEL||{}; const low=(f.actionable??99)<5;
+  const cell=(n,l)=>`<span style="margin-right:1rem"><b style="font-size:1.05rem">${n??'·'}</b> <span style="color:var(--mut);font-size:.78rem">${l}</span></span>`;
+  let h=`<h2 class="lbl">Apply queue</h2><div style="margin:.2rem 0 .5rem">${cell(f.actionable,'actionable')}${cell(f.live,'live')}${cell(f.open_apps,'open apps')}${cell(f.capped_companies,'capped cos')}${f.companies_pending_vet?cell(f.companies_pending_vet,'cos to vet'):''}</div>`;
+  if(f.companies_pending_vet){
+    h+=`<div style="font-size:.82rem;border-top:1px solid var(--line);padding-top:.5rem">🏷️ <b>${f.companies_pending_vet} unvetted ${f.companies_pending_vet===1?'company has':'companies have'} a shortlisted posting.</b> Vet ${f.companies_pending_vet===1?'it':'them'} to fold company fit into the score → <code>node llm-triage-jobs.mjs --vet-queue</code></div>`;
+  }
+  if(low){
+    h+=`<div style="font-size:.82rem;border-top:1px solid var(--line);padding-top:.5rem">⚠️ <b>Apply queue is running low.</b> Next steps:<ul style="margin:.3rem 0 0;padding-left:1.1rem;color:var(--mut)">`;
+    h+=`<li>${f.companies_kept_unscanned||0} kept companies not yet scanned, ${f.companies_to_research||0} researched & undecided → <code>node decide.mjs --list</code>, then <code>node generate-watchlist.mjs &amp;&amp; node scan.mjs &amp;&amp; node rank-postings.mjs</code></li>`;
+    h+=`<li>or lower the min-score floor (slider) to surface decent-but-not-ideal postings</li></ul></div>`;
+  }
+  el.innerHTML=h; el.style.display='block';
+}
+function renderSliders(){
+  $('#sliders').innerHTML=RUBRIC.dimensions.map(d=>{
+    const id=d.id||d.name;
+    const lvlPick=d.compute==='level'?`<select data-lvlsel="1" style="width:100%;font-size:.76rem;margin:.1rem 0 .3rem">${LEVEL_LADDER.map(l=>`<option${l===DESIRED_LEVEL?' selected':''}>${l}</option>`).join('')}</select>`:'';
+    return `<div class="dim"><div class="r"><span title="${esc(d.guidance||'')}">${esc(d.name)}${d.compute?'':' <small>·llm</small>'}</span><span id="w-${id}">${WEIGHTS[id]}</span></div>${lvlPick}<input type="range" min="0" max="50" step="1" value="${WEIGHTS[id]}" data-id="${id}"></div>`;
+  }).join('');
+  $('#sliders').querySelectorAll('input[type=range]').forEach(el=>el.oninput=()=>{WEIGHTS[el.dataset.id]=+el.value;$('#w-'+el.dataset.id).textContent=el.value;renderPostings();saveState();});
+  $('#sliders').querySelectorAll('select[data-lvlsel]').forEach(el=>el.onchange=()=>{DESIRED_LEVEL=el.value;renderPostings();saveState();});
+}
+$('#resetW').onclick=()=>{for(const d of RUBRIC.dimensions){const id=d.id||d.name;WEIGHTS[id]=+d.weight||0;}renderSliders();renderPostings();saveState();};
+
+function fillFacetFilters(){
+  const langs=new Set(),sen=new Set(),rem=new Set(),geo=new Set();
+  for(const r of ROWS){(r.languages||[]).forEach(l=>langs.add(l));if(r.seniority)sen.add(r.seniority);if(r.remote_policy)rem.add(r.remote_policy);if(r.geo_eligibility)geo.add(r.geo_eligibility);}
+  const opt=(s,sel)=>[...s].sort().map(v=>`<option ${sel?'':''}>${esc(v)}</option>`).join('');
+  $('#fLang').innerHTML='<option value="">any language</option>'+opt(langs);
+  $('#fSen').innerHTML='<option value="">any seniority</option>'+opt(sen);
+  $('#fRemote').innerHTML='<option value="">any remote</option>'+opt(rem);
+  $('#fGeo').innerHTML='<option value="">any geo</option>'+opt(geo);
+}
+function renderCounts(){
+  const live=ROWS.filter(r=>r.live).length,sl=ROWS.filter(r=>r.decision==='shortlist').length,sk=ROWS.filter(r=>r.decision==='skip').length,rs=ROWS.filter(r=>r.researched).length;
+  $('#counts').textContent=`${ROWS.length} postings · ${live} live · ${rs} facet-extracted · ${sl} shortlisted · ${sk} skipped`;
+}
+function pfiltered(){
+  const q=$('#q').value.trim().toLowerCase(),lang=$('#fLang').value,sen=$('#fSen').value,rem=$('#fRemote').value,geo=$('#fGeo').value,dec=$('#fDec').value;
+  const minS=+$('#minScore').value,liveOnly=$('#liveOnly').checked,showExcl=$('#showExcl').checked,resOnly=$('#resOnly').checked;
+  const hideCapped=$('#hideCapped').checked,hideApplied=$('#hideApplied').checked;
+  let list=ROWS.map(r=>({...r,_s:liveScore(r)}));
+  if(liveOnly) list=list.filter(r=>r.live);
+  if(!showExcl) list=list.filter(r=>!r.hard_excluded);
+  if(resOnly) list=list.filter(r=>r.researched);
+  if(hideCapped) list=list.filter(r=>!r.capped);
+  if(hideApplied) list=list.filter(r=>!r.applied);
+  if(lang) list=list.filter(r=>(r.languages||[]).includes(lang));
+  if(sen) list=list.filter(r=>r.seniority===sen);
+  if(rem) list=list.filter(r=>r.remote_policy===rem);
+  if(geo) list=list.filter(r=>r.geo_eligibility===geo);
+  if(dec) list=list.filter(r=>r.decision===dec);
+  if(minS>0) list=list.filter(r=>(r._s??-1)>=minS);
+  if(q) list=list.filter(r=>(r.company+r.title+r.reason+(r.languages||[]).join()+(r.technologies||[]).join()).toLowerCase().includes(q));
+  const k=psort.key,dir=psort.dir;
+  const numeric=['display','yoe_min','relevance_score','computed_score'].includes(k);
+  list.sort((a,b)=>{
+    const av=k==='display'?a._s:a[k], bv=k==='display'?b._s:b[k];
+    if(numeric) return ((av??-1)-(bv??-1))*dir;
+    return String(av??'').localeCompare(String(bv??''))*dir;
+  });
+  return list;
+}
+function comp(c){ if(!c) return ''; if(typeof c!=='object')return String(c); const f=n=>n!=null?('$'+Math.round(n/1000)+'k'):''; const r=[f(c.min),f(c.max)].filter(Boolean).join('–'); return r?(r+(c.currency?(' '+c.currency):'')):''; }
+function th(k,l){const ar=psort.key===k?(psort.dir<0?' ▼':' ▲'):'';return `<th data-k="${k}">${l}${ar}</th>`;}
+function pipeChip(r){
+  const S=r.status;
+  if(S){ const cls=/offer/i.test(S)?'dec keep':/reject|discard/i.test(S)?'dec skip':'st'; return `<span class="${cls}" title="from Applications tracker">${esc(S)}</span>`; }
+  if(r.decision==='shortlist') return '<span class="dec shortlist">shortlist</span>';
+  if(r.decision==='skip') return '<span class="dec skip">skip</span>';
+  return '·';
+}
+function companyLink(r){
+  return `<a href="/companies?vet=${encodeURIComponent(r.company_key||r.company)}" style="color:var(--accent);text-decoration:none;cursor:pointer;">${esc(r.company)}</a>`;
+}
+function companyBadge(r){
+  const d=r.company_decision;
+  if(d==='keep') return ` <span class="dec keep" title="vetted company — fit ${r.company_fit??'?'}/5 (boosts the score)">✓ co ${r.company_fit!=null?r.company_fit:'kept'}</span>`;
+  if(d==='skip') return ` <span class="dec skip" title="company marked skip">co skip</span>`;
+  return ` <span class="cvet" data-vet="${esc(r.company_key||'')}" title="company not yet vetted — click to vet it">vet co</span>`;
+}
+function renderPostings(){
+  const list=pfiltered();
+  $('#pcount').textContent=`${list.length} shown`;
+  let h='<table><thead><tr>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'</tr></thead><tbody>';
+  for(const r of list){
+    const stack=[...(r.languages||[]),...(r.technologies||[])].slice(0,4).map(x=>`<span class="chip">${esc(x)}</span>`).join('');
+    h+=`<tr class="${r.hard_excluded||r.capped?'hx':''}" data-k="${esc(r.key)}">
+      <td><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}</td>
+      <td>${companyLink(r)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}</td>
+      <td>${esc(r.title)}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
+      <td>${stack||'·'}</td><td>${esc(comp(r.comp))||'·'}</td>
+      <td>${esc(r.location||r.remote_policy||'·')}${r.geo_eligibility&&r.geo_eligibility!=='unclear'?` <span class="chip">${esc(r.geo_eligibility)}</span>`:''}</td>
+      <td>${r.culture?`<span class="chip">${esc(r.culture)}</span>`:'·'}</td>
+      <td>${pipeChip(r)}</td></tr>`;
+  }
+  h+='</tbody></table>';
+  $('#ptable').innerHTML=list.length?h:'<div class="detail empty">no postings match</div>';
+  $('#ptable').querySelectorAll('th[data-k]').forEach(el=>el.onclick=()=>{const k=el.dataset.k;if(psort.key===k)psort.dir*=-1;else psort={key:k,dir:k==='company'||k==='title'?1:-1};renderPostings();saveState();});
+  $('#ptable').querySelectorAll('tr[data-k]').forEach(el=>el.onclick=()=>window.location.href='/posting?key='+encodeURIComponent(el.dataset.k));
+  $('#ptable').querySelectorAll('td:nth-child(2) a').forEach(el=>el.onclick=(e)=>e.stopPropagation());
+  $('#ptable').querySelectorAll('.cvet').forEach(el=>el.onclick=(e)=>{e.stopPropagation();vetCompany(el.dataset.vet);});
+}
+['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly','hideCapped','hideApplied'].forEach(id=>{const e=$('#'+id);const h=()=>{renderPostings();saveState();};e.oninput=h;e.onchange=h;});
+$('#minScore').oninput=()=>{$('#minLbl').textContent=$('#minScore').value;renderPostings();saveState();};
+
+loadPostings();
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>posting — career-ops</title>
+<style>
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;}
+  header a.back{color:var(--accent);text-decoration:none;font-size:.85rem;}
+  .wrap{max-width:900px;margin:1rem auto;padding:0 1.25rem;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.2rem;}
+  h3{margin:.1rem 0;font-size:1.3rem;} .meta{color:var(--mut);font-size:.85rem;margin:.3rem 0 .9rem;} .meta a{color:var(--accent);text-decoration:none;}
+  .facets{display:grid;grid-template-columns:1fr 1fr;gap:.35rem .9rem;font-size:.84rem;margin:.7rem 0;}
+  .facets b{color:var(--mut);font-weight:600;}
+  .dims{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.4rem;margin:.6rem 0;}
+  .dims .d{background:#0c0d1c;border:1px solid var(--line);border-radius:8px;padding:.4rem .55rem;font-size:.78rem;display:flex;justify-content:space-between;align-items:center;}
+  .dims .d small{color:var(--mut);} .dims .d b{font-variant-numeric:tabular-nums;}
+  .chip{font-size:.68rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);margin:0 .15rem .15rem 0;display:inline-block;}
+  .badge{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .45rem;}
+  .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
+  .dec{font-size:.72rem;padding:.1rem .5rem;border-radius:6px;} .dec.shortlist{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);}
+  .row-excl{color:var(--bad);font-size:.8rem;}
+  .jd{max-height:360px;overflow:auto;background:#0c0d1c;border:1px solid var(--line);border-radius:8px;padding:.7rem;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:var(--mut);}
+  .actrow{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.9rem 0;padding:.7rem;background:#0c0d1c;border:1px solid var(--line);border-radius:8px;}
+  .field{margin:.9rem 0;} .field label{display:block;font-size:.72rem;text-transform:uppercase;color:var(--mut);margin-bottom:.3rem;}
+  input{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<header><a class="back" href="/postings">← postings</a><span style="color:var(--mut);font-size:.85rem">posting detail</span></header>
+<div class="wrap"><div class="panel" id="detail">loading…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bcls=v=>v==null?'b-lo':v>=4?'b-hi':v>=3?'b-mid':'b-lo';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+function comp(c){ if(!c) return ''; if(typeof c!=='object')return String(c); const f=n=>n!=null?('$'+Math.round(n/1000)+'k'):''; const r=[f(c.min),f(c.max)].filter(Boolean).join('–'); return r?(r+(c.currency?(' '+c.currency):'')):''; }
+function companyLink(key, name){ return `<a href="/companies?vet=${encodeURIComponent(key)}" style="color:var(--accent);text-decoration:none;">${esc(name)}</a>`; }
+
+const KEY=new URLSearchParams(location.search).get('key')||'';
+async function load(){
+  if(!KEY){ $('#detail').textContent='no key'; return; }
+  const c=await (await fetch('/api/posting?key='+encodeURIComponent(KEY))).json();
+  if(c.error){ $('#detail').textContent='not found'; return; }
+  document.title=(c.company||'posting')+' — '+(c.title||'');
+  const ex=c.extracted||{};
+  const facet=(l,v)=>`<div><b>${l}</b> ${esc(v??'·')}</div>`;
+  // per-dimension scores (objective compute dims + the LLM's qualitative reads)
+  const dims=(c.rubric&&c.rubric.dimensions)||[];
+  const ds={...(c.dim_scores||{})};
+  // recompute the Level card from the dashboard's picked desired level (shared via localStorage)
+  if('level' in ds){
+    const LADDER=['junior','mid','mid-senior','senior','staff','principal'];
+    let desired='senior';
+    try{const st=JSON.parse(localStorage.getItem('careerops.postings.v1')||'null');desired=(st&&st.desired_level)||(c.rubric&&c.rubric.preferences&&c.rubric.preferences.desired_level)||'senior';}catch{}
+    const di=LADDER.indexOf(String(desired).toLowerCase());
+    if(di>=0){
+      const sen=(ex.seniority||'').toLowerCase(); let li=LADDER.indexOf(sen);
+      if(li<0&&sen==='manager') ds.level=1;
+      else{ if(li<0&&ex.yoe_min!=null) li=ex.yoe_min>=8?LADDER.indexOf('staff'):ex.yoe_min>=5?LADDER.indexOf('senior'):ex.yoe_min>=3?LADDER.indexOf('mid-senior'):LADDER.indexOf('mid'); if(li>=0) ds.level=Math.max(1,5-Math.abs(li-di)); }
+    }
+  }
+  const dimRow=dims.map(d=>{const id=d.id||d.name;const v=ds[id];return `<div class="d"><small title="${esc(d.guidance||'')}">${esc(d.name)}${d.compute?'':' ·llm'}</small> <b class="badge ${bcls(v)}">${v!=null?(+v).toFixed(1):'·'}</b></div>`;}).join('');
+  $('#detail').innerHTML=`<h3>${companyLink(c.company_key||c.company, c.company)} — ${esc(c.title)} ${c.hard_excluded?'<span class="row-excl">⛔ hard-excluded</span>':''} ${c.decision&&c.decision!=='undecided'?`<span class="dec ${c.decision}">${c.decision}</span>`:''}</h3>
+    <div class="meta">${esc(c.provider||'')} ${c.location?'· '+esc(c.location):''} ${c.date_posted?'· '+esc(String(c.date_posted).slice(0,10)):''}
+      ${c.url?`· <a href="${esc(c.url)}" target="_blank">open posting ↗</a>`:''}
+      ${c.apply_url?`· <a href="${esc(c.apply_url)}" target="_blank">apply / autofill ↗</a>`:''}
+      ${c.report?`· <a href="/report?f=${encodeURIComponent(c.report)}" target="_blank">report ↗</a>`:''}</div>
+    ${dimRow?`<div class="field"><label>Score by dimension</label><div class="dims">${dimRow}</div></div>`:''}
+    ${c.extracted?`<div class="field"><label>Facets</label><div class="facets">
+      ${facet('Seniority',ex.seniority)}${facet('YOE',ex.yoe_min!=null?(ex.yoe_min+(ex.yoe_max?'–'+ex.yoe_max:'+')):'·')}
+      ${facet('Employment',ex.employment_type)}${facet('Remote',ex.remote_policy)}
+      ${facet('Geo-eligibility',ex.geo_eligibility)}${facet('On-call',ex.on_call)}
+      ${facet('Comp',comp(ex.comp)||'·')}${facet('Degree',ex.degree_required)}
+      ${facet('Domain',ex.domain)}${facet('PTO',ex.pto_policy)}
+      ${facet('Autonomy',ex.autonomy)}${facet('Culture',ex.culture)}
+      ${facet('Company stage',ex.company_stage)}<div></div>
+      <div style="grid-column:1/3"><b>Languages</b> ${(ex.languages||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('')||'·'}</div>
+      <div style="grid-column:1/3"><b>Technologies</b> ${(ex.technologies||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('')||'·'}</div>
+      <div style="grid-column:1/3"><b>WLB signals</b> ${(ex.wlb_signals||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('')||'·'}</div>
+    </div></div>`:'<p style="color:var(--mut)">No facets yet — run <code>research-jobs</code> (Stage 3) to extract them.</p>'}
+    <div class="actrow">
+      <label style="font-size:.78rem;color:var(--mut)">Override score:</label>
+      <input id="ovr" type="number" min="0" max="5" step="0.1" value="${c.manual_score??''}" placeholder="${c.computed_score??''}" style="width:5rem">
+      <button class="btn sm" id="saveOvr">Save</button><span style="flex:1"></span>
+      <button class="btn good" id="bSL">Shortlist</button><button class="btn bad" id="bSK">Skip</button><button class="btn sm" id="bUN">Reset</button>
+    </div>
+    ${c.fit_verdict?`<div class="field"><label>Fit verdict</label><div class="jd">${esc(c.fit_verdict)}</div></div>`:''}
+    ${c.jd_body?`<div class="field"><label>Job description</label><div class="jd">${esc(c.jd_body)}</div></div>`:''}`;
+  $('#saveOvr').onclick=async()=>{const r=await post('/api/posting/override',{key:KEY,manual_score:$('#ovr').value});toast((await r.json()).ok?'override saved':'0–5 only');load();};
+  $('#bSL').onclick=async()=>{await post('/api/posting/decision',{key:KEY,decision:'shortlist'});toast('shortlisted');load();};
+  $('#bSK').onclick=async()=>{await post('/api/posting/decision',{key:KEY,decision:'skip'});toast('skipped');load();};
+  $('#bUN').onclick=async()=>{await post('/api/posting/decision',{key:KEY,decision:'undecided'});toast('reset');load();};
+}
+load();
+</script>
+</body>
+</html>
