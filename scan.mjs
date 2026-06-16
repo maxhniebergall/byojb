@@ -478,6 +478,9 @@ async function main() {
         // cache is the current full set so rank-postings can mark dropped postings expired.
         matched.push({
           url: canonicalUrl(job.url),
+          // For greenhouse/lever/ashby the posting URL IS the apply form; providers that
+          // expose a distinct apply link set job.apply_url. The autofill extension opens this.
+          apply_url: job.apply_url || job.url,
           title: job.title,
           company: job.company,
           location: job.location || '',

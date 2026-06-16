@@ -7,14 +7,17 @@
 //
 //   node llm-triage-jobs.mjs --emit 50 [--offset 0]  # next N undecided, live, un-preranked (JSON)
 //   node llm-triage-jobs.mjs --apply scores.json      # merge prerank OR research results
-//   node llm-triage-jobs.mjs --emit-research 20       # top preranked-but-unextracted, for facet extraction
+//   node llm-triage-jobs.mjs --emit-research 20 [--all]# preranked postings → full-JD facet extraction
+//                                                       (--all re-emits extracted ones to backfill new facets)
 //   node llm-triage-jobs.mjs --queue 30               # top by score, for manual review
+//   node llm-triage-jobs.mjs --vet-queue              # undecided companies w/ a shortlisted posting (Lever C)
 //   node llm-triage-jobs.mjs --stats                  # pipeline progress
 //
 // --apply payload (array). Prerank items: {key, llm_rank (1-5), llm_reason}.
-//   Research items: {key, extracted:{...facets...}, llm_holistic_fit (1-5), fit_brief, llm_reason?}.
-//   extracted → OBJECTIVE layer (posting-research.jsonl); scores → PERSONAL layer; the score is
-//   then recomputed deterministically via score-postings (facets × rubric), not taken from the LLM.
+//   Research items: {key, extracted:{...facets...}, fit_brief, llm_reason?}. FACTS ONLY — the LLM
+//   never sends a score; every dimension is computed from facets × rubric by score-postings.
+//   (Legacy llm_dim_scores / llm_holistic_fit are still accepted for back-compat but no longer emitted.)
+//   extracted → OBJECTIVE layer (posting-research.jsonl); recomputed deterministically into PERSONAL.
 
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -25,6 +28,7 @@ import { computeScores, loadRubric } from './score-postings.mjs';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const RESEARCH = join(ROOT, 'data', 'posting-research.jsonl');
 const PERSONAL = join(ROOT, 'data', 'postings-personal.jsonl');
+const C_PERSONAL = join(ROOT, 'data', 'companies-personal.jsonl');
 const BODY_DIR = join(ROOT, 'data', 'posting-research');
 
 const bodyFileRel = (key) => `data/posting-research/${sk(key)}.md`;
@@ -48,7 +52,7 @@ function main() {
     const file = args[args.indexOf('--apply') + 1];
     const items = JSON.parse(readFileSync(file, 'utf-8'));
     const rubric = loadRubric();
-    let prerank = 0, extracted = 0;
+    let prerank = 0, extracted = 0, rescored = 0;
     for (const s of items) {
       const p = pByKey.get(s.key); const r = research.get(s.key);
       if (!p) continue;
@@ -56,17 +60,26 @@ function main() {
       if (s.llm_reason != null) p.llm_reason = s.llm_reason;
       if (s.fit_brief) p.fit_brief = s.fit_brief;
       if (s.llm_holistic_fit != null) p.llm_holistic_fit = Number(s.llm_holistic_fit);
-      if (s.extracted && r) { r.extracted = s.extracted; extracted++; }
+      // per-dimension LLM scores for the qualitative dims {<dim id>: 1-5}; preferred over the
+      // single holistic number so each qualitative dimension scores (and re-weights) independently.
+      if (s.llm_dim_scores && typeof s.llm_dim_scores === 'object') {
+        p.llm_dim_scores = {};
+        for (const [k, v] of Object.entries(s.llm_dim_scores)) if (v != null && v !== '') p.llm_dim_scores[k] = Number(v);
+        rescored++;
+      }
+      // MERGE facets (not overwrite) so a partial re-extraction can backfill new facet keys
+      // without re-sending the whole schema. Fresh extraction: r.extracted is null → becomes s.extracted.
+      if (s.extracted && r) { r.extracted = { ...(r.extracted || {}), ...s.extracted }; extracted++; }
       // recompute the deterministic score from facets × rubric (never trust an LLM-authored score)
       if (r?.extracted) {
-        const sc = computeScores(r.extracted, rubric, p.llm_holistic_fit);
+        const sc = computeScores(r.extracted, rubric, p.llm_dim_scores ?? p.llm_holistic_fit);
         p.dim_scores = sc.dim_scores; p.computed_score = sc.computed_score; p.hard_excluded = sc.hard_excluded;
       }
       p.last_reviewed = p.last_reviewed || 'llm';
     }
     saveJsonl(PERSONAL, personal);
     if (extracted) saveJsonl(RESEARCH, [...research.values()]);
-    console.error(`✓ applied ${items.length} items (${prerank} preranked, ${extracted} facet-extracted+scored)`);
+    console.error(`✓ applied ${items.length} items (${prerank} preranked, ${extracted} facet-extracted, ${rescored} per-dim rescored)`);
     return;
   }
 
@@ -96,17 +109,45 @@ function main() {
     return;
   }
 
-  // ── emit-research: top preranked-but-unextracted (read the full JD next) ──
+  // ── vet-queue: Lever C — just-in-time company vetting ──
+  // Undecided companies that earned a vetting decision by having a SHORTLISTED live posting.
+  // Vet each (set llm_fit + decision=keep/skip), then `node score-postings.mjs` folds the fit in.
+  if (args.includes('--vet-queue')) {
+    const companies = new Map(loadJsonl(C_PERSONAL).map(c => [c.key, c]));
+    const byCompany = new Map();
+    for (const p of personal) {
+      if (p.decision !== 'shortlist' || !live(p.key)) continue;
+      const r = research.get(p.key) || {};
+      const ck = r.company_key; if (!ck) continue;
+      const co = companies.get(ck);
+      if (!co || co.decision !== 'undecided') continue;   // only un-vetted companies need a decision
+      if (!byCompany.has(ck)) byCompany.set(ck, { key: ck, name: co.name || r.company, provider: co.provider || r.provider, titles: [] });
+      byCompany.get(ck).titles.push(r.title);
+    }
+    const out = [...byCompany.values()].sort((a, b) => b.titles.length - a.titles.length);
+    console.log(`${out.length} undecided ${out.length === 1 ? 'company has' : 'companies have'} a shortlisted posting — vet (set fit + keep/skip), then \`node score-postings.mjs\`:`);
+    for (const c of out) {
+      console.log(`  ${c.key}  ${c.name} [${c.provider || '?'}] — ${c.titles.length} shortlisted`);
+      for (const t of c.titles) console.log(`      • ${t}`);
+    }
+    return;
+  }
+
+  // ── emit-research: top preranked, for full-JD facet extraction (the LLM's ONLY job) ──
+  // --all also re-emits already-extracted postings, so a schema change (new facets) can be
+  // backfilled from the cached JD bodies — no re-fetch. Ships current facets as a reference.
   if (args.includes('--emit-research')) {
     const n = num('--emit-research', 20);
+    const all = args.includes('--all');
     const todo = personal
-      .filter(p => live(p.key) && p.decision === 'undecided' && p.llm_rank != null && !research.get(p.key)?.extracted)
+      .filter(p => live(p.key) && p.decision === 'undecided' && p.llm_rank != null && (all || !research.get(p.key)?.extracted))
       .sort((a, b) => (b.llm_rank - a.llm_rank) || ((b.relevance_score ?? 0) - (a.relevance_score ?? 0)))
       .slice(0, n);
     console.log(JSON.stringify(todo.map(p => {
       const r = research.get(p.key) || {};
       return { key: p.key, company: r.company, title: r.title, url: r.url, llm_rank: p.llm_rank,
-        has_body: !!r.has_body, body_file: r.has_body ? bodyFileRel(p.key) : null };
+        has_body: !!r.has_body, body_file: r.has_body ? bodyFileRel(p.key) : null,
+        ...(all ? { current_facets: r.extracted || null } : {}) };
     }), null, 1));
     return;
   }

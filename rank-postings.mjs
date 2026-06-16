@@ -24,6 +24,7 @@ import { loadJsonl, saveJsonl, sk, deriveCompanyKey } from './posting-core.mjs';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const RAW = join(ROOT, 'data', 'postings', 'raw-latest.jsonl');
 const COMPANY_RESEARCH = join(ROOT, 'data', 'company-research.jsonl');
+const COMPANY_PERSONAL = join(ROOT, 'data', 'companies-personal.jsonl');
 const RESEARCH = join(ROOT, 'data', 'posting-research.jsonl');
 const PERSONAL = join(ROOT, 'data', 'postings-personal.jsonl');
 const BODY_DIR = join(ROOT, 'data', 'posting-research');
@@ -51,6 +52,15 @@ function recencyBonus(date, today) {
   if (days <= 45) return 0.25;
   return 0;
 }
+// Lever B (cheap Stage-1 tie-in): with broad scanning the queue floods with un-extracted postings,
+// and relevance_score decides what gets triaged/extracted FIRST. Nudge postings from vetted
+// (decision=keep) companies up by their fit, so high-fit companies rise before any LLM work. Zero-token.
+function companyFitBonus(llm_fit) {
+  if (llm_fit == null) return 0;
+  if (llm_fit >= 4) return 0.5;
+  if (llm_fit >= 3) return 0.25;
+  return 0;
+}
 
 function main() {
   if (!existsSync(RAW)) {
@@ -65,6 +75,11 @@ function main() {
   // careers_url → company_key (exact join to the company registry; fall back to URL parsing)
   const companyByUrl = new Map();
   for (const c of loadJsonl(COMPANY_RESEARCH)) if (c.careers_url) companyByUrl.set(c.careers_url, c.key);
+  // company_key → vetted fit (decision=keep only) for the Stage-1 relevance nudge.
+  const fitByCompanyKey = new Map();
+  for (const c of loadJsonl(COMPANY_PERSONAL)) {
+    if (c.decision === 'keep' && c.llm_fit != null) fitByCompanyKey.set(c.key, c.llm_fit);
+  }
 
   const priorResearch = new Map(loadJsonl(RESEARCH).map(r => [r.key, r]));
   const priorPersonal = new Map(loadJsonl(PERSONAL).map(r => [r.key, r]));
@@ -95,6 +110,7 @@ function main() {
 
     research.set(key, {
       key, company_key, company: m.company, title: m.title, url: m.url,
+      apply_url: m.apply_url || prevR.apply_url || m.url,
       location: m.location || '', department: m.department || '', provider: m.provider,
       date_posted: m.date_posted || prevR.date_posted || '',
       comp: m.comp ?? prevR.comp ?? null,
@@ -104,7 +120,8 @@ function main() {
       extracted: prevR.extracted || null,
     });
 
-    const relevance_score = Number((1 + seniorityBonus(m.title) + recencyBonus(m.date_posted, today)).toFixed(2));
+    const relevance_score = Number((1 + seniorityBonus(m.title) + recencyBonus(m.date_posted, today)
+      + companyFitBonus(fitByCompanyKey.get(company_key))).toFixed(2));
     personal.set(key, {
       key,
       relevance_score,
@@ -113,6 +130,7 @@ function main() {
       dim_scores: prevP.dim_scores ?? null,
       computed_score: prevP.computed_score ?? null,
       llm_holistic_fit: prevP.llm_holistic_fit ?? null,
+      llm_dim_scores: prevP.llm_dim_scores ?? null,
       manual_score: prevP.manual_score ?? null,
       fit_brief: prevP.fit_brief ?? null,
       hard_excluded: prevP.hard_excluded ?? false,

@@ -19,6 +19,9 @@ import { join, basename, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import { normalizeReportLink as normalizeLink } from './tracker-links.mjs';
+import {
+  loadApplications, saveApplications, syncTrackerMd, migrateFromMd, validateStatus, today,
+} from './application-core.mjs';
 
 const CAREER_OPS = dirname(fileURLToPath(import.meta.url));
 // Support both layouts: data/applications.md (boilerplate) and applications.md (original).
@@ -46,39 +49,7 @@ const normalizeReportLink = (reportField) => normalizeLink(reportField, TRACKER_
 mkdirSync(join(CAREER_OPS, 'data'), { recursive: true });
 mkdirSync(ADDITIONS_DIR, { recursive: true });
 
-// Canonical states and aliases
-const CANONICAL_STATES = ['Evaluated', 'Applied', 'Responded', 'Interview', 'Offer', 'Rejected', 'Discarded', 'SKIP'];
-
-function validateStatus(status) {
-  const clean = status.replace(/\*\*/g, '').replace(/\s+\d{4}-\d{2}-\d{2}.*$/, '').trim();
-  const lower = clean.toLowerCase();
-
-  for (const valid of CANONICAL_STATES) {
-    if (valid.toLowerCase() === lower) return valid;
-  }
-
-  // Aliases
-  const aliases = {
-    // Spanish → English
-    'evaluada': 'Evaluated', 'condicional': 'Evaluated', 'hold': 'Evaluated', 'evaluar': 'Evaluated', 'verificar': 'Evaluated',
-    'aplicado': 'Applied', 'enviada': 'Applied', 'aplicada': 'Applied', 'applied': 'Applied', 'sent': 'Applied',
-    'respondido': 'Responded',
-    'entrevista': 'Interview',
-    'oferta': 'Offer',
-    'rechazado': 'Rejected', 'rechazada': 'Rejected',
-    'descartado': 'Discarded', 'descartada': 'Discarded', 'cerrada': 'Discarded', 'cancelada': 'Discarded',
-    'no aplicar': 'SKIP', 'no_aplicar': 'SKIP', 'skip': 'SKIP', 'monitor': 'SKIP',
-    'geo blocker': 'SKIP',
-  };
-
-  if (aliases[lower]) return aliases[lower];
-
-  // DUPLICADO/Repost → Discarded
-  if (/^(duplicado|dup|repost)/i.test(lower)) return 'Discarded';
-
-  console.warn(`⚠️  Non-canonical status "${status}" → defaulting to "Evaluated"`);
-  return 'Evaluated';
-}
+// validateStatus is imported from application-core.mjs (single source of truth).
 
 function normalizeCompany(name) {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -271,11 +242,9 @@ function parseTsvContent(content, filename) {
 // ---- Main ----
 
 // Read applications.md
-if (!existsSync(APPS_FILE)) {
-  console.log('No applications.md found. Nothing to merge into.');
-  process.exit(0);
-}
-const appContent = readFileSync(APPS_FILE, 'utf-8');
+// applications.md may not exist yet (it is generated from applications.jsonl). Read it if
+// present — only the --migrate path (report-link rewrite) operates on the .md directly.
+const appContent = existsSync(APPS_FILE) ? readFileSync(APPS_FILE, 'utf-8') : '';
 
 // One-time migration: rewrite existing report links so they resolve relative
 // to the tracker file's directory (see #760). Run with: node merge-tracker.mjs --migrate
@@ -295,21 +264,14 @@ if (MIGRATE) {
   process.exit(0);
 }
 
-const appLines = appContent.split('\n');
-const existingApps = [];
-let maxNum = 0;
+// Seed the jsonl source of truth from any legacy applications.md rows (idempotent), so the
+// first run after this refactor doesn't lose hand-tracked entries. applications.jsonl is now
+// authoritative; applications.md is regenerated from it via syncTrackerMd().
+migrateFromMd();
+const apps = loadApplications();
+let maxNum = apps.reduce((m, a) => Math.max(m, Number(a.tracker_num) || 0), 0);
 
-for (const line of appLines) {
-  if (line.startsWith('|') && !line.includes('---') && !line.includes('Empresa')) {
-    const app = parseAppLine(line);
-    if (app) {
-      existingApps.push(app);
-      if (app.num > maxNum) maxNum = app.num;
-    }
-  }
-}
-
-console.log(`📊 Existing: ${existingApps.length} entries, max #${maxNum}`);
+console.log(`📊 Existing: ${apps.length} entries, max #${maxNum}`);
 
 // Read tracker additions
 if (!existsSync(ADDITIONS_DIR)) {
@@ -335,92 +297,69 @@ console.log(`📥 Found ${tsvFiles.length} pending additions`);
 let added = 0;
 let updated = 0;
 let skipped = 0;
-const newLines = [];
+
+// Find an existing application this addition duplicates: by report number, then entry/tracker
+// number, then company + fuzzy role match (mirrors the prior applications.md dedup logic).
+function findDuplicate(addition) {
+  const reportNum = extractReportNum(addition.report);
+  if (reportNum) {
+    const byReport = apps.find(a => extractReportNum(a.report || '') === reportNum);
+    if (byReport) return byReport;
+  }
+  const byNum = apps.find(a => Number(a.tracker_num) === addition.num);
+  if (byNum) return byNum;
+  const normCompany = normalizeCompany(addition.company);
+  return apps.find(a => normalizeCompany(a.company) === normCompany && roleFuzzyMatch(addition.role, a.title));
+}
 
 for (const file of tsvFiles) {
   const content = readFileSync(join(ADDITIONS_DIR, file), 'utf-8').trim();
   const addition = parseTsvContent(content, file);
   if (!addition) { skipped++; continue; }
+  // Report links are normalized at render time by syncTrackerMd(), so store the raw link.
 
-  // Normalize the report link to be relative to the tracker file's directory.
-  // The TSV convention carries a root-relative `reports/...` link; rewrite it
-  // so it resolves correctly when clicked from applications.md (see #760).
-  addition.report = normalizeReportLink(addition.report);
-
-  // Check for duplicate by:
-  // 1. Exact report number match
-  // 2. Company + role fuzzy match
-  const reportNum = extractReportNum(addition.report);
-  let duplicate = null;
-
-  if (reportNum) {
-    // Check if this report number already exists
-    duplicate = existingApps.find(app => {
-      const existingReportNum = extractReportNum(app.report);
-      return existingReportNum === reportNum;
-    });
-  }
-
-  if (!duplicate) {
-    // Exact entry number match
-    duplicate = existingApps.find(app => app.num === addition.num);
-  }
-
-  if (!duplicate) {
-    // Company + role fuzzy match
-    const normCompany = normalizeCompany(addition.company);
-    duplicate = existingApps.find(app => {
-      if (normalizeCompany(app.company) !== normCompany) return false;
-      return roleFuzzyMatch(addition.role, app.role);
-    });
-  }
+  const duplicate = findDuplicate(addition);
 
   if (duplicate) {
     const newScore = parseScore(addition.score);
-    const oldScore = parseScore(duplicate.score);
-
+    const oldScore = parseScore(duplicate.score || '');
     if (newScore > oldScore) {
-      console.log(`🔄 Update: #${duplicate.num} ${addition.company} — ${addition.role} (${oldScore}→${newScore})`);
-      const lineIdx = appLines.indexOf(duplicate.raw);
-      if (lineIdx >= 0) {
-        const updatedLine = `| ${duplicate.num} | ${addition.date} | ${addition.company} | ${addition.role} | ${addition.score} | ${duplicate.status} | ${duplicate.pdf} | ${addition.report} | Re-eval ${addition.date} (${oldScore}→${newScore}). ${addition.notes} |`;
-        appLines[lineIdx] = updatedLine;
-        updated++;
-      }
+      console.log(`🔄 Update: #${duplicate.tracker_num} ${addition.company} — ${addition.role} (${oldScore}→${newScore})`);
+      duplicate.date_applied = addition.date;
+      duplicate.company = addition.company;
+      duplicate.title = addition.role;
+      duplicate.score = addition.score;
+      duplicate.report = addition.report;
+      if (addition.pdf) duplicate.pdf = addition.pdf;
+      duplicate.notes = `Re-eval ${addition.date} (${oldScore}→${newScore}). ${addition.notes}`.trim();
+      duplicate.last_updated = today();
+      updated++;
     } else {
-      console.log(`⏭️  Skip: ${addition.company} — ${addition.role} (existing #${duplicate.num} ${oldScore} >= new ${newScore})`);
+      console.log(`⏭️  Skip: ${addition.company} — ${addition.role} (existing #${duplicate.tracker_num} ${oldScore} >= new ${newScore})`);
       skipped++;
     }
   } else {
-    // New entry — use the number from the TSV
+    // New entry — use the number from the TSV when it advances past the current max.
     const entryNum = addition.num > maxNum ? addition.num : ++maxNum;
     if (addition.num > maxNum) maxNum = addition.num;
-
-    const newLine = `| ${entryNum} | ${addition.date} | ${addition.company} | ${addition.role} | ${addition.score} | ${addition.status} | ${addition.pdf} | ${addition.report} | ${addition.notes} |`;
-    newLines.push(newLine);
+    const status = validateStatus(addition.status);
+    apps.push({
+      key: '', tracker_num: entryNum, company: addition.company, title: addition.role,
+      apply_url: '', date_applied: addition.date, cv_pdf: '', pdf: addition.pdf,
+      status, status_timeline: [{ status, date: addition.date, note: '' }],
+      recruiter: { name: '', email: '', phone: '', notes: '' }, confirmation: '',
+      submitted_fields: [], submitted_snapshot: '', report: addition.report,
+      score: addition.score, notes: addition.notes, last_updated: today(),
+    });
     added++;
     console.log(`➕ Add #${entryNum}: ${addition.company} — ${addition.role} (${addition.score})`);
   }
 }
 
-// Insert new lines after the header (line index of first data row)
-if (newLines.length > 0) {
-  // Find header separator (|---|...) and insert after it
-  let insertIdx = -1;
-  for (let i = 0; i < appLines.length; i++) {
-    if (appLines[i].includes('---') && appLines[i].startsWith('|')) {
-      insertIdx = i + 1;
-      break;
-    }
-  }
-  if (insertIdx >= 0) {
-    appLines.splice(insertIdx, 0, ...newLines);
-  }
-}
-
-// Write back
+// Write back: applications.jsonl is the source of truth; applications.md is regenerated.
 if (!DRY_RUN) {
-  writeFileSync(APPS_FILE, appLines.join('\n'));
+  saveApplications(apps);
+  syncTrackerMd(apps);
 
   // Move processed files to merged/
   if (!existsSync(MERGED_DIR)) mkdirSync(MERGED_DIR, { recursive: true });
