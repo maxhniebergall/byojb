@@ -98,13 +98,3 @@ Scripts maintain data consistency:
 | `dedup-tracker.mjs` | Removes duplicate entries by company+role |
 | `normalize-statuses.mjs` | Maps status aliases to canonical values |
 | `cv-sync-check.mjs` | Validates setup consistency |
-
-## Dashboard TUI
-
-The `dashboard/` directory contains a standalone Go TUI application that visualizes the pipeline:
-
-- Filter tabs: All, Evaluada, Aplicado, Entrevista, Top >=4, No Aplicar
-- Sort modes: Score, Date, Company, Status
-- Grouped/flat view
-- Lazy-loaded report previews
-- Inline status picker
