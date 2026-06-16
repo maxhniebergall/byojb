@@ -35,7 +35,6 @@ PRs without a corresponding issue may be closed if they don't align with the pro
 
 **Bigger contributions:**
 - New evaluation dimensions or scoring logic
-- Dashboard TUI features (in `dashboard/`)
 - New skill modes (in `modes/`)
 - Script improvements (`.mjs` utilities)
 
@@ -43,7 +42,6 @@ PRs without a corresponding issue may be closed if they don't align with the pro
 
 - Keep modes language-agnostic when possible (Claude handles both EN and ES)
 - Scripts should handle missing files gracefully (check `existsSync` before `readFileSync`)
-- Dashboard changes require `go build` — test with real data before submitting
 - Don't commit personal data (cv.md, profile.yml, applications.md, reports/)
 
 ## What we do NOT accept
@@ -60,10 +58,6 @@ PRs without a corresponding issue may be closed if they don't align with the pro
 npm run doctor                # Setup validation
 node verify-pipeline.mjs     # Health check
 node cv-sync-check.mjs        # Config check
-
-# Dashboard
-cd dashboard && go build -o career-dashboard .
-./career-dashboard --path ..
 ```
 
 ## Brand and Trademark

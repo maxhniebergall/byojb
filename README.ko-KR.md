@@ -48,9 +48,7 @@
   <img src="https://img.shields.io/badge/GitHub_Copilot-000?style=flat&logo=githubcopilot&logoColor=white" alt="GitHub Copilot">
   <br>
   <img src="https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/Playwright-2EAD33?style=flat&logo=playwright&logoColor=white" alt="Playwright">
-  <img src="https://img.shields.io/badge/Bubble_Tea-FF75B5?style=flat&logo=go&logoColor=white" alt="Bubble Tea">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT">
   <a href="TRADEMARK.md"><img src="https://img.shields.io/badge/Trademark-Policy-blue.svg" alt="Trademark Policy"></a>
 </p>
@@ -182,18 +180,6 @@ Career-ops는 다양한 모드를 가진 하나의 슬래시 커맨드입니다:
 
 **검색 대상 채용 보드:** Ashby, Greenhouse, Lever, Wellfound, Workable, RemoteFront
 
-## Dashboard TUI
-
-내장 터미널 대시보드로 파이프라인을 시각적으로 탐색할 수 있습니다:
-
-```bash
-cd dashboard
-go build -o career-dashboard .
-./career-dashboard --path ..
-```
-
-기능: 6개의 필터 탭, 4가지 정렬 모드, 그룹/플랫 뷰, 지연 로딩 미리보기, 인라인 상태 변경.
-
 ## 프로젝트 구조
 
 ```
@@ -217,7 +203,6 @@ career-ops/
 ├── batch/
 │   ├── batch-prompt.md          # 독립형 워커 프롬프트(Self-contained)
 │   └── batch-runner.sh          # 오케스트레이터 스크립트
-├── dashboard/                   # Go TUI 파이프라인 뷰어
 ├── data/                        # 트래킹 데이터 (gitignored)
 ├── reports/                     # 평가 리포트 (gitignored)
 ├── output/                      # 생성된 PDF (gitignored)
@@ -231,13 +216,10 @@ career-ops/
 ![Claude Code](https://img.shields.io/badge/Claude_Code-000?style=flat&logo=anthropic&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=flat&logo=playwright&logoColor=white)
-![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)
-![Bubble Tea](https://img.shields.io/badge/Bubble_Tea-FF75B5?style=flat&logo=go&logoColor=white)
 
 - **에이전트**: Claude Code + 커스텀 스킬 및 모드
 - **PDF**: Playwright/Puppeteer + HTML 템플릿
 - **스캐너**: Playwright + Greenhouse API + WebSearch
-- **대시보드**: Go + Bubble Tea + Lipgloss (Catppuccin Mocha 테마)
 - **데이터**: Markdown 테이블 + YAML 설정 + TSV 배치 파일
 
 ## 관련 오픈소스 프로젝트

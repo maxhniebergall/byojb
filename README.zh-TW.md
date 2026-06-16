@@ -50,9 +50,7 @@
   <img src="https://img.shields.io/badge/GitHub_Copilot-000?style=flat&logo=githubcopilot&logoColor=white" alt="GitHub Copilot">
   <br>
   <img src="https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/Playwright-2EAD33?style=flat&logo=playwright&logoColor=white" alt="Playwright">
-  <img src="https://img.shields.io/badge/Bubble_Tea-FF75B5?style=flat&logo=go&logoColor=white" alt="Bubble Tea">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT">
   <a href="TRADEMARK.md"><img src="https://img.shields.io/badge/Trademark-Policy-blue.svg" alt="Trademark Policy"></a>
 </p>
@@ -185,18 +183,6 @@ career-ops 是一個具有多種模式的單一斜線指令：
 
 **搜尋的求職平台：** Ashby、Greenhouse、Lever、Wellfound、Workable、RemoteFront
 
-## 儀表板 TUI
-
-內建的終端機儀表板讓你以視覺化方式瀏覽求職管道：
-
-```bash
-cd dashboard
-go build -o career-dashboard .
-./career-dashboard --path ..
-```
-
-功能：6 個篩選分頁、4 種排序模式、分組/平鋪檢視、延遲載入預覽、內嵌狀態修改。
-
 ## 專案結構
 
 ```
@@ -220,7 +206,6 @@ career-ops/
 ├── batch/
 │   ├── batch-prompt.md          # 自包含工作器提示
 │   └── batch-runner.sh          # 協調器腳本
-├── dashboard/                   # Go TUI 管道檢視器
 ├── data/                        # 你的追蹤資料（已 gitignore）
 ├── reports/                     # 評估報告（已 gitignore）
 ├── output/                      # 生成的 PDF（已 gitignore）
@@ -234,13 +219,10 @@ career-ops/
 ![Claude Code](https://img.shields.io/badge/Claude_Code-000?style=flat&logo=anthropic&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=flat&logo=playwright&logoColor=white)
-![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)
-![Bubble Tea](https://img.shields.io/badge/Bubble_Tea-FF75B5?style=flat&logo=go&logoColor=white)
 
 - **代理**：Claude Code，附自訂技能與模式
 - **PDF**：Playwright/Puppeteer + HTML 範本
 - **掃描器**：Playwright + Greenhouse API + WebSearch
-- **儀表板**：Go + Bubble Tea + Lipgloss（Catppuccin Mocha 主題）
 - **資料**：Markdown 表格 + YAML 設定 + TSV 批次檔案
 
 ## 同樣開源

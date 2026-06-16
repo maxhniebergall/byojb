@@ -1,6 +1,11 @@
 # Personal data (user fills these)
 cv.md
 data/applications.md
+# applications.jsonl is the generated source of truth for the tracker (regenerated from
+# scans/extension submits); essay-answers + submission snapshots are personal application data.
+data/applications.jsonl
+data/essay-answers.jsonl
+data/application-snapshots/
 data/pipeline.md
 data/scan-history.tsv
 data/parser-output/**/*.json
@@ -25,6 +30,8 @@ writing-samples/*
 
 # User config and customization (never auto-updated)
 config/profile.yml
+config/autofill-mapping.json
+config/answer-memory.json
 portals.yml
 modes/_profile.md
 .update-dismissed

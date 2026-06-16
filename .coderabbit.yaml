@@ -18,7 +18,5 @@ reviews:
       instructions: "This file defines system vs user file boundaries. Changes here are critical — reject if user-layer files are being reclassified."
     - path: "**/*.mjs"
       instructions: "Check for command injection, path traversal, and SSRF. Ensure scripts handle missing data/ directories gracefully."
-    - path: "dashboard/**"
-      instructions: "Go TUI code. Check for proper error handling and ensure no hardcoded paths."
 chat:
   auto_reply: true
