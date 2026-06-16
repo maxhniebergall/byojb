@@ -30,6 +30,7 @@
   .cvet{font-size:.66rem;padding:.08rem .4rem;border-radius:6px;cursor:pointer;background:rgba(124,141,181,.16);color:var(--accent);border:1px dashed var(--accent);} .cvet:hover{background:rgba(124,141,181,.3);}
   .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);}
   .hx{opacity:.45;} .hx td{text-decoration:line-through dotted rgba(224,85,110,.4);}
+  th.selcol,td.selcol{width:1.6rem;text-align:center;padding-left:.4rem;padding-right:.2rem;cursor:default;} td.selcol input,th.selcol input{cursor:pointer;}
   .row-excl{color:var(--bad);font-size:.66rem;}
   .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
   .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
@@ -67,7 +68,13 @@
         <select id="fGeo"><option value="">any geo</option></select>
         <select id="fDec"><option value="">any decision</option><option>undecided</option><option>shortlist</option><option>skip</option></select>
       </div>
-      <div id="pcount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
+      <div class="pad" style="padding:.4rem 1rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+        <span id="pcount" style="color:var(--mut);font-size:.8rem"></span>
+        <span style="flex:1"></span>
+        <span id="selCount" style="color:var(--mut);font-size:.8rem"></span>
+        <a href="#" id="cmpClear" class="cvet" style="display:none">clear</a>
+        <button class="btn sm" id="cmpBtn" disabled>Compare</button>
+      </div>
       <div id="ptable"></div>
     </div>
   </div>
@@ -86,6 +93,7 @@ function vetCompany(key){ if(!key) return; window.location.href='/companies?vet=
 
 // ==================== POSTINGS ====================
 let RUBRIC={dimensions:[]}, ROWS=[], WEIGHTS={}, psort={key:'display',dir:-1}, FUNNEL={}, WORKFLOW={max_open_per_company:3,apply_floor:3.5};
+let SELECTED=new Set();   // posting keys ticked for comparison (persisted)
 const LEVEL_LADDER=['junior','mid','mid-senior','senior','staff','principal'];
 let DESIRED_LEVEL='senior';
 function levelScore(r){
@@ -101,7 +109,7 @@ function effDims(r){ if(!r.dim_scores) return r.dim_scores; if(!('level' in r.di
 const LS_KEY='careerops.postings.v1';
 function saveState(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify({
-    weights:WEIGHTS, psort, desired_level:DESIRED_LEVEL,
+    weights:WEIGHTS, psort, desired_level:DESIRED_LEVEL, selected:[...SELECTED],
     f:{ q:$('#q').value, fLang:$('#fLang').value, fSen:$('#fSen').value, fRemote:$('#fRemote').value,
         fGeo:$('#fGeo').value, fDec:$('#fDec').value, liveOnly:$('#liveOnly').checked,
         showExcl:$('#showExcl').checked, resOnly:$('#resOnly').checked, minScore:$('#minScore').value,
@@ -131,6 +139,7 @@ async function loadPostings(){
   const st=loadState();
   if(st&&st.weights){ for(const id in WEIGHTS) if(st.weights[id]!=null) WEIGHTS[id]=+st.weights[id]; }
   if(st&&st.psort&&st.psort.key) psort=st.psort;
+  if(st&&Array.isArray(st.selected)) SELECTED=new Set(st.selected);
   DESIRED_LEVEL=(st&&st.desired_level)||(RUBRIC.preferences&&RUBRIC.preferences.desired_level)||'senior';
   renderSliders(); fillFacetFilters(); restoreFilters(st&&st.f); renderCounts(); renderFunnel(); renderPostings();
 }
@@ -220,10 +229,11 @@ function companyBadge(r){
 function renderPostings(){
   const list=pfiltered();
   $('#pcount').textContent=`${list.length} shown`;
-  let h='<table><thead><tr>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'</tr></thead><tbody>';
+  let h='<table><thead><tr><th class="selcol"><input type="checkbox" id="selAll" title="select all shown"></th>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'</tr></thead><tbody>';
   for(const r of list){
     const stack=[...(r.languages||[]),...(r.technologies||[])].slice(0,4).map(x=>`<span class="chip">${esc(x)}</span>`).join('');
     h+=`<tr class="${r.hard_excluded||r.capped?'hx':''}" data-k="${esc(r.key)}">
+      <td class="selcol"><input type="checkbox" class="rsel" data-k="${esc(r.key)}"${SELECTED.has(r.key)?' checked':''}></td>
       <td><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}</td>
       <td>${companyLink(r)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}</td>
       <td>${esc(r.title)}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
@@ -235,12 +245,26 @@ function renderPostings(){
   h+='</tbody></table>';
   $('#ptable').innerHTML=list.length?h:'<div class="detail empty">no postings match</div>';
   $('#ptable').querySelectorAll('th[data-k]').forEach(el=>el.onclick=()=>{const k=el.dataset.k;if(psort.key===k)psort.dir*=-1;else psort={key:k,dir:k==='company'||k==='title'?1:-1};renderPostings();saveState();});
-  $('#ptable').querySelectorAll('tr[data-k]').forEach(el=>el.onclick=()=>window.location.href='/posting?key='+encodeURIComponent(el.dataset.k));
-  $('#ptable').querySelectorAll('td:nth-child(2) a').forEach(el=>el.onclick=(e)=>e.stopPropagation());
+  $('#ptable').querySelectorAll('tr[data-k]').forEach(el=>el.onclick=(e)=>{if(e.target.closest('.selcol'))return;window.open('/posting?key='+encodeURIComponent(el.dataset.k),'_blank');});
+  $('#ptable').querySelectorAll('.rsel').forEach(el=>el.onclick=(e)=>e.stopPropagation());
+  $('#ptable').querySelectorAll('.rsel').forEach(el=>el.onchange=(e)=>{e.stopPropagation();if(el.checked)SELECTED.add(el.dataset.k);else SELECTED.delete(el.dataset.k);renderSelBar();saveState();});
+  const selAll=$('#selAll'); if(selAll){selAll.onclick=(e)=>e.stopPropagation();selAll.onchange=()=>{const on=selAll.checked;for(const r of list){if(on)SELECTED.add(r.key);else SELECTED.delete(r.key);}renderPostings();saveState();};}
+  $('#ptable').querySelectorAll('td:nth-child(3) a').forEach(el=>el.onclick=(e)=>e.stopPropagation());
   $('#ptable').querySelectorAll('.cvet').forEach(el=>el.onclick=(e)=>{e.stopPropagation();vetCompany(el.dataset.vet);});
+  renderSelBar(list);
+}
+function renderSelBar(list){
+  const n=SELECTED.size;
+  $('#selCount').textContent=n?`${n} selected`:'';
+  $('#cmpClear').style.display=n?'inline-block':'none';
+  const btn=$('#cmpBtn'); btn.textContent=n>=2?`Compare (${n})`:'Compare'; btn.disabled=n<2;
+  // keep the select-all box in sync with what's currently shown
+  if(list){const all=list.length&&list.every(r=>SELECTED.has(r.key));const sa=$('#selAll');if(sa)sa.checked=all;}
 }
 ['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly','hideCapped','hideApplied'].forEach(id=>{const e=$('#'+id);const h=()=>{renderPostings();saveState();};e.oninput=h;e.onchange=h;});
 $('#minScore').oninput=()=>{$('#minLbl').textContent=$('#minScore').value;renderPostings();saveState();};
+$('#cmpBtn').onclick=()=>{ if(SELECTED.size<2) return; window.open('/compare?keys='+encodeURIComponent([...SELECTED].join('\n')),'_blank'); };
+$('#cmpClear').onclick=(e)=>{e.preventDefault();SELECTED.clear();renderPostings();saveState();};
 
 loadPostings();
 </script>

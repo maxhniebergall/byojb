@@ -302,7 +302,7 @@ const server = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'content-type');
   // Disable caching for API and dynamic content — fresh data on every request
-  if (String(req.url).startsWith('/api/') || String(req.url).startsWith('/posting') || String(req.url) === '/') {
+  if (String(req.url).startsWith('/api/') || String(req.url).startsWith('/posting') || String(req.url).startsWith('/compare') || String(req.url) === '/') {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -498,6 +498,7 @@ const server = createServer(async (req, res) => {
   if (path === '/companies') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'companies.html'), 'utf8')); }
   if (path === '/applications') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'applications.html'), 'utf8')); }
   if (path === '/posting') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'posting.html'), 'utf8')); }
+  if (path === '/compare') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'posting-comparison.html'), 'utf8')); }
   if (path === '/') { res.writeHead(302, { 'location': '/postings' }); return res.end(); }
   res.writeHead(404); res.end('not found');
 });
