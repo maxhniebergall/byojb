@@ -74,7 +74,6 @@ const SYSTEM_PATHS = [
   'test-all.mjs',
   'batch/batch-prompt.md',
   'batch/batch-runner.sh',
-  'dashboard/',
   'templates/',
   'fonts/',
   '.agents/',

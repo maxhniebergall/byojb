@@ -140,20 +140,6 @@ try {
   fail(`Liveness classification tests crashed: ${e.message}`);
 }
 
-// ── 4. DASHBOARD BUILD ──────────────────────────────────────────
-
-if (!QUICK) {
-  console.log('\n4. Dashboard build');
-  const goBuild = run('cd dashboard && go build -o /tmp/career-dashboard-test . 2>&1');
-  if (goBuild !== null) {
-    pass('Dashboard compiles');
-  } else {
-    fail('Dashboard build failed');
-  }
-} else {
-  console.log('\n4. Dashboard build (skipped --quick)');
-}
-
 // ── 5. DATA CONTRACT ────────────────────────────────────────────
 
 console.log('\n5. Data contract validation');
@@ -206,14 +192,11 @@ const allowedFiles = [
   'README.pt-BR.md', 'README.ru.md', 'README.cn.md', 'README.zh-TW.md',
   // Standard project files
   'LICENSE', 'CITATION.cff', 'CONTRIBUTING.md', 'CHANGELOG.md', 'TRADEMARK.md',
-  'package.json', '.github/FUNDING.yml', 'CLAUDE.md', 'AGENTS.md', 'go.mod', 'test-all.mjs',
+  'package.json', '.github/FUNDING.yml', 'CLAUDE.md', 'AGENTS.md', 'test-all.mjs',
   '.claude-plugin/marketplace.json', '.claude-plugin/plugin.json',
   // Community / governance files (added in v1.3.0, all legitimately reference the maintainer)
   'CODE_OF_CONDUCT.md', 'GOVERNANCE.md', 'SECURITY.md', 'SUPPORT.md',
   '.github/SECURITY.md',
-  // Dashboard credit string
-  'dashboard/internal/ui/screens/pipeline.go',
-  'dashboard/internal/ui/screens/progress.go',
 ];
 
 // Build pathspec for git grep — only scan tracked files matching these
@@ -232,7 +215,6 @@ for (const pattern of leakPatterns) {
     for (const line of result.split('\n')) {
       const file = line.split(':')[0];
       if (allowedFiles.some(a => file.includes(a))) continue;
-      if (file.includes('dashboard/go.mod')) continue;
       warn(`Possible personal data in ${file}: "${pattern}"`);
       leakFound = true;
     }
@@ -1084,6 +1066,96 @@ try {
   }
 } catch (e) {
   fail(`tracker-link normalization tests crashed: ${e.message}`);
+}
+
+// ── 15. AUTOFILL FIELD CLASSIFICATION ───────────────────────────
+
+console.log('\n15. Autofill field classification (deterministic, no LLM)');
+
+try {
+  const { classifyField, classifyForm } = await import(pathToFileURL(join(ROOT, 'autofill-fields.mjs')).href);
+
+  const ck = (label, type, exp) => {
+    const got = classifyField(label, type).kind;
+    if (got === exp) pass(`"${label}" → ${exp}`);
+    else fail(`"${label}" → ${got} (expected ${exp})`);
+  };
+  ck('First Name', 'text', 'standard');
+  ck('Email', 'email', 'standard');
+  ck('Are you legally authorized to work?', 'select', 'standard');
+  ck('Desired salary', 'text', 'salary');               // never auto-filled
+  ck('Gender', 'select', 'demographic');                // always left blank
+  ck('Why do you want to work here?', 'textarea', 'free_text');
+  ck('Resume/CV', 'file', 'file');
+  ck('Favourite programming language?', 'text', 'unmapped');
+
+  // user mapping override wins
+  const mapped = classifyField('How did you find this role', 'text', {}, { 'how did you find this role': 'how_did_you_hear' });
+  if (mapped.kind === 'standard' && mapped.profileKey === 'how_did_you_hear') pass('user mapping override resolves to standard');
+  else fail('user mapping override did not resolve');
+
+  const form = classifyForm([
+    { label: 'First Name', type: 'text', required: true },
+    { label: 'Why us?', type: 'textarea', required: true },
+  ]);
+  if (!form.allStandard && form.requiredUnresolved.length === 1) pass('classifyForm flags a required free-text field as unresolved');
+  else fail('classifyForm verdict wrong');
+} catch (e) {
+  fail(`autofill classification tests crashed: ${e.message}`);
+}
+
+// ── 16. APPLICATION CORE (pure helpers) ─────────────────────────
+
+console.log('\n16. Application core (status + tracker rendering)');
+
+try {
+  const ac = await import(pathToFileURL(join(ROOT, 'application-core.mjs')).href);
+
+  if (ac.validateStatus('applied') === 'Applied' && ac.validateStatus('aplicado') === 'Applied') pass('validateStatus normalizes aliases to canonical');
+  else fail('validateStatus alias normalization failed');
+  if (ac.validateStatus('garbage') === 'Evaluated') pass('validateStatus defaults unknown → Evaluated');
+  else fail('validateStatus default failed');
+
+  if (ac.nextTrackerNum([{ tracker_num: 3 }, { tracker_num: 7 }]) === 8) pass('nextTrackerNum = max + 1');
+  else fail('nextTrackerNum wrong');
+
+  const row = ac.renderRow({ tracker_num: 9, date_applied: '2026-06-15', company: 'Acme', title: 'SWE', score: '4.2/5', status: 'Applied', cv_pdf: 'cv.pdf', report: '[9](reports/009-acme-2026-06-15.md)', notes: 'ok' });
+  if (row.startsWith('| 9 | 2026-06-15 | Acme | SWE | 4.2/5 | Applied | ✅ |') && /reports\/009-acme/.test(row)) pass('renderRow emits the canonical 9-column tracker row');
+  else fail(`renderRow output wrong: ${row}`);
+} catch (e) {
+  fail(`application-core tests crashed: ${e.message}`);
+}
+
+// ── 17. OPEN-APPLICATION CAP (per-company hide) ─────────────────
+
+console.log('\n17. Open-application cap (per-company)');
+
+try {
+  const { OPEN_STATUSES, isOpen } = await import(pathToFileURL(join(ROOT, 'application-core.mjs')).href);
+
+  if (isOpen('Applied') && isOpen('Interview') && isOpen('Offer')) pass('Applied/Interview/Offer count as open');
+  else fail('open-status set wrong');
+  if (!isOpen('Rejected') && !isOpen('Discarded') && !isOpen('SKIP')) pass('Rejected/Discarded/SKIP are closed (free the slot)');
+  else fail('closed statuses leaked into open set');
+
+  // capped predicate over a synthetic application set (mirrors server openCountByCompany)
+  const apps = [
+    { company_key: 'greenhouse:acme', status: 'Applied' },
+    { company_key: 'greenhouse:acme', status: 'Interview' },
+    { company_key: 'greenhouse:acme', status: 'Applied' },
+    { company_key: 'greenhouse:acme', status: 'Rejected' },   // closed → does NOT count
+    { company_key: 'lever:initech', status: 'Applied' },
+  ];
+  const MAX = 3;
+  const counts = {};
+  for (const a of apps) if (isOpen(a.status)) counts[a.company_key] = (counts[a.company_key] || 0) + 1;
+  if (counts['greenhouse:acme'] === 3 && counts['lever:initech'] === 1) pass('open count excludes closed applications');
+  else fail(`open count wrong: ${JSON.stringify(counts)}`);
+  const capped = Object.entries(counts).filter(([, n]) => n >= MAX).map(([k]) => k);
+  if (capped.length === 1 && capped[0] === 'greenhouse:acme') pass('company with 3 open is capped; company with 1 is not');
+  else fail(`capped set wrong: ${JSON.stringify(capped)}`);
+} catch (e) {
+  fail(`open-application cap tests crashed: ${e.message}`);
 }
 
 // ── SUMMARY ─────────────────────────────────────────────────────
