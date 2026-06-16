@@ -95,3 +95,11 @@ hard_filters:
   - { facet: remote_policy,   in: [onsite] }
   - { facet: employment_type, in: [internship] }
   - { facet: yoe_min,         gt: 14 }
+
+# workflow: drives the Postings-tab apply queue + per-company cap.
+#   max_open_per_company — a company's postings auto-hide once it has this many OPEN applications
+#     (Applied/Responded/Interview/Offer). Closing one (Rejected/Discarded) frees the slot.
+#   apply_floor — display-score floor for counting "actionable" postings in the funnel panel.
+workflow:
+  max_open_per_company: 3
+  apply_floor: 3.5
