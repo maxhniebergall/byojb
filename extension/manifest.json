@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Career-Ops Autofill",
+  "version": "0.1.0",
+  "description": "Deterministically fills standard fields on job application forms from your career-ops profile, and tracks submissions back to the dashboard. You always click Submit.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": [
+    "http://localhost:4173/*",
+    "https://job-boards.greenhouse.io/*",
+    "https://boards.greenhouse.io/*",
+    "https://job-boards.eu.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://jobs.ashbyhq.com/*",
+    "https://*.recruitee.com/*",
+    "https://*.breezy.hr/*",
+    "https://*.bamboohr.com/*",
+    "https://apply.workable.com/*",
+    "https://ats.rippling.com/*",
+    "https://jobs.smartrecruiters.com/*",
+    "https://careers.smartrecruiters.com/*",
+    "https://*.myworkdayjobs.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Career-Ops Autofill" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://job-boards.greenhouse.io/*",
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.eu.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://*.recruitee.com/*",
+        "https://*.breezy.hr/*",
+        "https://*.bamboohr.com/*",
+        "https://apply.workable.com/*",
+        "https://ats.rippling.com/*",
+        "https://jobs.smartrecruiters.com/*",
+        "https://careers.smartrecruiters.com/*",
+        "https://*.myworkdayjobs.com/*"
+      ],
+      "run_at": "document_idle",
+      "js": ["content.js"]
+    }
+  ]
+}
