@@ -14,7 +14,11 @@ These files contain your personal data, customizations, and work product. Update
 | `article-digest.md` | Your proof points from portfolio |
 | `interview-prep/story-bank.md` | Your accumulated STAR+R stories |
 | `portals.yml` | Your customized company list |
-| `data/applications.md` | Your application tracker |
+| `data/applications.md` | Your application tracker (generated from `applications.jsonl`) |
+| `data/applications.jsonl` | Source of truth for your application tracker (generated/merged) |
+| `data/essay-answers.jsonl` | Your free-text application answers (corpus for future drafting) |
+| `data/application-snapshots/*` | Snapshots of forms you submitted (captured by the extension) |
+| `config/autofill-mapping.json` | Your saved ATS field-label → profile-key mappings |
 | `data/pipeline.md` | Your URL inbox |
 | `data/scan-history.tsv` | Your scan history |
 | `data/follow-ups.md` | Your follow-up history |
@@ -52,10 +56,11 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `modes/ru/*` | Russian language modes |
 | `CLAUDE.md` | Agent instructions |
 | `AGENTS.md` | Codex instructions |
-| `*.mjs` | Utility scripts |
+| `*.mjs` | Utility scripts (incl. `application-core.mjs`, `mark-applied.mjs`, `autofill-fields.mjs`) |
+| `extension/*` | Chrome autofill extension (MV3) |
+| `web/*` | The unified dashboard (server + UI) |
 | `batch/batch-prompt.md` | Batch worker prompt |
 | `batch/batch-runner.sh` | Batch orchestrator |
-| `dashboard/*` | Go TUI dashboard |
 | `templates/*` | Base templates |
 | `fonts/*` | Self-hosted fonts |
 | `.claude/skills/*` | Skill definitions |

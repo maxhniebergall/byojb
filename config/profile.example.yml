@@ -73,6 +73,31 @@ cv:
   # The ID starts with "D" and is 11 characters long.
   # canva_resume_design_id: "DAxxxxxxxxx"
 
+# Standard answers the autofill Chrome extension (extension/) fills into application forms.
+# RULES (enforced by autofill-fields.mjs): salary fields are NEVER auto-filled (always flagged
+# for review); EEO/demographic fields are always left blank; free-text/essay answers are NOT
+# generated (captured on submit to build a corpus). You always click Submit yourself.
+application_profile:
+  first_name: "Ada"
+  last_name: "Lovelace"
+  full_name: "Ada Lovelace"
+  email: "ada@example.com"
+  phone: "+1-555-0100"
+  location: "Remote, Canada"
+  city: "Toronto"
+  linkedin: "https://www.linkedin.com/in/your-handle/"
+  github: "https://github.com/your-handle"
+  portfolio: ""
+  website: ""
+  work_authorization: "Authorized to work remotely in <country>"
+  requires_sponsorship: false
+  willing_to_relocate: false
+  years_experience: 5
+  current_company: "Acme Corp"
+  current_title: "Senior Software Engineer"
+  how_did_you_hear: "Company careers page"
+  default_resume: "output/your-cv.pdf"   # path to your generated CV PDF
+
 # Auto-PDF threshold during evaluation (used by `/career-ops pipeline` and
 # `bash batch/batch-runner.sh`).
 #

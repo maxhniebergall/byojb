@@ -33,6 +33,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 
 import { makeHttpCtx } from './providers/_http.mjs';
+import { canonicalUrl } from './posting-core.mjs';
 
 const parseYaml = yaml.load;
 
@@ -42,6 +43,10 @@ const PORTALS_PATH = process.env.CAREER_OPS_PORTALS || 'portals.yml';
 const SCAN_HISTORY_PATH = 'data/scan-history.tsv';
 const PIPELINE_PATH = 'data/pipeline.md';
 const APPLICATIONS_PATH = 'data/applications.md';
+// Raw capture for the postings registry — the FULL set of title/location-passing
+// postings this scan (with JD bodies), regardless of dedup. rank-postings.mjs reads
+// this to build/refresh data/posting-research.jsonl + data/postings-personal.jsonl.
+const POSTINGS_RAW_PATH = 'data/postings/raw-latest.jsonl';
 const PROVIDERS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'providers');
 
 // Ensure required directories exist (fresh setup)
@@ -432,6 +437,7 @@ async function main() {
   let totalFilteredLocation = 0;
   let totalDupes = 0;
   const newOffers = [];
+  const matched = [];   // ALL title/location-passing postings (with JD bodies) → registry raw cache
   const errors = [...resolveErrors];
 
   const tasks = targets.map(company => async () => {
@@ -468,6 +474,25 @@ async function main() {
           totalFilteredLocation++;
           continue;
         }
+        // Capture EVERY relevant live posting (pre-dedup) for the registry — the raw
+        // cache is the current full set so rank-postings can mark dropped postings expired.
+        matched.push({
+          url: canonicalUrl(job.url),
+          // For greenhouse/lever/ashby the posting URL IS the apply form; providers that
+          // expose a distinct apply link set job.apply_url. The autofill extension opens this.
+          apply_url: job.apply_url || job.url,
+          title: job.title,
+          company: job.company,
+          location: job.location || '',
+          description: job.description || '',
+          department: job.department || '',
+          date_posted: job.date_posted || '',
+          comp: job.comp || null,
+          employment_type: job.employment_type || '',
+          provider: provider.id,
+          careers_url: company.careers_url || '',
+          source: sourceName,
+        });
         if (seenUrls.has(job.url)) {
           totalDupes++;
           continue;
@@ -488,6 +513,18 @@ async function main() {
   });
 
   await parallelFetch(tasks, CONCURRENCY);
+
+  // 5.4. Write the raw postings cache for the registry builder (rank-postings.mjs).
+  // Always written on a real scan (independent of dedup/verify) so the registry sees
+  // the full current set. Dry-run skips it. Empty result still writes (clears stale rows
+  // for the scanned companies — but only when scanning everything, see --company note).
+  if (!dryRun) {
+    mkdirSync('data/postings', { recursive: true });
+    const meta = { scanned_at: date, companies: targets.map(t => t.name), partial: !!filterCompany };
+    const lines = [JSON.stringify({ _meta: meta }), ...matched.map(m => JSON.stringify(m))];
+    writeFileSync(POSTINGS_RAW_PATH, lines.join('\n') + '\n', 'utf-8');
+    console.log(`  registry raw cache: ${matched.length} relevant postings → ${POSTINGS_RAW_PATH}`);
+  }
 
   // 5.5. Optional liveness verification — drop expired and guard-rejected postings
   let verifiedOffers = newOffers;

@@ -32,6 +32,8 @@ Determine the mode from `$mode`:
 | `find-companies` | `find-companies` |
 | `triage-companies` | `triage-companies` |
 | `research-companies` | `research-companies` |
+| `triage-jobs` | `triage-jobs` |
+| `research-jobs` | `research-jobs` |
 | `batch` | `batch` |
 | `patterns` | `patterns` |
 | `followup` | `followup` |
@@ -67,6 +69,8 @@ Available commands:
   /career-ops find-companies → Discover NEW target companies by criteria → portals.yml
   /career-ops triage-companies → Stage 2: LLM world-knowledge prerank (no web)
   /career-ops research-companies → Stage 3: LLM fetches careers/about pages → reports + fit scores
+  /career-ops triage-jobs → Postings Stage 2: LLM prerank individual postings (no web)
+  /career-ops research-jobs → Postings Stage 3: LLM reads each JD → extracts structured facets
   /career-ops batch     → Batch processing with parallel workers
   /career-ops patterns  → Analyze rejection patterns and improve targeting
   /career-ops followup  → Follow-up cadence tracker: flag overdue, generate drafts
@@ -90,7 +94,7 @@ Applies to: `auto-pipeline`, `oferta`, `ofertas`, `pdf`, `contacto`, `apply`, `p
 ### Standalone modes (only their mode file):
 Read `modes/{mode}.md`
 
-Applies to: `tracker`, `deep`, `interview-prep`, `training`, `project`, `patterns`, `followup`, `find-companies`, `triage-companies`, `research-companies`
+Applies to: `tracker`, `deep`, `interview-prep`, `training`, `project`, `patterns`, `followup`, `find-companies`, `triage-companies`, `research-companies`, `triage-jobs`, `research-jobs`
 
 ### Modes delegated to subagent:
 For `scan`, `apply` (with Playwright), and `pipeline` (3+ URLs): launch as Agent with the content of `_shared.md` + `modes/{mode}.md` injected into the subagent prompt.

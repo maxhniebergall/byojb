@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Applications — career-ops</title>
+<style>
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  header h1{font-size:1.05rem;margin:0;} header a.nav{color:var(--accent);text-decoration:none;font-size:.9rem;margin:0 .5rem;}
+  .seg{display:flex;gap:.3rem;}
+  .seg a{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;text-decoration:none;}
+  .seg a.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
+  .wrap{padding:1rem 1.25rem;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  .pad{padding:.9rem 1rem;} h2.lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 .7rem;}
+  input,select,textarea{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
+  input[type=search]{width:100%;} .ctrls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.7rem;border-bottom:1px solid var(--line);}
+  .ctrls select{font-size:.8rem;}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;} th,td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:600;cursor:pointer;white-space:nowrap;} tr:hover td{background:#191b30;cursor:pointer;}
+  .badge{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .35rem;font-size:.82rem;}
+  .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);}
+  .detail{padding:1rem 1.1rem;} .detail.empty{color:var(--mut);text-align:center;padding:3rem;}
+  .detail h3{margin:.1rem 0;font-size:1.2rem;} .meta{color:var(--mut);font-size:.83rem;margin:.2rem 0 .8rem;} .meta a{color:var(--accent);text-decoration:none;}
+  .field{margin:.8rem 0;} .field label{display:block;font-size:.72rem;text-transform:uppercase;color:var(--mut);margin-bottom:.3rem;}
+  textarea{width:100%;min-height:120px;font:12px/1.5 ui-monospace,monospace;}
+  .jd{max-height:280px;overflow:auto;background:#0c0d1c;border:1px solid var(--line);border-radius:8px;padding:.7rem;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:var(--mut);}
+  .actrow{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.7rem 0;}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+  .row-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+</style>
+</head>
+<body>
+<header>
+  <h1>career-ops</h1>
+  <div class="seg"><a href="/postings">Postings</a><a href="/companies">Companies</a><a href="/applications" class="active">Applications</a></div>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="ctrls">
+      <button class="btn sm" data-af="open">Open</button><button class="btn sm" data-af="closed">Closed</button><button class="btn sm" data-af="all">All</button>
+      <input type="search" id="aq" placeholder="search company / role / recruiter / status / notes…" style="flex:1;min-width:200px">
+      <select id="aStatus"><option value="">any status</option></select>
+    </div>
+    <div id="acount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
+    <div id="atable"></div>
+  </div>
+  <div class="panel" style="margin-top:1rem"><div class="detail empty" id="adetail">Select an application →</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+
+// ==================== APPLICATIONS ====================
+let AQUEUE=[], asort={key:'date_applied',dir:-1}, asel=null, afilter='open';
+const OPEN_STATUSES=['Applied','Responded','Interview','Offer'];
+const isOpenStatus=s=>OPEN_STATUSES.includes(s);
+async function loadApplications(){ AQUEUE=await (await fetch('/api/applications')).json(); fillAStatus(); renderApplications(); }
+function fillAStatus(){ const s=new Set(AQUEUE.map(a=>a.status).filter(Boolean)); $('#aStatus').innerHTML='<option value="">any status</option>'+[...s].sort().map(v=>`<option>${esc(v)}</option>`).join(''); }
+document.querySelectorAll('[data-af]').forEach(b=>b.onclick=()=>{afilter=b.dataset.af;renderApplications();});
+function afiltered(){
+  const q=$('#aq').value.trim().toLowerCase(), st=$('#aStatus').value;
+  let list=AQUEUE.slice();
+  if(afilter==='open') list=list.filter(a=>isOpenStatus(a.status));
+  else if(afilter==='closed') list=list.filter(a=>!isOpenStatus(a.status));
+  if(st) list=list.filter(a=>a.status===st);
+  if(q) list=list.filter(a=>[a.company,a.title,a.status,a.confirmation,a.notes,a.recruiter&&a.recruiter.name,a.recruiter&&a.recruiter.email].filter(Boolean).join(' ').toLowerCase().includes(q));
+  const k=asort.key,dir=asort.dir;
+  list.sort((a,b)=>{const av=a[k],bv=b[k];if(k==='tracker_num')return((av??0)-(bv??0))*dir;return String(av??'').localeCompare(String(bv??''))*dir;});
+  return list;
+}
+function ath(k,l){const ar=asort.key===k?(asort.dir<0?' ▼':' ▲'):'';return `<th data-ak="${k}">${esc(l)}${ar}</th>`;}
+function renderApplications(){
+  const list=afiltered();
+  $('#acount').textContent=`${list.length} application${list.length===1?'':'s'}`;
+  let h='<table><thead><tr>'+ath('date_applied','Date')+ath('company','Company')+ath('title','Role')+ath('status','Status')+'<th>CV</th><th>Links</th><th>Recruiter</th><th>Close</th></tr></thead><tbody>';
+  for(const a of list){
+    const links=[a.apply_url?`<a href="${esc(a.apply_url)}" target="_blank">apply ↗</a>`:'', a.report?`<a href="/report?f=${encodeURIComponent(a.report)}" target="_blank">report ↗</a>`:''].filter(Boolean).join(' · ');
+    const close=isOpenStatus(a.status)?`<button class="btn sm aclose" data-ak="${esc(a.key)}" data-to="Rejected" title="got turned down">Reject</button> <button class="btn sm aclose" data-ak="${esc(a.key)}" data-to="Discarded" title="no longer pursuing">Discard</button>`:'·';
+    h+=`<tr class="arow" data-ak="${esc(a.key)}">
+      <td>${esc(a.date_applied||'·')}</td><td>${esc(a.company)}</td><td>${esc(a.title)}</td>
+      <td><span class="st">${esc(a.status||'·')}</span></td>
+      <td>${a.cv_pdf?'✅':'·'}</td><td>${links||'·'}</td>
+      <td>${esc((a.recruiter&&(a.recruiter.name||a.recruiter.email))||'·')}</td>
+      <td>${close}</td></tr>`;
+  }
+  h+='</tbody></table>';
+  $('#atable').innerHTML=list.length?h:'<div class="detail empty">no applications here — submit one via the extension, or run <code>node mark-applied.mjs</code></div>';
+  $('#atable').querySelectorAll('th[data-ak]').forEach(el=>el.onclick=()=>{const k=el.dataset.ak;if(asort.key===k)asort.dir*=-1;else asort={key:k,dir:k==='company'||k==='title'?1:-1};renderApplications();});
+  $('#atable').querySelectorAll('tr.arow').forEach(el=>el.onclick=()=>openApplication(el.dataset.ak));
+  $('#atable').querySelectorAll('tr.arow a[href]').forEach(el=>el.onclick=e=>e.stopPropagation());
+  $('#atable').querySelectorAll('button.aclose').forEach(el=>el.onclick=async e=>{e.stopPropagation();await post('/api/application/status',{key:el.dataset.ak,status:el.dataset.to});toast('closed → '+el.dataset.to);await loadApplications();});
+}
+async function openApplication(key){
+  asel=key;
+  const a=await (await fetch('/api/application?key='+encodeURIComponent(key))).json();
+  if(a.error){ $('#adetail').className='detail empty'; $('#adetail').textContent='not found'; return; }
+  const r=a.recruiter||{};
+  const tl=(a.status_timeline||[]).map(t=>`<div><span class="st">${esc(t.status)}</span> <small style="color:var(--mut)">${esc(t.date||'')}${t.note?' — '+esc(t.note):''}</small></div>`).join('')||'<small style="color:var(--mut)">no history</small>';
+  const sf=(a.submitted_fields||[]).map(f=>`<div><b>${esc(f.label||f.name||'')}:</b> ${esc((f.value??'').toString().slice(0,160))}</div>`).join('')||'<small style="color:var(--mut)">none captured</small>';
+  const statusBtns=(a.states||[]).map(s=>`<button class="btn sm" data-st="${esc(s)}"${s===a.status?' style="border-color:var(--accent);color:var(--accent)"':''}>${esc(s)}</button>`).join('');
+  $('#adetail').className='detail';
+  $('#adetail').innerHTML=`<h3>${esc(a.company)} — ${esc(a.title)} <span class="st">${esc(a.status)}</span></h3>
+    <div class="meta">${esc(a.provider||'')} ${a.location?'· '+esc(a.location):''} ${a.date_applied?'· applied '+esc(a.date_applied):''}
+      ${a.apply_url?`· <a href="${esc(a.apply_url)}" target="_blank">apply page ↗</a>`:''}
+      ${a.report_file?`· <a href="/report?f=${encodeURIComponent(a.report_file)}" target="_blank">report ↗</a>`:''}</div>
+    <div class="field"><label>Status</label><div class="actrow">${statusBtns}</div></div>
+    <div class="field"><label>Status history</label>${tl}</div>
+    <div class="field"><label>CV sent</label>${esc(a.cv_pdf||'—')}${a.confirmation?' · confirmation: '+esc(a.confirmation):''}</div>
+    <div class="field"><label>Recruiter</label>
+      <div class="actrow"><input id="aRname" placeholder="name" value="${esc(r.name||'')}" style="flex:1;min-width:8rem"><input id="aRemail" placeholder="email" value="${esc(r.email||'')}" style="flex:1;min-width:8rem"><input id="aRphone" placeholder="phone" value="${esc(r.phone||'')}" style="width:9rem"></div>
+      <textarea id="aRnotes" placeholder="recruiter / call notes" style="min-height:60px;margin-top:.3rem">${esc(r.notes||'')}</textarea></div>
+    <div class="field"><label>Notes</label><textarea id="aNotes" style="min-height:60px">${esc(a.notes||'')}</textarea>
+      <button class="btn sm" id="aSaveMeta" style="margin-top:.3rem">Save recruiter & notes</button></div>
+    <div class="field"><label>Submitted fields (${(a.submitted_fields||[]).length})</label><div class="jd">${sf}</div></div>
+    ${a.jd_body?`<div class="field"><label>Job description</label><div class="jd">${esc(a.jd_body)}</div></div>`:''}`;
+  $('#adetail').querySelectorAll('[data-st]').forEach(el=>el.onclick=async()=>{await post('/api/application/status',{key,status:el.dataset.st});toast('status → '+el.dataset.st);await loadApplications();openApplication(key);});
+  $('#aSaveMeta').onclick=async()=>{await post('/api/application/meta',{key,recruiter:{name:$('#aRname').value,email:$('#aRemail').value,phone:$('#aRphone').value,notes:$('#aRnotes').value},notes:$('#aNotes').value});toast('saved');await loadApplications();};
+}
+['aq','aStatus'].forEach(id=>{const e=$('#'+id);e.oninput=renderApplications;e.onchange=renderApplications;});
+
+loadApplications();
+</script>
+</body>
+</html>

@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>career-ops — dashboard</title>
+<title>Postings — career-ops</title>
 <style>
   :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
   *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
   header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
-  header h1{font-size:1.05rem;margin:0;} .seg{display:flex;gap:.3rem;}
-  .seg button{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;}
-  .seg button.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
+  header h1{font-size:1.05rem;margin:0;} header a.nav{color:var(--accent);text-decoration:none;font-size:.9rem;margin:0 .5rem;}
+  .seg{display:flex;gap:.3rem;}
+  .seg a{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;text-decoration:none;}
+  .seg a.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
   .counts{color:var(--mut);font-size:.82rem;margin-left:auto;}
   .wrap{display:grid;grid-template-columns:260px 1fr;gap:1rem;padding:1rem 1.25rem;align-items:start;}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
@@ -29,31 +30,21 @@
   .cvet{font-size:.66rem;padding:.08rem .4rem;border-radius:6px;cursor:pointer;background:rgba(124,141,181,.16);color:var(--accent);border:1px dashed var(--accent);} .cvet:hover{background:rgba(124,141,181,.3);}
   .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);}
   .hx{opacity:.45;} .hx td{text-decoration:line-through dotted rgba(224,85,110,.4);}
+  th.selcol,td.selcol{width:1.6rem;text-align:center;padding-left:.4rem;padding-right:.2rem;cursor:default;} td.selcol input,th.selcol input{cursor:pointer;}
   .row-excl{color:var(--bad);font-size:.66rem;}
   .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
   .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
-  .detail{padding:1rem 1.1rem;} .detail.empty{color:var(--mut);text-align:center;padding:3rem;}
-  .detail h3{margin:.1rem 0;font-size:1.2rem;} .meta{color:var(--mut);font-size:.83rem;margin:.2rem 0 .8rem;} .meta a{color:var(--accent);text-decoration:none;}
-  .facets{display:grid;grid-template-columns:1fr 1fr;gap:.3rem .9rem;font-size:.8rem;margin:.6rem 0;}
-  .facets b{color:var(--mut);font-weight:600;}
-  .jd{max-height:280px;overflow:auto;background:#0c0d1c;border:1px solid var(--line);border-radius:8px;padding:.7rem;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:var(--mut);}
-  .actrow{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.7rem 0;}
-  textarea{width:100%;min-height:120px;font:12px/1.5 ui-monospace,monospace;}
-  .field{margin:.8rem 0;} .field label{display:block;font-size:.72rem;text-transform:uppercase;color:var(--mut);margin-bottom:.3rem;}
   .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
-  .list{max-height:80vh;overflow:auto;} .crow{display:flex;gap:.5rem;align-items:center;padding:.5rem .65rem;border-bottom:1px solid var(--line);cursor:pointer;} .crow:hover{background:#191b30;} .crow.sel{background:#23264a;}
-  .nm{flex:1;min-width:0;} .nm b{font-weight:600;} .nm small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 </style>
 </head>
 <body>
 <header>
   <h1>career-ops</h1>
-  <div class="seg"><button class="active" data-s="postings">Postings</button><button data-s="companies">Companies</button><button data-s="applications">Applications</button></div>
+  <div class="seg"><a href="/postings" class="active">Postings</a><a href="/companies">Companies</a><a href="/applications">Applications</a></div>
   <span class="counts" id="counts">loading…</span>
 </header>
 
-<!-- POSTINGS -->
-<div class="wrap" id="view-postings">
+<div class="wrap">
   <aside class="panel pad">
     <h2 class="lbl">Rubric weights (live)</h2>
     <div id="sliders"></div>
@@ -77,37 +68,16 @@
         <select id="fGeo"><option value="">any geo</option></select>
         <select id="fDec"><option value="">any decision</option><option>undecided</option><option>shortlist</option><option>skip</option></select>
       </div>
-      <div id="pcount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
+      <div class="pad" style="padding:.4rem 1rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+        <span id="pcount" style="color:var(--mut);font-size:.8rem"></span>
+        <span style="flex:1"></span>
+        <span id="selCount" style="color:var(--mut);font-size:.8rem"></span>
+        <a href="#" id="cmpClear" class="cvet" style="display:none">clear</a>
+        <button class="btn sm" id="cmpBtn" disabled>Compare</button>
+      </div>
       <div id="ptable"></div>
     </div>
   </div>
-</div>
-
-<!-- COMPANIES -->
-<div class="wrap" id="view-companies" style="display:none">
-  <div class="panel">
-    <div class="ctrls">
-      <button class="btn sm" data-cf="undecided">To decide</button><button class="btn sm" data-cf="keep">Kept</button>
-      <button class="btn sm" data-cf="skip">Skipped</button><button class="btn sm" data-cf="all">All</button>
-      <input type="search" id="cq" placeholder="filter…" style="flex:1;min-width:120px">
-    </div>
-    <div class="list" id="clist"></div>
-  </div>
-  <div class="panel"><div class="detail empty" id="cdetail">Select a company →</div></div>
-</div>
-
-<!-- APPLICATIONS -->
-<div id="view-applications" style="display:none;padding:1rem 1.25rem">
-  <div class="panel">
-    <div class="ctrls">
-      <button class="btn sm" data-af="open">Open</button><button class="btn sm" data-af="closed">Closed</button><button class="btn sm" data-af="all">All</button>
-      <input type="search" id="aq" placeholder="search company / role / recruiter / status / notes…" style="flex:1;min-width:200px">
-      <select id="aStatus"><option value="">any status</option></select>
-    </div>
-    <div id="acount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
-    <div id="atable"></div>
-  </div>
-  <div class="panel" style="margin-top:1rem"><div class="detail empty" id="adetail">Select an application →</div></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -118,23 +88,12 @@ const bcls=v=>v==null?'b-lo':v>=4?'b-hi':v>=3?'b-mid':'b-lo';
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
 const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
 
-// ---------- section switch ----------
-function showSection(s){
-  document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('active',x.dataset.s===s));
-  $('#view-postings').style.display=s==='postings'?'grid':'none';
-  $('#view-companies').style.display=s==='companies'?'grid':'none';
-  $('#view-applications').style.display=s==='applications'?'block':'none';
-  if(s==='companies'&&!CQUEUE.length) loadCompanies();
-  if(s==='applications') loadApplications();
-}
-document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>showSection(b.dataset.s));
 // Lever C — just-in-time vetting: jump from a posting straight to its company's vetting drawer.
-function vetCompany(key){ if(!key) return; showSection('companies'); loadCompanies().then(()=>openCompany(key)); }
+function vetCompany(key){ if(!key) return; window.location.href='/companies?vet='+encodeURIComponent(key); }
 
 // ==================== POSTINGS ====================
 let RUBRIC={dimensions:[]}, ROWS=[], WEIGHTS={}, psort={key:'display',dir:-1}, FUNNEL={}, WORKFLOW={max_open_per_company:3,apply_floor:3.5};
-// Level is categorical: the user picks a desired rung; the score is proximity to it (mirrors
-// score-postings.mjs levelMatch). The picker is per-level-dimension; weight stays a normal slider.
+let SELECTED=new Set();   // posting keys ticked for comparison (persisted)
 const LEVEL_LADDER=['junior','mid','mid-senior','senior','staff','principal'];
 let DESIRED_LEVEL='senior';
 function levelScore(r){
@@ -145,14 +104,12 @@ function levelScore(r){
   if(li<0) return null;
   return Math.max(1,5-Math.abs(li-di));
 }
-// effective dim_scores: recompute the level dimension live from the picked desired level
 function effDims(r){ if(!r.dim_scores) return r.dim_scores; if(!('level' in r.dim_scores)) return r.dim_scores; return {...r.dim_scores, level:levelScore(r)}; }
 
-// ---- filter + weight persistence (survives reload) ----
 const LS_KEY='careerops.postings.v1';
 function saveState(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify({
-    weights:WEIGHTS, psort, desired_level:DESIRED_LEVEL,
+    weights:WEIGHTS, psort, desired_level:DESIRED_LEVEL, selected:[...SELECTED],
     f:{ q:$('#q').value, fLang:$('#fLang').value, fSen:$('#fSen').value, fRemote:$('#fRemote').value,
         fGeo:$('#fGeo').value, fDec:$('#fDec').value, liveOnly:$('#liveOnly').checked,
         showExcl:$('#showExcl').checked, resOnly:$('#resOnly').checked, minScore:$('#minScore').value,
@@ -179,10 +136,10 @@ async function loadPostings(){
   const d=await (await fetch('/api/postings')).json();
   RUBRIC=d.rubric||{dimensions:[]}; ROWS=d.rows||[]; FUNNEL=d.funnel||{}; WORKFLOW=d.workflow||WORKFLOW;
   WEIGHTS={}; for(const dm of RUBRIC.dimensions) WEIGHTS[dm.id||dm.name]=+dm.weight||0;
-  // restore persisted weights + sort before first paint so the queue comes back as you left it
   const st=loadState();
   if(st&&st.weights){ for(const id in WEIGHTS) if(st.weights[id]!=null) WEIGHTS[id]=+st.weights[id]; }
   if(st&&st.psort&&st.psort.key) psort=st.psort;
+  if(st&&Array.isArray(st.selected)) SELECTED=new Set(st.selected);
   DESIRED_LEVEL=(st&&st.desired_level)||(RUBRIC.preferences&&RUBRIC.preferences.desired_level)||'senior';
   renderSliders(); fillFacetFilters(); restoreFilters(st&&st.f); renderCounts(); renderFunnel(); renderPostings();
 }
@@ -191,7 +148,6 @@ function renderFunnel(){
   const f=FUNNEL||{}; const low=(f.actionable??99)<5;
   const cell=(n,l)=>`<span style="margin-right:1rem"><b style="font-size:1.05rem">${n??'·'}</b> <span style="color:var(--mut);font-size:.78rem">${l}</span></span>`;
   let h=`<h2 class="lbl">Apply queue</h2><div style="margin:.2rem 0 .5rem">${cell(f.actionable,'actionable')}${cell(f.live,'live')}${cell(f.open_apps,'open apps')}${cell(f.capped_companies,'capped cos')}${f.companies_pending_vet?cell(f.companies_pending_vet,'cos to vet'):''}</div>`;
-  // Lever C — surface companies that earned a vetting decision by having a shortlisted posting.
   if(f.companies_pending_vet){
     h+=`<div style="font-size:.82rem;border-top:1px solid var(--line);padding-top:.5rem">🏷️ <b>${f.companies_pending_vet} unvetted ${f.companies_pending_vet===1?'company has':'companies have'} a shortlisted posting.</b> Vet ${f.companies_pending_vet===1?'it':'them'} to fold company fit into the score → <code>node llm-triage-jobs.mjs --vet-queue</code></div>`;
   }
@@ -205,7 +161,6 @@ function renderFunnel(){
 function renderSliders(){
   $('#sliders').innerHTML=RUBRIC.dimensions.map(d=>{
     const id=d.id||d.name;
-    // the categorical Level dimension gets a "desired level" picker above its weight slider
     const lvlPick=d.compute==='level'?`<select data-lvlsel="1" style="width:100%;font-size:.76rem;margin:.1rem 0 .3rem">${LEVEL_LADDER.map(l=>`<option${l===DESIRED_LEVEL?' selected':''}>${l}</option>`).join('')}</select>`:'';
     return `<div class="dim"><div class="r"><span title="${esc(d.guidance||'')}">${esc(d.name)}${d.compute?'':' <small>·llm</small>'}</span><span id="w-${id}">${WEIGHTS[id]}</span></div>${lvlPick}<input type="range" min="0" max="50" step="1" value="${WEIGHTS[id]}" data-id="${id}"></div>`;
   }).join('');
@@ -248,15 +203,13 @@ function pfiltered(){
   const numeric=['display','yoe_min','relevance_score','computed_score'].includes(k);
   list.sort((a,b)=>{
     const av=k==='display'?a._s:a[k], bv=k==='display'?b._s:b[k];
-    if(numeric) return ((av??-1)-(bv??-1))*dir;          // dir=-1 → descending
+    if(numeric) return ((av??-1)-(bv??-1))*dir;
     return String(av??'').localeCompare(String(bv??''))*dir;
   });
   return list;
 }
 function comp(c){ if(!c) return ''; if(typeof c!=='object')return String(c); const f=n=>n!=null?('$'+Math.round(n/1000)+'k'):''; const r=[f(c.min),f(c.max)].filter(Boolean).join('–'); return r?(r+(c.currency?(' '+c.currency):'')):''; }
 function th(k,l){const ar=psort.key===k?(psort.dir<0?' ▼':' ▲'):'';return `<th data-k="${k}">${l}${ar}</th>`;}
-// Merged pipeline state: the application/tracker status wins once it exists (furthest stage),
-// else the pre-apply triage decision (shortlist/skip). Coloured green=good / red=terminal-neg / accent=in-flight.
 function pipeChip(r){
   const S=r.status;
   if(S){ const cls=/offer/i.test(S)?'dec keep':/reject|discard/i.test(S)?'dec skip':'st'; return `<span class="${cls}" title="from Applications tracker">${esc(S)}</span>`; }
@@ -264,8 +217,9 @@ function pipeChip(r){
   if(r.decision==='skip') return '<span class="dec skip">skip</span>';
   return '·';
 }
-// Lever B/C — show how each posting's company was vetted, right in the queue.
-// keep → fit boost is in the score; undecided → clickable "vet co" (the JIT-vetting nudge).
+function companyLink(r){
+  return `<a href="/companies?vet=${encodeURIComponent(r.company_key||r.company)}" style="color:var(--accent);text-decoration:none;cursor:pointer;">${esc(r.company)}</a>`;
+}
 function companyBadge(r){
   const d=r.company_decision;
   if(d==='keep') return ` <span class="dec keep" title="vetted company — fit ${r.company_fit??'?'}/5 (boosts the score)">✓ co ${r.company_fit!=null?r.company_fit:'kept'}</span>`;
@@ -275,12 +229,13 @@ function companyBadge(r){
 function renderPostings(){
   const list=pfiltered();
   $('#pcount').textContent=`${list.length} shown`;
-  let h='<table><thead><tr>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'</tr></thead><tbody>';
+  let h='<table><thead><tr><th class="selcol"><input type="checkbox" id="selAll" title="select all shown"></th>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'</tr></thead><tbody>';
   for(const r of list){
     const stack=[...(r.languages||[]),...(r.technologies||[])].slice(0,4).map(x=>`<span class="chip">${esc(x)}</span>`).join('');
     h+=`<tr class="${r.hard_excluded||r.capped?'hx':''}" data-k="${esc(r.key)}">
+      <td class="selcol"><input type="checkbox" class="rsel" data-k="${esc(r.key)}"${SELECTED.has(r.key)?' checked':''}></td>
       <td><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}</td>
-      <td>${esc(r.company)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}</td>
+      <td>${companyLink(r)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}</td>
       <td>${esc(r.title)}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
       <td>${stack||'·'}</td><td>${esc(comp(r.comp))||'·'}</td>
       <td>${esc(r.location||r.remote_policy||'·')}${r.geo_eligibility&&r.geo_eligibility!=='unclear'?` <span class="chip">${esc(r.geo_eligibility)}</span>`:''}</td>
@@ -290,113 +245,26 @@ function renderPostings(){
   h+='</tbody></table>';
   $('#ptable').innerHTML=list.length?h:'<div class="detail empty">no postings match</div>';
   $('#ptable').querySelectorAll('th[data-k]').forEach(el=>el.onclick=()=>{const k=el.dataset.k;if(psort.key===k)psort.dir*=-1;else psort={key:k,dir:k==='company'||k==='title'?1:-1};renderPostings();saveState();});
-  $('#ptable').querySelectorAll('tr[data-k]').forEach(el=>el.onclick=()=>window.open('/posting?key='+encodeURIComponent(el.dataset.k),'_blank'));
+  $('#ptable').querySelectorAll('tr[data-k]').forEach(el=>el.onclick=(e)=>{if(e.target.closest('.selcol'))return;window.open('/posting?key='+encodeURIComponent(el.dataset.k),'_blank');});
+  $('#ptable').querySelectorAll('.rsel').forEach(el=>el.onclick=(e)=>e.stopPropagation());
+  $('#ptable').querySelectorAll('.rsel').forEach(el=>el.onchange=(e)=>{e.stopPropagation();if(el.checked)SELECTED.add(el.dataset.k);else SELECTED.delete(el.dataset.k);renderSelBar();saveState();});
+  const selAll=$('#selAll'); if(selAll){selAll.onclick=(e)=>e.stopPropagation();selAll.onchange=()=>{const on=selAll.checked;for(const r of list){if(on)SELECTED.add(r.key);else SELECTED.delete(r.key);}renderPostings();saveState();};}
+  $('#ptable').querySelectorAll('td:nth-child(3) a').forEach(el=>el.onclick=(e)=>e.stopPropagation());
   $('#ptable').querySelectorAll('.cvet').forEach(el=>el.onclick=(e)=>{e.stopPropagation();vetCompany(el.dataset.vet);});
+  renderSelBar(list);
+}
+function renderSelBar(list){
+  const n=SELECTED.size;
+  $('#selCount').textContent=n?`${n} selected`:'';
+  $('#cmpClear').style.display=n?'inline-block':'none';
+  const btn=$('#cmpBtn'); btn.textContent=n>=2?`Compare (${n})`:'Compare'; btn.disabled=n<2;
+  // keep the select-all box in sync with what's currently shown
+  if(list){const all=list.length&&list.every(r=>SELECTED.has(r.key));const sa=$('#selAll');if(sa)sa.checked=all;}
 }
 ['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly','hideCapped','hideApplied'].forEach(id=>{const e=$('#'+id);const h=()=>{renderPostings();saveState();};e.oninput=h;e.onchange=h;});
 $('#minScore').oninput=()=>{$('#minLbl').textContent=$('#minScore').value;renderPostings();saveState();};
-
-// ==================== COMPANIES ====================
-let CQUEUE=[],cfilter='undecided',csel=null;
-async function loadCompanies(){CQUEUE=await (await fetch('/api/companies')).json();renderCList();}
-document.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{cfilter=b.dataset.cf;renderCList();});
-$('#cq').oninput=renderCList;
-function renderCList(){
-  const q=$('#cq').value.trim().toLowerCase();
-  let list=CQUEUE.filter(r=>cfilter==='all'?true:r.decision===cfilter);
-  if(q)list=list.filter(r=>(r.name+r.company_type+r.reason).toLowerCase().includes(q));
-  $('#clist').innerHTML=list.map(r=>`<div class="crow ${csel===r.key?'sel':''}" data-k="${esc(r.key)}">
-    <span class="badge ${bcls(r.score)}">${r.score!=null?Number(r.score).toFixed(1):'·'}</span>
-    <span class="nm"><b>${esc(r.name)}</b><small>${esc(r.provider)} · ${r.remote_relevant??'?'} remote${r.reason?' · '+esc(r.reason):''}</small></span>
-    <span class="pill">${esc(r.company_type)}</span>${r.decision!=='undecided'?`<span class="dec ${r.decision}">${r.decision}</span>`:''}</div>`).join('')||'<div class="detail empty">nothing here</div>';
-  $('#clist').querySelectorAll('.crow').forEach(el=>el.onclick=()=>openCompany(el.dataset.k));
-}
-async function openCompany(key){
-  csel=key;renderCList();
-  const c=await (await fetch('/api/company?key='+encodeURIComponent(key))).json();
-  $('#cdetail').className='detail';
-  $('#cdetail').innerHTML=`<h3>${esc(c.name)} ${c.decision!=='undecided'?`<span class="dec ${c.decision}">${c.decision}</span>`:''}</h3>
-    <div class="meta">${esc(c.provider)} · ${esc(c.company_type||'')} · ${c.remote_relevant??'?'} remote-eligible ${c.careers_url?`· <a href="${esc(c.careers_url)}" target="_blank">careers ↗</a>`:''}</div>
-    <div style="margin:.3rem 0">${(c.sample_titles||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div>
-    ${c.links&&c.links.length?`<div style="margin:.3rem 0">${c.links.map(l=>`<a class="pill" style="color:var(--accent)" href="${esc(l.url)}" target="_blank">${l.tag?'['+esc(l.tag)+'] ':''}${esc(l.label)} ↗</a>`).join(' ')}</div>`:''}
-    <div class="actrow"><label style="font-size:.78rem;color:var(--mut)">Rank 0–5:</label><input id="cRank" type="number" min="0" max="5" step="0.1" value="${c.llm_fit??c.llm_rank??''}" style="width:5rem"><button class="btn sm" id="cSaveRank">Save</button><span style="flex:1"></span><button class="btn good" id="cKeep">Keep</button><button class="btn bad" id="cSkip">Skip</button><button class="btn sm" id="cUndo">Reset</button></div>
-    <div class="field"><label>Fit verdict</label><textarea id="cFit">${esc(c.fit_verdict)}</textarea><button class="btn sm" id="cSaveFit" style="margin-top:.3rem">Save fit</button></div>
-    <div class="field"><label>Research note</label><textarea id="cRes">${esc(c.research_note)}</textarea><button class="btn sm" id="cSaveRes" style="margin-top:.3rem">Save note</button></div>`;
-  $('#cKeep').onclick=async()=>{await post('/api/company/decision',{key,decision:'keep'});toast('kept');await loadCompanies();openCompany(key);};
-  $('#cSkip').onclick=async()=>{await post('/api/company/decision',{key,decision:'skip'});toast('skipped');await loadCompanies();openCompany(key);};
-  $('#cUndo').onclick=async()=>{await post('/api/company/decision',{key,decision:'undecided'});toast('reset');await loadCompanies();openCompany(key);};
-  $('#cSaveRank').onclick=async()=>{const r=await post('/api/company/rank',{key,llm_fit:$('#cRank').value});toast((await r.json()).ok?'rank saved':'0–5 only');await loadCompanies();};
-  $('#cSaveFit').onclick=async()=>{await post('/api/company/report',{key,which:'fit',content:$('#cFit').value});toast('fit saved');};
-  $('#cSaveRes').onclick=async()=>{await post('/api/company/report',{key,which:'research',content:$('#cRes').value});toast('note saved');};
-}
-
-// ==================== APPLICATIONS ====================
-let AQUEUE=[], asort={key:'date_applied',dir:-1}, asel=null, afilter='open';
-const OPEN_STATUSES=['Applied','Responded','Interview','Offer'];
-const isOpenStatus=s=>OPEN_STATUSES.includes(s);
-async function loadApplications(){ AQUEUE=await (await fetch('/api/applications')).json(); fillAStatus(); renderApplications(); }
-function fillAStatus(){ const s=new Set(AQUEUE.map(a=>a.status).filter(Boolean)); $('#aStatus').innerHTML='<option value="">any status</option>'+[...s].sort().map(v=>`<option>${esc(v)}</option>`).join(''); }
-document.querySelectorAll('[data-af]').forEach(b=>b.onclick=()=>{afilter=b.dataset.af;renderApplications();});
-function afiltered(){
-  const q=$('#aq').value.trim().toLowerCase(), st=$('#aStatus').value;
-  let list=AQUEUE.slice();
-  if(afilter==='open') list=list.filter(a=>isOpenStatus(a.status));
-  else if(afilter==='closed') list=list.filter(a=>!isOpenStatus(a.status));
-  if(st) list=list.filter(a=>a.status===st);
-  if(q) list=list.filter(a=>[a.company,a.title,a.status,a.confirmation,a.notes,a.recruiter&&a.recruiter.name,a.recruiter&&a.recruiter.email].filter(Boolean).join(' ').toLowerCase().includes(q));
-  const k=asort.key,dir=asort.dir;
-  list.sort((a,b)=>{const av=a[k],bv=b[k];if(k==='tracker_num')return((av??0)-(bv??0))*dir;return String(av??'').localeCompare(String(bv??''))*dir;});
-  return list;
-}
-function ath(k,l){const ar=asort.key===k?(asort.dir<0?' ▼':' ▲'):'';return `<th data-ak="${k}">${esc(l)}${ar}</th>`;}
-function renderApplications(){
-  const list=afiltered();
-  $('#acount').textContent=`${list.length} application${list.length===1?'':'s'}`;
-  let h='<table><thead><tr>'+ath('date_applied','Date')+ath('company','Company')+ath('title','Role')+ath('status','Status')+'<th>CV</th><th>Links</th><th>Recruiter</th><th>Close</th></tr></thead><tbody>';
-  for(const a of list){
-    const links=[a.apply_url?`<a href="${esc(a.apply_url)}" target="_blank">apply ↗</a>`:'', a.report?`<a href="/report?f=${encodeURIComponent(a.report)}" target="_blank">report ↗</a>`:''].filter(Boolean).join(' · ');
-    const close=isOpenStatus(a.status)?`<button class="btn sm aclose" data-ak="${esc(a.key)}" data-to="Rejected" title="got turned down">Reject</button> <button class="btn sm aclose" data-ak="${esc(a.key)}" data-to="Discarded" title="no longer pursuing">Discard</button>`:'·';
-    h+=`<tr class="arow" data-ak="${esc(a.key)}">
-      <td>${esc(a.date_applied||'·')}</td><td>${esc(a.company)}</td><td>${esc(a.title)}</td>
-      <td><span class="st">${esc(a.status||'·')}</span></td>
-      <td>${a.cv_pdf?'✅':'·'}</td><td>${links||'·'}</td>
-      <td>${esc((a.recruiter&&(a.recruiter.name||a.recruiter.email))||'·')}</td>
-      <td>${close}</td></tr>`;
-  }
-  h+='</tbody></table>';
-  $('#atable').innerHTML=list.length?h:'<div class="detail empty">no applications here — submit one via the extension, or run <code>node mark-applied.mjs</code></div>';
-  $('#atable').querySelectorAll('th[data-ak]').forEach(el=>el.onclick=()=>{const k=el.dataset.ak;if(asort.key===k)asort.dir*=-1;else asort={key:k,dir:k==='company'||k==='title'?1:-1};renderApplications();});
-  $('#atable').querySelectorAll('tr.arow').forEach(el=>el.onclick=()=>openApplication(el.dataset.ak));
-  $('#atable').querySelectorAll('tr.arow a[href]').forEach(el=>el.onclick=e=>e.stopPropagation());
-  $('#atable').querySelectorAll('button.aclose').forEach(el=>el.onclick=async e=>{e.stopPropagation();await post('/api/application/status',{key:el.dataset.ak,status:el.dataset.to});toast('closed → '+el.dataset.to);await loadApplications();});
-}
-async function openApplication(key){
-  asel=key;
-  const a=await (await fetch('/api/application?key='+encodeURIComponent(key))).json();
-  if(a.error){ $('#adetail').className='detail empty'; $('#adetail').textContent='not found'; return; }
-  const r=a.recruiter||{};
-  const tl=(a.status_timeline||[]).map(t=>`<div><span class="st">${esc(t.status)}</span> <small style="color:var(--mut)">${esc(t.date||'')}${t.note?' — '+esc(t.note):''}</small></div>`).join('')||'<small style="color:var(--mut)">no history</small>';
-  const sf=(a.submitted_fields||[]).map(f=>`<div><b>${esc(f.label||f.name||'')}:</b> ${esc((f.value??'').toString().slice(0,160))}</div>`).join('')||'<small style="color:var(--mut)">none captured</small>';
-  const statusBtns=(a.states||[]).map(s=>`<button class="btn sm" data-st="${esc(s)}"${s===a.status?' style="border-color:var(--accent);color:var(--accent)"':''}>${esc(s)}</button>`).join('');
-  $('#adetail').className='detail';
-  $('#adetail').innerHTML=`<h3>${esc(a.company)} — ${esc(a.title)} <span class="st">${esc(a.status)}</span></h3>
-    <div class="meta">${esc(a.provider||'')} ${a.location?'· '+esc(a.location):''} ${a.date_applied?'· applied '+esc(a.date_applied):''}
-      ${a.apply_url?`· <a href="${esc(a.apply_url)}" target="_blank">apply page ↗</a>`:''}
-      ${a.report_file?`· <a href="/report?f=${encodeURIComponent(a.report_file)}" target="_blank">report ↗</a>`:''}</div>
-    <div class="field"><label>Status</label><div class="actrow">${statusBtns}</div></div>
-    <div class="field"><label>Status history</label>${tl}</div>
-    <div class="field"><label>CV sent</label>${esc(a.cv_pdf||'—')}${a.confirmation?' · confirmation: '+esc(a.confirmation):''}</div>
-    <div class="field"><label>Recruiter</label>
-      <div class="actrow"><input id="aRname" placeholder="name" value="${esc(r.name||'')}" style="flex:1;min-width:8rem"><input id="aRemail" placeholder="email" value="${esc(r.email||'')}" style="flex:1;min-width:8rem"><input id="aRphone" placeholder="phone" value="${esc(r.phone||'')}" style="width:9rem"></div>
-      <textarea id="aRnotes" placeholder="recruiter / call notes" style="min-height:60px;margin-top:.3rem">${esc(r.notes||'')}</textarea></div>
-    <div class="field"><label>Notes</label><textarea id="aNotes" style="min-height:60px">${esc(a.notes||'')}</textarea>
-      <button class="btn sm" id="aSaveMeta" style="margin-top:.3rem">Save recruiter & notes</button></div>
-    <div class="field"><label>Submitted fields (${(a.submitted_fields||[]).length})</label><div class="jd">${sf}</div></div>
-    ${a.jd_body?`<div class="field"><label>Job description</label><div class="jd">${esc(a.jd_body)}</div></div>`:''}`;
-  $('#adetail').querySelectorAll('[data-st]').forEach(el=>el.onclick=async()=>{await post('/api/application/status',{key,status:el.dataset.st});toast('status → '+el.dataset.st);await loadApplications();openApplication(key);});
-  $('#aSaveMeta').onclick=async()=>{await post('/api/application/meta',{key,recruiter:{name:$('#aRname').value,email:$('#aRemail').value,phone:$('#aRphone').value,notes:$('#aRnotes').value},notes:$('#aNotes').value});toast('saved');await loadApplications();};
-}
-['aq','aStatus'].forEach(id=>{const e=$('#'+id);e.oninput=renderApplications;e.onchange=renderApplications;});
+$('#cmpBtn').onclick=()=>{ if(SELECTED.size<2) return; window.open('/compare?keys='+encodeURIComponent([...SELECTED].join('\n')),'_blank'); };
+$('#cmpClear').onclick=(e)=>{e.preventDefault();SELECTED.clear();renderPostings();saveState();};
 
 loadPostings();
 </script>

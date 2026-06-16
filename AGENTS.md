@@ -18,7 +18,7 @@ There are two layers. Read `DATA_CONTRACT.md` for the full list.
 
 **System Layer (auto-updatable, DON'T put user data here):**
 - `modes/_shared.md`, `modes/oferta.md`, all other modes
-- `AGENTS.md`, `CLAUDE.md`, `*.mjs` scripts, `dashboard/*`, `templates/*`, `batch/*`
+- `AGENTS.md`, `CLAUDE.md`, `*.mjs` scripts, `templates/*`, `batch/*`
 
 **THE RULE: When the user asks to customize anything (archetypes, narrative, negotiation scripts, proof points, location policy, comp targets), ALWAYS write to `modes/_profile.md` or `config/profile.yml`. NEVER edit `modes/_shared.md` for user-specific content.** This ensures system updates don't overwrite their customizations.
 
@@ -71,6 +71,43 @@ AI-powered, CLI-agnostic job search automation: pipeline tracking, offer evaluat
 | `check-liveness.mjs` | Job posting liveness checker |
 | `liveness-core.mjs` | Shared liveness logic (expired signals win over generic Apply text) |
 | `reports/` | Evaluation reports (format: `{###}-{company-slug}-{YYYY-MM-DD}.md`). Blocks A-F + G (Posting Legitimacy). Header includes `**Legitimacy:** {tier}`. |
+
+### Job-Postings Pipeline (individual postings — mirrors the company pipeline, one grain finer)
+
+Companies change slowly; postings change often. This pipeline turns raw scanned postings into a
+sortable/ratable queue scored on a **recomputable, facet-weighted** model (never a frozen LLM
+number), then funnels shortlisted postings into the existing `oferta` evaluation. Subscription-only:
+the LLM stages run in the agent's own context; the `.mjs` scripts are deterministic helpers.
+
+| File | Function |
+|------|----------|
+| `posting-core.mjs` | Shared helpers: `canonicalUrl()` (registry + lifecycle join key), `sk()`, JSONL io, `deriveCompanyKey()` |
+| `scan.mjs` | Also captures the full JD body + department/date/comp at fetch (zero extra requests) → `data/postings/raw-latest.jsonl` |
+| `rank-postings.mjs` | Raw cache → two-layer registry: `data/posting-research.jsonl` (objective + JD body files) + `data/postings-personal.jsonl` (scores/decision, merge-preserving, live/expired) |
+| `llm-triage-jobs.mjs` | Deterministic driver: `--emit`/`--apply`/`--emit-research`/`--queue`/`--stats`. NEVER calls an LLM |
+| `score-postings.mjs` | Recomputable score: `computeScores(extracted, rubric)` → dim_scores + computed_score + hard_excluded (pure; the dashboard mirrors it) |
+| `modes/triage-jobs.md`, `modes/research-jobs.md` | Stage 2 prerank (no web) / Stage 3 full-JD facet extraction |
+| `web/server.mjs` | The **single** dashboard (port 4173): Postings + Companies + **Applications** tabs, rubric, and the `/api/autofill/*` + `/api/application/*` endpoints the extension calls |
+
+**Stages:** `scan.mjs` → `rank-postings.mjs` (Stage 1) → `triage-jobs` (Stage 2) → `research-jobs`
+(Stage 3) → `score-postings.mjs` → **dashboard** (Stage 4: human shortlist/skip) → shortlisted go
+through `oferta` → `applications.md` (lifecycle, joined back by URL). Rubric dimensions with a
+`compute:` binding score deterministically from `extracted` facets × `preferences`; `hard_filters`
+set `hard_excluded`. **All postings data is gitignored** (verbatim JDs — regenerate via `scan.mjs`).
+
+### Application Tracking + Autofill (downstream)
+
+Subscription-only / deterministic: the autofill is plain DOM filling, no LLM in the loop.
+
+| File | Function |
+|------|----------|
+| `application-core.mjs` | `data/applications.jsonl` (source of truth, keyed by `canonicalUrl`) ↔ generated `applications.md`. `merge-tracker.mjs` upserts through it; `applications.md` is regenerated, not hand-edited |
+| `mark-applied.mjs` | CLI to record/update an application (manual fallback to the extension) |
+| `autofill-fields.mjs` | Deterministic ATS field classifier (NO LLM). Salary→review, EEO→blank, essays→`free_text` (captured to `data/essay-answers.jsonl`, not generated) |
+| `extension/` | MV3 Chrome extension: fills standard fields in YOUR Chrome from `config/profile.yml application_profile`; you click Submit; it records the application back to the dashboard |
+
+The dashboard **Applications tab** is the fast recruiter-call lookup. `apply_url` flows `scan.mjs` →
+`rank-postings.mjs` → `posting-research.jsonl`.
 
 ### First Run — Onboarding (IMPORTANT)
 
@@ -215,6 +252,7 @@ Default modes are in `modes/` (English). Additional language-specific modes are 
 | Asks about application status | `tracker` |
 | Fills out application form | `apply` |
 | Searches for new offers | `scan` |
+| Ranks/extracts facets from individual postings | `triage-jobs` (prerank) / `research-jobs` (extract) |
 | Processes pending URLs | `pipeline` |
 | Batch processes offers | `batch` |
 | Asks about rejection patterns or wants to improve targeting | `patterns` |
@@ -255,7 +293,7 @@ Default modes are in `modes/` (English). Additional language-specific modes are 
 
 - **GitHub Actions** run on every PR: `test-all.mjs` (63+ checks), auto-labeler (risk-based: 🔴 core-architecture, ⚠️ agent-behavior, 📄 docs), welcome bot for first-time contributors
 - **Branch protection** on `main`: status checks must pass before merge. No direct pushes to main (except admin bypass).
-- **Dependabot** monitors npm, Go modules, and GitHub Actions for security updates
+- **Dependabot** monitors npm and GitHub Actions for security updates
 - **Contributing process**: issue first → discussion → PR with linked issue → CI passes → maintainer review → merge
 
 ## Community and Governance

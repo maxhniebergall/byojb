@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>compare postings — career-ops</title>
+<style>
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  header a.back{color:var(--accent);text-decoration:none;font-size:.85rem;} header h1{font-size:1.02rem;margin:0;}
+  .wrap{padding:1rem 1.25rem;overflow-x:auto;}
+  .badge{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .45rem;}
+  .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
+  .chip{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);margin:0 .15rem .15rem 0;display:inline-block;}
+  .dec{font-size:.7rem;padding:.08rem .45rem;border-radius:6px;} .dec.shortlist{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);}
+  .row-excl{color:var(--bad);font-size:.72rem;}
+  table.cmp{border-collapse:collapse;width:100%;}
+  .cmp th,.cmp td{border-bottom:1px solid var(--line);padding:.5rem .65rem;vertical-align:top;font-size:.84rem;}
+  .cmp td{min-width:230px;}
+  .cmp th.rowlbl{text-align:left;color:var(--mut);font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--bg);z-index:2;min-width:130px;}
+  .cmp thead th{background:var(--card);position:sticky;top:0;z-index:1;text-align:left;vertical-align:top;}
+  .cmp thead th.rowlbl{z-index:3;}
+  .colhead b{font-size:.98rem;} .colhead .meta{color:var(--mut);font-size:.78rem;margin-top:.25rem;} .colhead .meta a{color:var(--accent);text-decoration:none;}
+  tr.grp th{background:#15172b;color:var(--mut);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;position:sticky;left:0;}
+  td.win{background:rgba(62,201,138,.12);} td.win .v{font-weight:700;}
+  ul.lst{margin:.1rem 0;padding-left:1rem;} ul.lst li{margin-bottom:.2rem;color:var(--ink);}
+  .jd{max-height:300px;overflow:auto;background:#0c0d1c;border:1px solid var(--line);border-radius:8px;padding:.6rem;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:var(--mut);}
+  details summary{cursor:pointer;color:var(--accent);font-size:.8rem;margin-bottom:.4rem;}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.35rem .6rem;border-radius:8px;cursor:pointer;font-size:.8rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.2rem .45rem;font-size:.74rem;}
+  input{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.3rem .4rem;width:4.5rem;}
+  .acts{display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;}
+  .empty{color:var(--mut);padding:2rem;text-align:center;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/postings">← postings</a>
+  <h1>compare postings</h1>
+  <span id="sub" style="color:var(--mut);font-size:.85rem"></span>
+</header>
+<div class="wrap"><div id="grid" class="empty">loading…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bcls=v=>v==null?'b-lo':v>=4?'b-hi':v>=3?'b-mid':'b-lo';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+function comp(c){ if(!c) return ''; if(typeof c!=='object')return String(c); const f=n=>n!=null?('$'+Math.round(n/1000)+'k'):''; const r=[f(c.min),f(c.max)].filter(Boolean).join('–'); return r?(r+(c.currency?(' '+c.currency):'')):''; }
+function compNum(c){ return c&&typeof c==='object'?(c.max??c.min??null):null; }
+function companyLink(key, name){ return `<a href="/companies?vet=${encodeURIComponent(key)}" target="_blank">${esc(name)}</a>`; }
+
+// ── score recompute (mirror of postings.html / posting.html so numbers match the table) ──
+const LEVEL_LADDER=['junior','mid','mid-senior','senior','staff','principal'];
+function recomputeLevel(ex,ds,desired){
+  if(!ds||!('level' in ds)) return;
+  const di=LEVEL_LADDER.indexOf(String(desired||'').toLowerCase()); if(di<0) return;
+  const sen=(ex.seniority||'').toLowerCase(); let li=LEVEL_LADDER.indexOf(sen);
+  if(li<0&&sen==='manager'){ ds.level=1; return; }
+  if(li<0&&ex.yoe_min!=null) li=ex.yoe_min>=8?LEVEL_LADDER.indexOf('staff'):ex.yoe_min>=5?LEVEL_LADDER.indexOf('senior'):ex.yoe_min>=3?LEVEL_LADDER.indexOf('mid-senior'):LEVEL_LADDER.indexOf('mid');
+  if(li>=0) ds.level=Math.max(1,5-Math.abs(li-di));
+}
+function weightedScore(dim,WEIGHTS){ if(!dim) return null; let w=0,a=0; for(const id in WEIGHTS){const s=dim[id]; if(s!=null){w+=WEIGHTS[id];a+=WEIGHTS[id]*s;}} return w?+(a/w).toFixed(2):null; }
+
+const KEYS=(new URLSearchParams(location.search).get('keys')||'').split('\n').map(s=>s.trim()).filter(Boolean);
+let COLS=[], RUBRIC={dimensions:[]}, WEIGHTS={}, DESIRED='senior';
+
+async function load(){
+  if(KEYS.length<2){ $('#grid').innerHTML='<div class="empty">Select at least 2 postings on the <a href="/postings">postings</a> page, then click Compare.</div>'; return; }
+  const results=await Promise.all(KEYS.map(k=>fetch('/api/posting?key='+encodeURIComponent(k)).then(r=>r.json()).catch(()=>({error:1}))));
+  COLS=results.filter(c=>c&&!c.error&&(c.title||c.company));
+  if(!COLS.length){ $('#grid').innerHTML='<div class="empty">None of the selected postings could be loaded.</div>'; return; }
+  RUBRIC=COLS[0].rubric||{dimensions:[]};
+  // rubric-weight + desired-level overrides shared via the postings page localStorage
+  WEIGHTS={}; for(const dm of (RUBRIC.dimensions||[])) WEIGHTS[dm.id||dm.name]=+dm.weight||0;
+  let st=null; try{ st=JSON.parse(localStorage.getItem('careerops.postings.v1')||'null'); }catch{}
+  if(st&&st.weights){ for(const id in WEIGHTS) if(st.weights[id]!=null) WEIGHTS[id]=+st.weights[id]; }
+  DESIRED=(st&&st.desired_level)||(RUBRIC.preferences&&RUBRIC.preferences.desired_level)||'senior';
+  // precompute per-column derived dim scores + overall
+  for(const c of COLS){
+    const ex=c.extracted||{}; const ds={...(c.dim_scores||{})}; recomputeLevel(ex,ds,DESIRED);
+    c._ds=ds; c._overall=c.manual_score!=null?c.manual_score:(weightedScore(ds,WEIGHTS)??(c.llm_rank!=null?c.llm_rank:null));
+  }
+  $('#sub').textContent=`${COLS.length} postings`;
+  render();
+}
+
+// build one <tr>: label + a cell per column. opts.nums → best-per-row highlight (max wins).
+function row(label,cells,opts={}){
+  const win=new Set();
+  if(opts.nums){
+    const vals=opts.nums.filter(v=>v!=null);
+    if(vals.length>1){ const mx=Math.max(...vals),mn=Math.min(...vals); if(mx>mn) opts.nums.forEach((v,i)=>{ if(v===mx) win.add(i); }); }
+  }
+  const tds=cells.map((h,i)=>`<td class="${win.has(i)?'win':''}">${h}</td>`).join('');
+  return `<tr><th class="rowlbl">${esc(label)}</th>${tds}</tr>`;
+}
+function grp(label){ return `<tr class="grp"><th class="rowlbl">${esc(label)}</th>${COLS.map(()=>'<td></td>').join('')}</tr>`; }
+function fv(v){ return (v==null||v==='')?'<span style="color:var(--mut)">·</span>':esc(v); }
+function chips(arr){ return (arr&&arr.length)?arr.map(x=>`<span class="chip">${esc(x)}</span>`).join(''):'<span style="color:var(--mut)">·</span>'; }
+function lst(arr){ return (arr&&arr.length)?`<ul class="lst">${arr.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<span style="color:var(--mut)">·</span>'; }
+
+function render(){
+  const ex=c=>c.extracted||{};
+  // header
+  let head='<thead><tr><th class="rowlbl"></th>';
+  for(const c of COLS){
+    head+=`<th class="colhead"><b>${companyLink(c.company_key||c.company,c.company||'?')}</b><div>${esc(c.title||'')} ${c.hard_excluded?'<span class="row-excl">⛔</span>':''} ${c.decision&&c.decision!=='undecided'?`<span class="dec ${c.decision}">${c.decision}</span>`:''}</div>
+      <div class="meta">${c.provider?esc(c.provider):''} ${c.location?'· '+esc(c.location):''}<br>
+        ${c.url?`<a href="${esc(c.url)}" target="_blank">posting ↗</a>`:''}
+        ${c.apply_url?` · <a href="${esc(c.apply_url)}" target="_blank">apply ↗</a>`:''}
+        · <a href="/posting?key=${encodeURIComponent(c.key)}" target="_blank">detail ↗</a></div></th>`;
+  }
+  head+='</tr></thead>';
+
+  let b='<tbody>';
+  // overall score
+  b+=row('Overall score', COLS.map(c=>`<span class="v badge ${bcls(c._overall)}">${c._overall!=null?(+c._overall).toFixed(1):'·'}</span>`), {nums:COLS.map(c=>c._overall)});
+  // inline decision controls
+  b+=row('Decision', COLS.map(c=>`<div class="acts"><button class="btn good sm act-sl" data-k="${esc(c.key)}">Shortlist</button><button class="btn bad sm act-sk" data-k="${esc(c.key)}">Skip</button><button class="btn sm act-un" data-k="${esc(c.key)}">Reset</button></div>`));
+  b+=row('Override score', COLS.map(c=>`<div class="acts"><input class="ovr" data-k="${esc(c.key)}" type="number" min="0" max="5" step="0.1" value="${c.manual_score??''}" placeholder="${c.computed_score??''}"><button class="btn sm act-save" data-k="${esc(c.key)}">Save</button></div>`));
+
+  // per-dimension breakdown
+  b+=grp('Score by dimension');
+  for(const d of (RUBRIC.dimensions||[])){
+    const id=d.id||d.name;
+    const nums=COLS.map(c=>{const v=c._ds?c._ds[id]:null; return v!=null?+v:null;});
+    b+=row(d.name+(d.compute?'':' (llm)'), COLS.map((c,i)=>nums[i]!=null?`<span class="v badge ${bcls(nums[i])}">${nums[i].toFixed(1)}</span>`:'<span style="color:var(--mut)">·</span>'), {nums});
+  }
+
+  // facets
+  b+=grp('Facets');
+  b+=row('Comp', COLS.map(c=>fv(comp(ex(c).comp||c.comp)||null)), {nums:COLS.map(c=>compNum(ex(c).comp||c.comp))});
+  b+=row('Seniority', COLS.map(c=>fv(ex(c).seniority)));
+  b+=row('YOE', COLS.map(c=>{const e=ex(c);return e.yoe_min!=null?esc(e.yoe_min+(e.yoe_max?'–'+e.yoe_max:'+')):'<span style="color:var(--mut)">·</span>';}));
+  b+=row('Employment', COLS.map(c=>fv(ex(c).employment_type)));
+  b+=row('Remote', COLS.map(c=>fv(ex(c).remote_policy)));
+  b+=row('Geo-eligibility', COLS.map(c=>fv(ex(c).geo_eligibility)));
+  b+=row('On-call', COLS.map(c=>fv(String(ex(c).on_call??''))));
+  b+=row('Degree', COLS.map(c=>fv(ex(c).degree_required)));
+  b+=row('Domain', COLS.map(c=>fv(ex(c).domain)));
+  b+=row('Autonomy', COLS.map(c=>fv(ex(c).autonomy)));
+  b+=row('Culture', COLS.map(c=>fv(ex(c).culture)));
+  b+=row('Company stage', COLS.map(c=>fv(ex(c).company_stage)));
+  b+=row('PTO', COLS.map(c=>fv(ex(c).pto_policy)));
+  b+=row('Languages', COLS.map(c=>chips(ex(c).languages)));
+  b+=row('Technologies', COLS.map(c=>chips(ex(c).technologies)));
+
+  // lists
+  b+=grp('Requirements & signals');
+  b+=row('Requirements', COLS.map(c=>lst(ex(c).requirements)));
+  b+=row('Nice-to-haves', COLS.map(c=>lst(ex(c).nice_to_haves)));
+  b+=row('WLB signals', COLS.map(c=>chips(ex(c).wlb_signals)));
+
+  // fit verdict + jd
+  b+=grp('Analysis');
+  b+=row('Fit verdict', COLS.map(c=>c.fit_verdict?`<div class="jd">${esc(c.fit_verdict)}</div>`:'<span style="color:var(--mut)">no fit verdict yet</span>'));
+  b+=row('Job description', COLS.map(c=>c.jd_body?`<details><summary>show JD (${c.jd_body.length.toLocaleString()} chars)</summary><div class="jd">${esc(c.jd_body)}</div></details>`:'<span style="color:var(--mut)">no JD body</span>'));
+  b+='</tbody>';
+
+  $('#grid').className='';
+  $('#grid').innerHTML=`<table class="cmp">${head}${b}</table>`;
+  wire();
+}
+
+function wire(){
+  const reloadAfter=async(p,b,msg)=>{ const r=await post(p,b); const j=await r.json().catch(()=>({})); toast(j.ok?msg:(j.error||'error')); if(j.ok) load(); };
+  document.querySelectorAll('.act-sl').forEach(el=>el.onclick=()=>reloadAfter('/api/posting/decision',{key:el.dataset.k,decision:'shortlist'},'shortlisted'));
+  document.querySelectorAll('.act-sk').forEach(el=>el.onclick=()=>reloadAfter('/api/posting/decision',{key:el.dataset.k,decision:'skip'},'skipped'));
+  document.querySelectorAll('.act-un').forEach(el=>el.onclick=()=>reloadAfter('/api/posting/decision',{key:el.dataset.k,decision:'undecided'},'reset'));
+  document.querySelectorAll('.act-save').forEach(el=>el.onclick=()=>{const inp=document.querySelector('.ovr[data-k="'+CSS.escape(el.dataset.k)+'"]');reloadAfter('/api/posting/override',{key:el.dataset.k,manual_score:inp?inp.value:''},'override saved');});
+}
+load();
+</script>
+</body>
+</html>

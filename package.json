@@ -19,8 +19,13 @@
     "patterns": "node analyze-patterns.mjs",
     "rubric": "node apply-rubric.mjs",
     "jobspy:refresh": "./.venv/bin/python ingest/jobspy_pull.py --refresh",
+    "scan:postings": "node rank-postings.mjs",
+    "rank:postings": "node rank-postings.mjs",
+    "score:postings": "node score-postings.mjs",
+    "triage:jobs": "node llm-triage-jobs.mjs",
+    "dashboard": "node web/server.mjs",
     "dashboard:web": "node web/server.mjs",
-    "dashboard:decisions": "node web/decision-server.mjs"
+    "dashboard:decisions": "node web/server.mjs"
   },
   "keywords": [
     "ai",

@@ -51,6 +51,13 @@ export default {
           url: j.jobUrl || '',
           company: entry.name,
           location: j.location || '',
+          // additive (postings registry) — descriptionPlain/compensation come free in the same call
+          description: j.descriptionPlain || j.descriptionHtml || '',
+          department: j.department || j.team || '',
+          date_posted: j.publishedAt || '',
+          comp: j.compensation || null,
+          remote_flag: j.isRemote === true ? 'remote' : undefined,
+          employment_type: j.employmentType || '',
         }));
       } catch (e) {
         lastErr = e;

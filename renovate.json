@@ -16,11 +16,6 @@
       "automerge": false
     },
     {
-      "matchManagers": ["gomod"],
-      "groupName": "Go dependencies",
-      "automerge": false
-    },
-    {
       "matchManagers": ["npm"],
       "groupName": "npm dependencies",
       "automerge": false
