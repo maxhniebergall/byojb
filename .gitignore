@@ -90,3 +90,9 @@ data/company-tests.json
 backups/
 # agent (Antigravity/Gemini) scratch working dir — throwaway batch/score JSON
 scratch/
+
+# Throwaway batch/score JSON files
+data/job-research.json
+data/job-scores.json
+
+
