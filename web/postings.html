@@ -26,15 +26,22 @@
   .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
   .chip{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);margin:0 .15rem .15rem 0;display:inline-block;}
   .pill{font-size:.68rem;padding:.08rem .45rem;border-radius:99px;background:#23264a;color:var(--mut);}
-  .dec{font-size:.68rem;padding:.08rem .4rem;border-radius:6px;} .dec.shortlist,.dec.keep{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);}
+  .dec{font-size:.68rem;padding:.08rem .4rem;border-radius:6px;} .dec.shortlist,.dec.keep{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);} .dec.applied{background:rgba(124,140,255,.18);color:var(--accent);}
   .cvet{font-size:.66rem;padding:.08rem .4rem;border-radius:6px;cursor:pointer;background:rgba(124,141,181,.16);color:var(--accent);border:1px dashed var(--accent);} .cvet:hover{background:rgba(124,141,181,.3);}
   .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);}
   .hx{opacity:.45;} .hx td{text-decoration:line-through dotted rgba(224,85,110,.4);}
   th.selcol,td.selcol{width:1.6rem;text-align:center;padding-left:.4rem;padding-right:.2rem;cursor:default;} td.selcol input,th.selcol input{cursor:pointer;}
   .row-excl{color:var(--bad);font-size:.66rem;}
   .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
-  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.bad{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600;} .btn.applied{background:var(--accent);color:#0b0c18;border-color:var(--accent);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
   .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+  .act-btns{display:flex;gap:.3rem;align-items:center;}
+  .btn-sl{border-color:rgba(62,201,138,0.4)!important;color:var(--good)!important;}
+  .btn-sl:hover{background:rgba(62,201,138,0.15)!important;}
+  .btn-ap{border-color:rgba(124,140,255,0.4)!important;color:var(--accent)!important;}
+  .btn-ap:hover{background:rgba(124,140,255,0.15)!important;}
+  .btn-sk{border-color:rgba(224,85,110,0.4)!important;color:var(--bad)!important;}
+  .btn-sk:hover{background:rgba(224,85,110,0.15)!important;}
 </style>
 </head>
 <body>
@@ -66,7 +73,7 @@
         <select id="fSen"><option value="">any seniority</option></select>
         <select id="fRemote"><option value="">any remote</option></select>
         <select id="fGeo"><option value="">any geo</option></select>
-        <select id="fDec"><option value="">any decision</option><option>undecided</option><option>shortlist</option><option>skip</option></select>
+        <select id="fDec"><option value="">any decision</option><option selected>undecided</option><option>shortlist</option><option>skip</option><option>applied</option></select>
       </div>
       <div class="pad" style="padding:.4rem 1rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
         <span id="pcount" style="color:var(--mut);font-size:.8rem"></span>
@@ -87,6 +94,20 @@ const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>
 const bcls=v=>v==null?'b-lo':v>=4?'b-hi':v>=3?'b-mid':'b-lo';
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
 const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+async function setDecision(key, decision){
+  const res = await post('/api/posting/decision', { key, decision });
+  if (res.ok) {
+    toast(decision === 'shortlist' ? 'shortlisted' : decision === 'applied' ? 'applied' : decision === 'skip' ? 'skipped' : 'reset');
+    const d = await (await fetch('/api/postings')).json();
+    ROWS = d.rows || [];
+    FUNNEL = d.funnel || {};
+    renderCounts();
+    renderFunnel();
+    renderPostings();
+  } else {
+    toast('Error updating decision');
+  }
+}
 
 // Lever C — just-in-time vetting: jump from a posting straight to its company's vetting drawer.
 function vetCompany(key){ if(!key) return; window.location.href='/companies?vet='+encodeURIComponent(key); }
@@ -179,14 +200,15 @@ function fillFacetFilters(){
   $('#fGeo').innerHTML='<option value="">any geo</option>'+opt(geo);
 }
 function renderCounts(){
-  const live=ROWS.filter(r=>r.live).length,sl=ROWS.filter(r=>r.decision==='shortlist').length,sk=ROWS.filter(r=>r.decision==='skip').length,rs=ROWS.filter(r=>r.researched).length;
-  $('#counts').textContent=`${ROWS.length} postings · ${live} live · ${rs} facet-extracted · ${sl} shortlisted · ${sk} skipped`;
+  const live=ROWS.filter(r=>r.live).length,sl=ROWS.filter(r=>r.decision==='shortlist').length,sk=ROWS.filter(r=>r.decision==='skip').length,ap=ROWS.filter(r=>r.decision==='applied').length,rs=ROWS.filter(r=>r.researched).length;
+  $('#counts').textContent=`${ROWS.length} postings · ${live} live · ${rs} facet-extracted · ${sl} shortlisted · ${ap} applied · ${sk} skipped`;
 }
 function pfiltered(){
   const q=$('#q').value.trim().toLowerCase(),lang=$('#fLang').value,sen=$('#fSen').value,rem=$('#fRemote').value,geo=$('#fGeo').value,dec=$('#fDec').value;
   const minS=+$('#minScore').value,liveOnly=$('#liveOnly').checked,showExcl=$('#showExcl').checked,resOnly=$('#resOnly').checked;
   const hideCapped=$('#hideCapped').checked,hideApplied=$('#hideApplied').checked;
   let list=ROWS.map(r=>({...r,_s:liveScore(r)}));
+  list=list.filter(r=>r.company_decision!=='skip'); // always hide postings from skipped companies
   if(liveOnly) list=list.filter(r=>r.live);
   if(!showExcl) list=list.filter(r=>!r.hard_excluded);
   if(resOnly) list=list.filter(r=>r.researched);
@@ -214,6 +236,7 @@ function pipeChip(r){
   const S=r.status;
   if(S){ const cls=/offer/i.test(S)?'dec keep':/reject|discard/i.test(S)?'dec skip':'st'; return `<span class="${cls}" title="from Applications tracker">${esc(S)}</span>`; }
   if(r.decision==='shortlist') return '<span class="dec shortlist">shortlist</span>';
+  if(r.decision==='applied') return '<span class="dec applied">applied</span>';
   if(r.decision==='skip') return '<span class="dec skip">skip</span>';
   return '·';
 }
@@ -229,9 +252,28 @@ function companyBadge(r){
 function renderPostings(){
   const list=pfiltered();
   $('#pcount').textContent=`${list.length} shown`;
-  let h='<table><thead><tr><th class="selcol"><input type="checkbox" id="selAll" title="select all shown"></th>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'</tr></thead><tbody>';
+  let h='<table><thead><tr><th class="selcol"><input type="checkbox" id="selAll" title="select all shown"></th>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'<th>Actions</th></tr></thead><tbody>';
   for(const r of list){
     const stack=[...(r.languages||[]),...(r.technologies||[])].slice(0,4).map(x=>`<span class="chip">${esc(x)}</span>`).join('');
+    let actButtons = '';
+    if (r.decision === 'shortlist') {
+      actButtons = `<div class="act-btns">
+        <button class="btn sm good act-btn" data-k="${esc(r.key)}" data-dec="undecided" title="Shortlisted. Click to undo.">Shortlisted ✓</button>
+        <button class="btn sm act-btn" data-k="${esc(r.key)}" data-dec="skip">Skip</button>
+      </div>`;
+    } else if (r.decision === 'applied') {
+      actButtons = `<span class="dec applied">Applied ✓</span>`;
+    } else if (r.decision === 'skip') {
+      actButtons = `<div class="act-btns">
+        <button class="btn sm act-btn" data-k="${esc(r.key)}" data-dec="shortlist">Shortlist</button>
+        <button class="btn sm bad act-btn" data-k="${esc(r.key)}" data-dec="undecided" title="Skipped. Click to undo.">Skipped ✕</button>
+      </div>`;
+    } else {
+      actButtons = `<div class="act-btns">
+        <button class="btn sm btn-sl act-btn" data-k="${esc(r.key)}" data-dec="shortlist">Shortlist</button>
+        <button class="btn sm btn-sk act-btn" data-k="${esc(r.key)}" data-dec="skip">Skip</button>
+      </div>`;
+    }
     h+=`<tr class="${r.hard_excluded||r.capped?'hx':''}" data-k="${esc(r.key)}">
       <td class="selcol"><input type="checkbox" class="rsel" data-k="${esc(r.key)}"${SELECTED.has(r.key)?' checked':''}></td>
       <td><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}</td>
@@ -240,7 +282,8 @@ function renderPostings(){
       <td>${stack||'·'}</td><td>${esc(comp(r.comp))||'·'}</td>
       <td>${esc(r.location||r.remote_policy||'·')}${r.geo_eligibility&&r.geo_eligibility!=='unclear'?` <span class="chip">${esc(r.geo_eligibility)}</span>`:''}</td>
       <td>${r.culture?`<span class="chip">${esc(r.culture)}</span>`:'·'}</td>
-      <td>${pipeChip(r)}</td></tr>`;
+      <td>${pipeChip(r)}</td>
+      <td>${actButtons}</td></tr>`;
   }
   h+='</tbody></table>';
   $('#ptable').innerHTML=list.length?h:'<div class="detail empty">no postings match</div>';
@@ -251,6 +294,7 @@ function renderPostings(){
   const selAll=$('#selAll'); if(selAll){selAll.onclick=(e)=>e.stopPropagation();selAll.onchange=()=>{const on=selAll.checked;for(const r of list){if(on)SELECTED.add(r.key);else SELECTED.delete(r.key);}renderPostings();saveState();};}
   $('#ptable').querySelectorAll('td:nth-child(3) a').forEach(el=>el.onclick=(e)=>e.stopPropagation());
   $('#ptable').querySelectorAll('.cvet').forEach(el=>el.onclick=(e)=>{e.stopPropagation();vetCompany(el.dataset.vet);});
+  $('#ptable').querySelectorAll('.act-btn').forEach(el=>el.onclick=(e)=>{e.stopPropagation();setDecision(el.dataset.k, el.dataset.dec);});
   renderSelBar(list);
 }
 function renderSelBar(list){

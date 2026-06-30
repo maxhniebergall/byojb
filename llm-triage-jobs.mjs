@@ -92,7 +92,7 @@ function main() {
     console.log(`live & undecided postings: ${liveUndecided.length}`);
     console.log(`  preranked (Stage 2): ${preranked.length} | remaining: ${liveUndecided.length - preranked.length}`);
     console.log(`  facet-extracted (Stage 3): ${researched.length}`);
-    console.log(`decisions made: ${decided.length} (shortlist=${personal.filter(p => p.decision === 'shortlist').length}, skip=${personal.filter(p => p.decision === 'skip').length})`);
+    console.log(`decisions made: ${decided.length} (shortlist=${personal.filter(p => p.decision === 'shortlist').length}, applied=${personal.filter(p => p.decision === 'applied').length}, skip=${personal.filter(p => p.decision === 'skip').length})`);
     return;
   }
 

@@ -20,6 +20,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import yaml from 'js-yaml';
 import { loadJsonl, saveJsonl, sk, deriveCompanyKey } from './posting-core.mjs';
+import { loadApplications } from './application-core.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const RAW = join(ROOT, 'data', 'postings', 'raw-latest.jsonl');
@@ -83,6 +84,7 @@ function main() {
 
   const priorResearch = new Map(loadJsonl(RESEARCH).map(r => [r.key, r]));
   const priorPersonal = new Map(loadJsonl(PERSONAL).map(r => [r.key, r]));
+  const appliedKeys = new Set(loadApplications().filter(a => a.status && a.status !== 'Evaluated').map(a => a.key));
 
   mkdirSync(BODY_DIR, { recursive: true });
 
@@ -134,7 +136,7 @@ function main() {
       manual_score: prevP.manual_score ?? null,
       fit_brief: prevP.fit_brief ?? null,
       hard_excluded: prevP.hard_excluded ?? false,
-      decision: prevP.decision || 'undecided',
+      decision: appliedKeys.has(key) ? 'applied' : (prevP.decision || 'undecided'),
       last_reviewed: prevP.last_reviewed || null,
     });
   }
@@ -147,7 +149,11 @@ function main() {
     if (research.has(key)) continue;
     const scanned = scannedCompanyKeys.has(prevR.company_key);
     research.set(key, { ...prevR, live: scanned ? false : prevR.live, last_seen: prevR.last_seen });
-    if (!personal.has(key)) personal.set(key, priorPersonal.get(key) || { key, decision: 'undecided' });
+    if (!personal.has(key)) {
+      const prior = priorPersonal.get(key) || { key, decision: 'undecided' };
+      if (appliedKeys.has(key)) prior.decision = 'applied';
+      personal.set(key, prior);
+    }
     if (scanned && prevR.live !== false) expired++; else kept++;
   }
 

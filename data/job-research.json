@@ -1,0 +1,658 @@
+[
+  {
+    "key": "https://job-boards.greenhouse.io/affirm/jobs/7785602003",
+    "extracted": {
+      "yoe_min": 2,
+      "yoe_max": null,
+      "seniority": "mid",
+      "employment_type": "full_time",
+      "languages": [
+        "Python",
+        "Kotlin"
+      ],
+      "technologies": [
+        "AWS",
+        "MySQL",
+        "Kubernetes",
+        "ML",
+        "distributed systems"
+      ],
+      "location_hints": [
+        "Canada"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "canada",
+      "comp": {
+        "min": 133000,
+        "max": 183000,
+        "currency": "CAD",
+        "equity": true
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "balanced",
+      "company_stage": "public",
+      "wlb_signals": [
+        "flexible hours",
+        "time off"
+      ],
+      "requirements": [
+        "1.5+ years of experience as a software engineer",
+        "proficient in Python or Kotlin",
+        "familiar with distributed systems building blocks, AWS, MySQL, Kubernetes"
+      ],
+      "nice_to_haves": [],
+      "benefits": [
+        "subsidized medical, dental and vision",
+        "monthly stipends for health, wellness and tech",
+        "equity rewards",
+        "ESPP",
+        "flexible spending wallets"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "ML infrastructure / feature platform"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-affirm-jobs-7785602003.md",
+    "llm_reason": "ML platform Remote Canada"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/affirm/jobs/7785600003",
+    "extracted": {
+      "yoe_min": 2,
+      "yoe_max": null,
+      "seniority": "mid",
+      "employment_type": "full_time",
+      "languages": [
+        "Python",
+        "Kotlin"
+      ],
+      "technologies": [
+        "AWS",
+        "MySQL",
+        "Kubernetes",
+        "ML",
+        "distributed systems"
+      ],
+      "location_hints": [
+        "USA"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "us_only",
+      "comp": {
+        "min": 146000,
+        "max": 225000,
+        "currency": "USD",
+        "equity": true
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "balanced",
+      "company_stage": "public",
+      "wlb_signals": [
+        "flexible hours",
+        "time off"
+      ],
+      "requirements": [
+        "1.5+ years of experience as a software engineer",
+        "proficient in Python or Kotlin",
+        "familiar with distributed systems building blocks, AWS, MySQL, Kubernetes"
+      ],
+      "nice_to_haves": [],
+      "benefits": [
+        "subsidized medical, dental and vision",
+        "monthly stipends for health, wellness and tech",
+        "equity rewards",
+        "ESPP",
+        "flexible spending wallets"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "ML infrastructure / feature platform"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-affirm-jobs-7785600003.md",
+    "llm_reason": "US remote only"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/mozilla/jobs/8026938",
+    "extracted": {
+      "yoe_min": null,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "C",
+        "C++",
+        "Rust"
+      ],
+      "technologies": [
+        "cryptographic protocols",
+        "WebPKI",
+        "browser security"
+      ],
+      "location_hints": [
+        "Remote UK"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "eu_only",
+      "comp": {
+        "min": 66000,
+        "max": 87000,
+        "currency": "GBP",
+        "equity": false
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "sustainable",
+      "company_stage": "profitable",
+      "wlb_signals": [
+        "all-company wellness days",
+        "professional development budget",
+        "quarterly well-being stipend"
+      ],
+      "requirements": [
+        "proficiency in C/C++",
+        "understanding of security principles and cryptographic protocols",
+        "debugging native applications"
+      ],
+      "nice_to_haves": [
+        "experience in Rust"
+      ],
+      "benefits": [
+        "performance-based bonus",
+        "medical, dental, vision",
+        "retirement contributions",
+        "home office stipend",
+        "well-being stipend"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "browser security"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-mozilla-jobs-8026938.md",
+    "llm_reason": "UK remote security role"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/mozilla/jobs/8026933",
+    "extracted": {
+      "yoe_min": null,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "C",
+        "C++",
+        "Rust"
+      ],
+      "technologies": [
+        "cryptographic protocols",
+        "WebPKI",
+        "browser security"
+      ],
+      "location_hints": [
+        "Remote France"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "eu_only",
+      "comp": {
+        "min": 53000,
+        "max": 71000,
+        "currency": "EUR",
+        "equity": false
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "sustainable",
+      "company_stage": "profitable",
+      "wlb_signals": [
+        "all-company wellness days",
+        "professional development budget",
+        "quarterly well-being stipend"
+      ],
+      "requirements": [
+        "proficiency in C/C++",
+        "understanding of security principles and cryptographic protocols",
+        "debugging native applications"
+      ],
+      "nice_to_haves": [
+        "experience in Rust"
+      ],
+      "benefits": [
+        "performance-based bonus",
+        "medical, dental, vision",
+        "retirement contributions",
+        "home office stipend",
+        "well-being stipend"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "browser security"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-mozilla-jobs-8026933.md",
+    "llm_reason": "France remote security role"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/mozilla/jobs/8026958",
+    "extracted": {
+      "yoe_min": null,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "C",
+        "C++",
+        "Rust"
+      ],
+      "technologies": [
+        "cryptographic protocols",
+        "WebPKI",
+        "browser security"
+      ],
+      "location_hints": [
+        "Remote Sweden"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "eu_only",
+      "comp": {
+        "min": 513000,
+        "max": 684000,
+        "currency": "SEK",
+        "equity": false
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "sustainable",
+      "company_stage": "profitable",
+      "wlb_signals": [
+        "all-company wellness days",
+        "professional development budget",
+        "quarterly well-being stipend"
+      ],
+      "requirements": [
+        "proficiency in C/C++",
+        "understanding of security principles and cryptographic protocols",
+        "debugging native applications"
+      ],
+      "nice_to_haves": [
+        "experience in Rust"
+      ],
+      "benefits": [
+        "performance-based bonus",
+        "medical, dental, vision",
+        "retirement contributions",
+        "home office stipend",
+        "well-being stipend"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "browser security"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-mozilla-jobs-8026958.md",
+    "llm_reason": "Sweden remote security role"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/mozilla/jobs/8026953",
+    "extracted": {
+      "yoe_min": null,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "C",
+        "C++",
+        "Rust"
+      ],
+      "technologies": [
+        "cryptographic protocols",
+        "WebPKI",
+        "browser security"
+      ],
+      "location_hints": [
+        "Remote Spain"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "eu_only",
+      "comp": {
+        "min": 58000,
+        "max": 77000,
+        "currency": "EUR",
+        "equity": false
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "sustainable",
+      "company_stage": "profitable",
+      "wlb_signals": [
+        "all-company wellness days",
+        "professional development budget",
+        "quarterly well-being stipend"
+      ],
+      "requirements": [
+        "proficiency in C/C++",
+        "understanding of security principles and cryptographic protocols",
+        "debugging native applications"
+      ],
+      "nice_to_haves": [
+        "experience in Rust"
+      ],
+      "benefits": [
+        "performance-based bonus",
+        "medical, dental, vision",
+        "retirement contributions",
+        "home office stipend",
+        "well-being stipend"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "browser security"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-mozilla-jobs-8026953.md",
+    "llm_reason": "Spain remote security role"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/mozilla/jobs/8026944",
+    "extracted": {
+      "yoe_min": null,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "C",
+        "C++",
+        "Rust"
+      ],
+      "technologies": [
+        "cryptographic protocols",
+        "WebPKI",
+        "browser security"
+      ],
+      "location_hints": [
+        "Remote Belgium"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "eu_only",
+      "comp": {
+        "min": 56000,
+        "max": 74000,
+        "currency": "EUR",
+        "equity": false
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "sustainable",
+      "company_stage": "profitable",
+      "wlb_signals": [
+        "all-company wellness days",
+        "professional development budget",
+        "quarterly well-being stipend"
+      ],
+      "requirements": [
+        "proficiency in C/C++",
+        "understanding of security principles and cryptographic protocols",
+        "debugging native applications"
+      ],
+      "nice_to_haves": [
+        "experience in Rust"
+      ],
+      "benefits": [
+        "performance-based bonus",
+        "medical, dental, vision",
+        "retirement contributions",
+        "home office stipend",
+        "well-being stipend"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "browser security"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-mozilla-jobs-8026944.md",
+    "llm_reason": "Belgium remote security role"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/mozilla/jobs/8026957",
+    "extracted": {
+      "yoe_min": null,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "C",
+        "C++",
+        "Rust"
+      ],
+      "technologies": [
+        "cryptographic protocols",
+        "WebPKI",
+        "browser security"
+      ],
+      "location_hints": [
+        "Remote Netherlands"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "eu_only",
+      "comp": {
+        "min": 66000,
+        "max": 88000,
+        "currency": "EUR",
+        "equity": false
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "sustainable",
+      "company_stage": "profitable",
+      "wlb_signals": [
+        "all-company wellness days",
+        "professional development budget",
+        "quarterly well-being stipend"
+      ],
+      "requirements": [
+        "proficiency in C/C++",
+        "understanding of security principles and cryptographic protocols",
+        "debugging native applications"
+      ],
+      "nice_to_haves": [
+        "experience in Rust"
+      ],
+      "benefits": [
+        "performance-based bonus",
+        "medical, dental, vision",
+        "retirement contributions",
+        "home office stipend",
+        "well-being stipend"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "browser security"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-mozilla-jobs-8026957.md",
+    "llm_reason": "Netherlands remote security role"
+  },
+  {
+    "key": "https://job-boards.greenhouse.io/mozilla/jobs/8026942",
+    "extracted": {
+      "yoe_min": null,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "C",
+        "C++",
+        "Rust"
+      ],
+      "technologies": [
+        "cryptographic protocols",
+        "WebPKI",
+        "browser security"
+      ],
+      "location_hints": [
+        "Remote Finland"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "remote",
+      "geo_eligibility": "eu_only",
+      "comp": {
+        "min": 45000,
+        "max": 60000,
+        "currency": "EUR",
+        "equity": false
+      },
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "sustainable",
+      "company_stage": "profitable",
+      "wlb_signals": [
+        "all-company wellness days",
+        "professional development budget",
+        "quarterly well-being stipend"
+      ],
+      "requirements": [
+        "proficiency in C/C++",
+        "understanding of security principles and cryptographic protocols",
+        "debugging native applications"
+      ],
+      "nice_to_haves": [
+        "experience in Rust"
+      ],
+      "benefits": [
+        "performance-based bonus",
+        "medical, dental, vision",
+        "retirement contributions",
+        "home office stipend",
+        "well-being stipend"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "unclear",
+      "domain": "browser security"
+    },
+    "fit_brief": "data/posting-fit/https---job-boards.greenhouse.io-mozilla-jobs-8026942.md",
+    "llm_reason": "Finland remote security role"
+  },
+  {
+    "key": "https://rbc.wd3.myworkdayjobs.com/rbcglobal1/job/TORONTO-Ontario-Canada/Lead-Software-Developer_R-0000176246-1",
+    "extracted": {
+      "yoe_min": 5,
+      "yoe_max": null,
+      "seniority": "staff",
+      "employment_type": "full_time",
+      "languages": [
+        "Java"
+      ],
+      "technologies": [
+        "Spring Boot",
+        "RESTful APIs",
+        "microservices",
+        "Camunda",
+        "BPMN",
+        "DMN",
+        "OpenShift",
+        "Docker",
+        "Kubernetes",
+        "Azure",
+        "JUnit",
+        "Mockito",
+        "WireMock",
+        "Splunk",
+        "Dynatrace",
+        "Grafana"
+      ],
+      "location_hints": [
+        "Toronto"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "hybrid",
+      "geo_eligibility": "canada",
+      "comp": null,
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "balanced",
+      "company_stage": "public",
+      "wlb_signals": [],
+      "requirements": [
+        "Bachelor's degree in Computer Science, Engineering, or related technical field",
+        "5+ years of professional experience developing backend applications with Java and Spring Boot",
+        "3+ years of experience with cloud-native development and deployment"
+      ],
+      "nice_to_haves": [
+        "Experience with Camunda workflows integration"
+      ],
+      "benefits": [
+        "Comprehensive Total Rewards Program",
+        "performance bonuses",
+        "flexible benefits",
+        "stock options"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "bachelor",
+      "domain": "fintech / retail credit"
+    },
+    "fit_brief": "data/posting-fit/https---rbc.wd3.myworkdayjobs.com-rbcglobal1-job-TORONTO-Ontario-Canada-Lead-Software-Developer_R-0000176246-1.md",
+    "llm_reason": "Toronto hybrid lead backend role"
+  },
+  {
+    "key": "https://rbc.wd3.myworkdayjobs.com/rbcglobal1/job/TORONTO-Ontario-Canada/Senior-Software-Developer_R-0000176249-1",
+    "extracted": {
+      "yoe_min": 4,
+      "yoe_max": null,
+      "seniority": "senior",
+      "employment_type": "full_time",
+      "languages": [
+        "Java"
+      ],
+      "technologies": [
+        "Spring Boot",
+        "Angular",
+        "React",
+        "RESTful APIs",
+        "GraphQL",
+        "microservices",
+        "Camunda",
+        "BPMN",
+        "DMN",
+        "OpenShift",
+        "Docker",
+        "Kubernetes",
+        "Azure",
+        "JUnit",
+        "Mockito",
+        "WireMock"
+      ],
+      "location_hints": [
+        "Toronto"
+      ],
+      "timezone": "unclear",
+      "remote_policy": "hybrid",
+      "geo_eligibility": "canada",
+      "comp": null,
+      "on_call": "unclear",
+      "autonomy": "medium",
+      "culture": "balanced",
+      "company_stage": "public",
+      "wlb_signals": [],
+      "requirements": [
+        "4+ years of professional experience as a Full Stack Developer",
+        "Proficiency in front-end technologies such as Angular or React",
+        "Strong back-end development skill with experience in Java and Spring Boot"
+      ],
+      "nice_to_haves": [],
+      "benefits": [
+        "Comprehensive Total Rewards Program",
+        "performance bonuses",
+        "flexible benefits",
+        "stock options"
+      ],
+      "pto_policy": "unclear",
+      "degree_required": "none",
+      "domain": "fintech / retail credit"
+    },
+    "fit_brief": "data/posting-fit/https---rbc.wd3.myworkdayjobs.com-rbcglobal1-job-TORONTO-Ontario-Canada-Senior-Software-Developer_R-0000176249-1.md",
+    "llm_reason": "Toronto hybrid full stack role"
+  }
+]

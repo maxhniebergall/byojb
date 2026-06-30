@@ -46,19 +46,22 @@ export default {
       try {
         const json = await ctx.fetchJson(apiUrl, { timeoutMs: ASHBY_TIMEOUT_MS });
         const jobs = Array.isArray(json?.jobs) ? json.jobs : [];
-        return jobs.map((j) => ({
-          title: j.title || '',
-          url: j.jobUrl || '',
-          company: entry.name,
-          location: j.location || '',
-          // additive (postings registry) — descriptionPlain/compensation come free in the same call
-          description: j.descriptionPlain || j.descriptionHtml || '',
-          department: j.department || j.team || '',
-          date_posted: j.publishedAt || '',
-          comp: j.compensation || null,
-          remote_flag: j.isRemote === true ? 'remote' : undefined,
-          employment_type: j.employmentType || '',
-        }));
+        return jobs.map((j) => {
+          const locs = [j.location, ...(j.secondaryLocations || []).map(x => x.location)].filter(Boolean);
+          return {
+            title: j.title || '',
+            url: j.jobUrl || '',
+            company: entry.name,
+            location: locs.join(', '),
+            // additive (postings registry) — descriptionPlain/compensation come free in the same call
+            description: j.descriptionPlain || j.descriptionHtml || '',
+            department: j.department || j.team || '',
+            date_posted: j.publishedAt || '',
+            comp: j.compensation || null,
+            remote_flag: j.isRemote === true ? 'remote' : undefined,
+            employment_type: j.employmentType || '',
+          };
+        });
       } catch (e) {
         lastErr = e;
       }

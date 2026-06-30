@@ -24,8 +24,22 @@ const fmt = (v) => v === true ? 'Yes' : v === false ? 'No' : String(v ?? '');
 async function init() {
   TAB = await activeTab();
   let en;
-  try { en = await tabMsg(TAB.id, { type: 'ENUMERATE' }); }
-  catch { setStatus('Open a supported application page (use the dashboard "apply / autofill ↗" link), then click the extension.'); return; }
+  try {
+    en = await tabMsg(TAB.id, { type: 'ENUMERATE' });
+  } catch {
+    try {
+      setStatus('Initializing extension on page...');
+      await chrome.scripting.executeScript({
+        target: { tabId: TAB.id, allFrames: true },
+        files: ['content.js']
+      });
+      en = await tabMsg(TAB.id, { type: 'ENUMERATE' });
+    } catch (err) {
+      console.warn('Programmatic script injection failed:', err);
+      setStatus('Open a supported application page (use the dashboard "apply / autofill ↗" link), then click the extension.');
+      return;
+    }
+  }
   const fields = (en && en.fields) || [];
   if (!fields.length) { setStatus('No fillable fields found on this page.'); return; }
   setStatus('Analyzing ' + fields.length + ' fields…');

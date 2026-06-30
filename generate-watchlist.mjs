@@ -34,7 +34,7 @@ function scanCfg() {
 }
 
 // ATSs the scanner (scan.mjs + providers/) can actually re-check.
-const SCANNABLE = new Set(['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee', 'workday', 'workable', 'bamboohr', 'breezy', 'rippling']);
+const SCANNABLE = new Set(['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee', 'workday', 'workable', 'bamboohr', 'breezy', 'rippling', 'gem']);
 const WORKDAY_SEARCH = ['backend engineer', 'platform engineer', 'infrastructure engineer', 'mlops', 'data engineer', 'cloud engineer', 'devops engineer'];
 
 function loadJsonl(path) {
@@ -62,7 +62,7 @@ function entryBlock(p, r, note) {
   const careers_url = p.careers_url || r.careers_url;
   if (!name || !careers_url) return null;
   if (!SCANNABLE.has(provider)) return { unscannable: name + ` (${provider})` };
-  let block = `  - name: ${name}\n    careers_url: ${careers_url}\n`;
+  let block = `  - name: ${JSON.stringify(name)}\n    careers_url: ${careers_url}\n`;
   if (provider === 'workday') block += `    provider: workday\n    workday_search: ${JSON.stringify(WORKDAY_SEARCH)}\n`;
   block += `    enabled: true\n    notes: "${note}"\n`;
   return { block };
@@ -100,7 +100,7 @@ function main() {
       .filter(p => SCANNABLE.has(p.provider || (research.get(p.key) || {}).provider))
       .filter(p => openingsOf(p) >= cfg.min_relevant_openings)
       .sort((a, b) => (b.relevance_score ?? 0) - (a.relevance_score ?? 0));
-    const capped = cfg.max_undecided_companies > 0 ? candidates.slice(0, cfg.max_undecided_companies) : candidates;
+    const capped = cfg.max_undecided_companies >= 0 ? candidates.slice(0, cfg.max_undecided_companies) : candidates;
     for (const p of capped) {
       const r = research.get(p.key) || {};
       const provider = p.provider || r.provider;

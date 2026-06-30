@@ -18,7 +18,8 @@
     "https://ats.rippling.com/*",
     "https://jobs.smartrecruiters.com/*",
     "https://careers.smartrecruiters.com/*",
-    "https://*.myworkdayjobs.com/*"
+    "https://*.myworkdayjobs.com/*",
+    "https://*.canonical.com/*"
   ],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_title": "Career-Ops Autofill" },
@@ -37,9 +38,11 @@
         "https://ats.rippling.com/*",
         "https://jobs.smartrecruiters.com/*",
         "https://careers.smartrecruiters.com/*",
-        "https://*.myworkdayjobs.com/*"
+        "https://*.myworkdayjobs.com/*",
+        "https://*.canonical.com/*"
       ],
       "run_at": "document_idle",
+      "all_frames": true,
       "js": ["content.js"]
     }
   ]

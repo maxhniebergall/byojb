@@ -92,12 +92,92 @@ const PROVIDERS = {
     if (count > 0) return { provider: 'recruitee', careers_url: `https://${slug}.recruitee.com`, api, count };
     return null;
   },
+  async gem(slug) {
+    const query = `query JobBoardList($boardId: String!) { oatsExternalJobPostings(boardId: $boardId) { jobPostings { id } } }`;
+    const body = JSON.stringify([{
+      operationName: "JobBoardList",
+      variables: { boardId: slug },
+      query
+    }]);
+    const json = await getJson('https://jobs.gem.com/api/public/graphql/batch', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body
+    });
+    const postings = json?.[0]?.data?.oatsExternalJobPostings?.jobPostings;
+    const count = Array.isArray(postings) ? postings.length : 0;
+    if (count > 0) {
+      return {
+        provider: 'gem',
+        careers_url: `https://jobs.gem.com/${slug}`,
+        api: 'https://jobs.gem.com/api/public/graphql/batch',
+        count
+      };
+    }
+    return null;
+  },
+  async workable(slug) {
+    const api = `https://apply.workable.com/${slug}/jobs.md`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(api, { signal: ctrl.signal });
+      if (!res.ok) return null;
+      const text = await res.text();
+      const count = text.split('\n').filter(line => line.startsWith('|') && line.includes('[View]')).length;
+      if (count > 0) return { provider: 'workable', careers_url: `https://apply.workable.com/${slug}`, api, count };
+      return null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+  async bamboohr(slug) {
+    const api = `https://${slug}.bamboohr.com/careers/list`;
+    const json = await getJson(api);
+    const count = Array.isArray(json?.result) ? json.result.length : 0;
+    if (count > 0) return { provider: 'bamboohr', careers_url: `https://${slug}.bamboohr.com/careers`, api, count };
+    return null;
+  },
+  async breezy(slug) {
+    const api = `https://${slug}.breezy.hr/json`;
+    const json = await getJson(api);
+    const count = Array.isArray(json) ? json.length : 0;
+    if (count > 0) return { provider: 'breezy', careers_url: `https://${slug}.breezy.hr`, api, count };
+    return null;
+  },
+  async rippling(slug) {
+    const api = `https://ats.rippling.com/${slug}/jobs`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(api, { signal: ctrl.signal });
+      if (!res.ok) return null;
+      const html = await res.text();
+      const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if (!m) return null;
+      const data = JSON.parse(m[1]);
+      const queries = data?.props?.pageProps?.dehydratedState?.queries || [];
+      for (const q of queries) {
+        const items = q?.state?.data?.items;
+        if (Array.isArray(items) && items.length) {
+          return { provider: 'rippling', careers_url: `https://ats.rippling.com/${slug}`, api, count: items.length };
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  },
 };
 
 async function resolveCompany(name) {
   const slugs = slugCandidates(name);
   // Probe in order of how common the ATS is; first hit with live jobs wins.
-  for (const probe of ['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee']) {
+  for (const probe of ['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee', 'gem', 'workable', 'bamboohr', 'breezy', 'rippling']) {
     for (const slug of slugs) {
       const hit = await PROVIDERS[probe](slug);
       if (hit) return { name, resolved: true, ...hit };
@@ -153,6 +233,11 @@ async function resolveByUrl(name, url) {
     [/jobs\.ashbyhq\.com\/([^/?#]+)/, 'ashby'],
     [/jobs\.lever\.co\/([^/?#]+)/, 'lever'],
     [/([^.]+)\.recruitee\.com/, 'recruitee'],
+    [/jobs\.gem\.com\/([^/?#]+)/, 'gem'],
+    [/apply\.workable\.com\/([^/?#]+)/, 'workable'],
+    [/([^.]+)\.bamboohr\.com/, 'bamboohr'],
+    [/([^.]+)\.breezy\.hr/, 'breezy'],
+    [/ats\.rippling\.com\/([^/?#]+)/, 'rippling'],
   ];
   for (const [re, provider] of patterns) {
     const m = url.match(re);
@@ -171,9 +256,38 @@ function existingPortalNames() {
   return names;
 }
 
+function detectPlatform(url) {
+  if (!url) return 'unresolved';
+  let parsed;
+  try { parsed = new URL(url); } catch { return 'unresolved'; }
+  const host = parsed.hostname.toLowerCase();
+  if (host.includes('greenhouse.io')) return 'greenhouse';
+  if (host.includes('ashbyhq.com')) return 'ashby';
+  if (host.includes('lever.co')) return 'lever';
+  if (host.includes('smartrecruiters.com')) return 'smartrecruiters';
+  if (host.includes('recruitee.com')) return 'recruitee';
+  if (host.includes('jobs.gem.com')) return 'gem';
+  if (host.includes('workable.com')) return 'workable';
+  if (host.includes('bamboohr.com')) return 'bamboohr';
+  if (host.includes('breezy.hr')) return 'breezy';
+  if (host.includes('rippling.com') || host.includes('rippling-ats.com')) return 'rippling';
+  if (host.includes('myworkdayjobs.com')) return 'workday';
+
+  // Known unsupported
+  if (host.includes('teamtailor.com')) return 'teamtailor';
+  if (host.includes('jazzhr.com') || host.includes('applytojob.com')) return 'jazzhr';
+  if (host.includes('jobscore.com')) return 'jobscore';
+  if (host.includes('pinpointhq.com')) return 'pinpoint';
+  if (host.includes('taleo.net')) return 'taleo';
+  if (host.includes('icims.com')) return 'icims';
+
+  return 'unsupported';
+}
+
 function appendToPortals(resolved, minFit = 0) {
   const have = existingPortalNames();
-  let toAdd = resolved.filter(r => r.resolved && !have.has(String(r.name).toLowerCase()));
+  // Retain all entries (supported, unsupported, or unresolved) that are not duplicates.
+  let toAdd = resolved.filter(r => !have.has(String(r.name).toLowerCase()));
   // Vetting gate: if --min-fit is set, drop companies whose fit_score is below it.
   // Entries with no fit_score are kept (not yet vetted) so the gate never silently
   // discards un-scored companies.
@@ -188,15 +302,23 @@ function appendToPortals(resolved, minFit = 0) {
     return 0;
   }
   const block = '\n' + toAdd.map(r => {
-    const head = `  - name: ${r.name}\n    careers_url: ${r.careers_url}\n`;
+    const head = `  - name: ${JSON.stringify(r.name)}\n`;
+    const cUrl = r.careers_url ? `    careers_url: ${r.careers_url}\n` : '';
+    if (!r.resolved) {
+      const platform = detectPlatform(r.careers_url);
+      const note = platform === 'unresolved' 
+        ? 'added by discover-companies-from-feeds (unresolved, no careers page)' 
+        : `added by discover-companies-from-feeds (unsupported: ${platform}, careers page saved)`;
+      return head + cUrl + `    enabled: false\n    notes: "${note}"\n`;
+    }
     const fit = r.fit_score != null ? `, fit ${r.fit_score}/5` : '';
     const tail = `    enabled: true\n    notes: "added by find-companies (${r.provider}, ${r.count} live jobs${fit})"\n`;
     if (r.provider === 'workday') {
       // Workday is identified by careers_url; narrow huge boards at the source.
       const search = JSON.stringify(DEFAULT_WORKDAY_SEARCH);
-      return head + `    provider: workday\n    workday_search: ${search}\n` + tail;
+      return head + cUrl + `    provider: workday\n    workday_search: ${search}\n` + tail;
     }
-    return head + `    api: ${r.api}\n` + tail;
+    return head + cUrl + `    api: ${r.api}\n` + tail;
   }).join('\n');
   // tracked_companies is the last top-level key, so appending at EOF extends its list.
   writeFileSync(PORTALS_PATH, readFileSync(PORTALS_PATH, 'utf-8').trimEnd() + '\n' + block, 'utf-8');
@@ -260,4 +382,8 @@ async function main() {
   }
 }
 
-main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}
+
+export { resolveCompany, resolveByUrl, appendToPortals };

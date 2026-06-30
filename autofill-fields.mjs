@@ -3,8 +3,8 @@
 // Maps a form field's visible label to an application-profile key and classifies it:
 //   standard    — fillable from the application profile (name/email/phone/links/…)
 //   file        — a file upload (resume); the extension can't set it for security → user attaches
-//   free_text   — essay / cover-letter / long-answer → NOT auto-filled (captured on submit so a
-//                 future feature can learn to draft from the corpus)
+//   free_text   — essay / cover-letter / long-answer → NOT auto-filled by default unless an exact
+//                 matching question was previously saved/remembered (and captured on submit)
 //   salary      — comp expectation → flagged for review, never auto-filled (negotiation)
 //   demographic — EEO (gender/race/veteran/disability) → always left blank
 //   unmapped    — a normal field with no mapping yet → the user assigns one in the popup

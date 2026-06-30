@@ -25,7 +25,7 @@
   .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
   .chip{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);margin:0 .15rem .15rem 0;display:inline-block;}
   .pill{font-size:.68rem;padding:.08rem .45rem;border-radius:99px;background:#23264a;color:var(--mut);}
-  .dec{font-size:.68rem;padding:.08rem .4rem;border-radius:6px;} .dec.shortlist,.dec.keep{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);}
+  .dec{font-size:.68rem;padding:.08rem .4rem;border-radius:6px;} .dec.shortlist,.dec.keep{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);} .dec.applied{background:rgba(124,140,255,.18);color:var(--accent);}
   .cvet{font-size:.66rem;padding:.08rem .4rem;border-radius:6px;cursor:pointer;background:rgba(124,141,181,.16);color:var(--accent);border:1px dashed var(--accent);} .cvet:hover{background:rgba(124,141,181,.3);}
   .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);}
   .hx{opacity:.45;} .hx td{text-decoration:line-through dotted rgba(224,85,110,.4);}
@@ -75,7 +75,7 @@
         <select id="fSen"><option value="">any seniority</option></select>
         <select id="fRemote"><option value="">any remote</option></select>
         <select id="fGeo"><option value="">any geo</option></select>
-        <select id="fDec"><option value="">any decision</option><option>undecided</option><option>shortlist</option><option>skip</option></select>
+        <select id="fDec"><option value="">any decision</option><option>undecided</option><option>shortlist</option><option>skip</option><option>applied</option></select>
       </div>
       <div id="pcount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
       <div id="ptable"></div>
@@ -224,8 +224,8 @@ function fillFacetFilters(){
   $('#fGeo').innerHTML='<option value="">any geo</option>'+opt(geo);
 }
 function renderCounts(){
-  const live=ROWS.filter(r=>r.live).length,sl=ROWS.filter(r=>r.decision==='shortlist').length,sk=ROWS.filter(r=>r.decision==='skip').length,rs=ROWS.filter(r=>r.researched).length;
-  $('#counts').textContent=`${ROWS.length} postings · ${live} live · ${rs} facet-extracted · ${sl} shortlisted · ${sk} skipped`;
+  const live=ROWS.filter(r=>r.live).length,sl=ROWS.filter(r=>r.decision==='shortlist').length,sk=ROWS.filter(r=>r.decision==='skip').length,ap=ROWS.filter(r=>r.decision==='applied').length,rs=ROWS.filter(r=>r.researched).length;
+  $('#counts').textContent=`${ROWS.length} postings · ${live} live · ${rs} facet-extracted · ${sl} shortlisted · ${ap} applied · ${sk} skipped`;
 }
 function pfiltered(){
   const q=$('#q').value.trim().toLowerCase(),lang=$('#fLang').value,sen=$('#fSen').value,rem=$('#fRemote').value,geo=$('#fGeo').value,dec=$('#fDec').value;
@@ -261,6 +261,7 @@ function pipeChip(r){
   const S=r.status;
   if(S){ const cls=/offer/i.test(S)?'dec keep':/reject|discard/i.test(S)?'dec skip':'st'; return `<span class="${cls}" title="from Applications tracker">${esc(S)}</span>`; }
   if(r.decision==='shortlist') return '<span class="dec shortlist">shortlist</span>';
+  if(r.decision==='applied') return '<span class="dec applied">applied</span>';
   if(r.decision==='skip') return '<span class="dec skip">skip</span>';
   return '·';
 }

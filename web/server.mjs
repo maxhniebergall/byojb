@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import yaml from 'js-yaml';
-import { loadJsonl, saveJsonl, sk, canonicalUrl, deriveCompanyKey } from '../posting-core.mjs';
+import { loadJsonl, saveJsonl, sk, canonicalUrl, deriveCompanyKey, ghJobId } from '../posting-core.mjs';
 import {
   loadApplications, saveApplications, upsertApplication, syncTrackerMd, validateStatus,
   CANONICAL_STATES, today, APPLICATIONS_JSONL, OPEN_STATUSES, isOpen,
@@ -105,12 +105,25 @@ function funnelStats(rows) {
 // report-scan (reports' **URL:** → applications.md Status) for postings with no record.
 function lifecycleByUrl() {
   const map = new Map();
+  const ghMap = new Map();
   for (const a of loadApplications()) {
     if (!a.key) continue;
     const reportFile = (String(a.report || '').match(/([\w.\-]+\.md)/) || [])[1] || null;
-    map.set(a.key, { status: a.status || null, report: reportFile });
+    const val = { status: a.status || null, report: reportFile };
+    map.set(canonicalUrl(a.key), val);
+    const gid = ghJobId(a.key);
+    if (gid) ghMap.set(gid, val);
   }
-  if (!existsSync(REPORTS_DIR)) return map;
+  if (!existsSync(REPORTS_DIR)) {
+    return {
+      get(key) {
+        if (map.has(key)) return map.get(key);
+        const gid = ghJobId(key);
+        if (gid && ghMap.has(gid)) return ghMap.get(gid);
+        return undefined;
+      }
+    };
+  }
   // report file → its posting URL + score
   const reportInfo = new Map();
   for (const f of readdirSync(REPORTS_DIR)) {
@@ -135,9 +148,19 @@ function lifecycleByUrl() {
   }
   for (const [f, info] of reportInfo) {
     if (map.has(info.url)) continue; // applications.jsonl already has the authoritative status
-    map.set(info.url, { status: statusByNum.get(info.num) || 'Evaluated', report: f });
+    const val = { status: statusByNum.get(info.num) || 'Evaluated', report: f };
+    map.set(info.url, val);
+    const gid = ghJobId(info.url);
+    if (gid) ghMap.set(gid, val);
   }
-  return map;
+  return {
+    get(key) {
+      if (map.has(key)) return map.get(key);
+      const gid = ghJobId(key);
+      if (gid && ghMap.has(gid)) return ghMap.get(gid);
+      return undefined;
+    }
+  };
 }
 
 // company own-domain links (carried over from the decision console)
@@ -172,6 +195,7 @@ function postingsQueue() {
     const ex = r.extracted || {};
     const display = p.manual_score ?? p.computed_score ?? (p.llm_rank != null ? p.llm_rank : null);
     const lc = life.get(p.key);
+    const hasApplied = lc && lc.status !== 'Evaluated';
     const open_count = openByCo[r.company_key] || 0;
     const co = companyByKey.get(r.company_key) || {};
     return {
@@ -181,7 +205,7 @@ function postingsQueue() {
       location: r.location, department: r.department, date_posted: r.date_posted, live: r.live !== false,
       researched: !!r.extracted, has_body: !!r.has_body,
       // application/cap state
-      applied: !!lc, company_open_count: open_count, capped: open_count >= max_open_per_company,
+      applied: hasApplied || p.decision === 'applied', company_open_count: open_count, capped: open_count >= max_open_per_company,
       // facets surfaced for filtering/columns
       seniority: ex.seniority || null, yoe_min: ex.yoe_min ?? null, yoe_max: ex.yoe_max ?? null,
       languages: ex.languages || [], technologies: ex.technologies || [],
@@ -194,7 +218,8 @@ function postingsQueue() {
       manual_score: p.manual_score ?? null, llm_rank: p.llm_rank ?? null,
       llm_holistic_fit: p.llm_holistic_fit ?? null, relevance_score: p.relevance_score ?? 0,
       display_score: display, hard_excluded: !!p.hard_excluded,
-      decision: p.decision || 'undecided', reason: p.llm_reason || '',
+      decision: hasApplied ? 'applied' : (p.decision || 'undecided'),
+      reason: p.llm_reason || '',
       status: life.get(p.key)?.status || null, report: life.get(p.key)?.report || null,
     };
   });
@@ -204,8 +229,12 @@ function postingDetail(key) {
   const r = (loadJsonl(POST_RESEARCH).find(x => x.key === key)) || {};
   const p = (loadJsonl(POST_PERSONAL).find(x => x.key === key)) || {};
   const fitPath = p.fit_brief ? P(p.fit_brief) : join(POST_FIT_DIR, sk(key) + '.md');
+  const life = lifecycleByUrl();
+  const lc = life.get(key);
+  const hasApplied = lc && lc.status !== 'Evaluated';
   return {
     ...r, ...p, key,
+    decision: hasApplied ? 'applied' : (p.decision || 'undecided'),
     jd_body: readMd(join(POST_BODY_DIR, sk(key) + '.md')),
     fit_verdict: readMd(fitPath),
   };
@@ -271,13 +300,13 @@ function loadUserMap() {
 function loadAnswerMemory() {
   try { return JSON.parse(readFileSync(ANSWER_MEMORY, 'utf8')).answers || {}; } catch { return {}; }
 }
-// Only memorize answers the profile DOESN'T already cover — custom (unmapped) and EEO (demographic)
-// questions. Keeps identity fields (name/email) sourced from the profile, not stale memory.
+// Only memorize answers the profile DOESN'T already cover — custom (unmapped), EEO (demographic),
+// and free-text (essay) questions. Keeps identity fields (name/email) sourced from the profile, not stale memory.
 function learnableAnswers(fields = [], userMap = loadUserMap()) {
   return fields.filter(f => {
     if (!String(f.value || '').trim()) return false;
     const k = classifyField(f.label, f.type, f, userMap).kind;
-    return k === 'unmapped' || k === 'demographic';
+    return k === 'unmapped' || k === 'demographic' || k === 'free_text';
   }).map(f => ({ label: f.label, value: f.value, type: f.type }));
 }
 function rememberAnswers(items = []) {
@@ -321,7 +350,7 @@ const server = createServer(async (req, res) => {
   }
   if (req.method === 'POST' && path === '/api/posting/decision') {
     const { key, decision } = await body(req);
-    if (!['shortlist', 'skip', 'undecided'].includes(decision)) return json(res, { error: 'bad decision' }, 400);
+    if (!['shortlist', 'skip', 'applied', 'undecided'].includes(decision)) return json(res, { error: 'bad decision' }, 400);
     const rows = loadJsonl(POST_PERSONAL); const p = rows.find(x => x.key === key);
     if (!p) return json(res, { error: 'not found' }, 404);
     p.decision = decision; p.last_reviewed = 'web'; saveJsonl(POST_PERSONAL, rows);
@@ -397,7 +426,7 @@ const server = createServer(async (req, res) => {
     const b = await body(req);
     if (!loadApplications().some(a => a.key === b.key)) return json(res, { error: 'not found' }, 404);
     const patch = {};
-    for (const k of ['recruiter', 'confirmation', 'notes', 'cv_pdf', 'apply_url']) if (k in b) patch[k] = b[k];
+    for (const k of ['recruiter', 'confirmation', 'notes', 'cv_pdf', 'apply_url', 'company', 'title']) if (k in b) patch[k] = b[k];
     upsertApplication(b.key, patch); syncTrackerMd();
     return json(res, { ok: true });
   }
@@ -413,17 +442,51 @@ const server = createServer(async (req, res) => {
   }
   // The extension posts here after you submit: records the application + harvests free-text Q&A.
   if (req.method === 'POST' && path === '/api/application/submitted') {
-    const { apply_url, company, title, fields = [], resume_name, submitted_at, snapshot } = await body(req);
+    const { apply_url, company, title, fields = [], resume_name, submitted_at, snapshot, page_title } = await body(req);
     if (!apply_url) return json(res, { error: 'apply_url required' }, 400);
     const key = canonicalUrl(apply_url);
-    const r = loadJsonl(POST_RESEARCH_PATH).find(x => x.key === key || x.url === apply_url || canonicalUrl(x.apply_url || '') === key) || {};
+    // Join by exact key/url first, then by Greenhouse job id — company-hosted postings are keyed
+    // by their careers URL (?gh_jid=) while the iframe submits ?token=, so only the id matches.
+    const ghId = ghJobId(apply_url);
+    const r = loadJsonl(POST_RESEARCH_PATH).find(x =>
+      x.key === key || x.url === apply_url || canonicalUrl(x.apply_url || '') === key
+      || (ghId && (ghJobId(x.key) === ghId || ghJobId(x.url) === ghId || ghJobId(x.apply_url) === ghId))) || {};
     const realKey = r.key || key;
+    // For an un-scanned posting (no record), recover the company from the embed's ?for= param.
+    let forCompany = '';
+    try { forCompany = new URL(apply_url).searchParams.get('for') || ''; } catch {}
+
+    // Derive fallback company if missing
+    const coKey = r.company_key || deriveCompanyKey('', realKey);
+    let derivedCompany = '';
+    if (coKey && coKey.includes(':')) {
+      const slug = coKey.split(':')[1];
+      if (slug) {
+        derivedCompany = slug.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
+    }
+    const finalCompany = company || r.company || forCompany || derivedCompany || undefined;
+
+    // Derive fallback title from page title if missing
+    let finalTitle = title || r.title || undefined;
+    if (!finalTitle && page_title) {
+      let t = page_title.trim();
+      const coName = finalCompany || '';
+      if (coName) {
+        const escapedCo = coName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        t = t.replace(new RegExp(`\\b${escapedCo}\\b`, 'gi'), '');
+      }
+      t = t.replace(/\b(careers|job application|apply|recruiting|hiring|workday|ashby|greenhouse|lever)\b/gi, '');
+      t = t.replace(/^[^a-zA-Z0-9(]+|[^a-zA-Z0-9)]+$/g, '').trim();
+      finalTitle = t || page_title.trim();
+    }
+
     const userMap = loadUserMap();
     // Harvest free-text answers into the essay corpus (deferred drafting feature).
     const essays = [];
     for (const f of fields) {
       if (classifyField(f.label, f.type, f, userMap).kind === 'free_text' && String(f.value || '').trim()) {
-        essays.push({ key: realKey, company: company || r.company || '', title: title || r.title || '', question: f.label, answer: f.value, date: String(submitted_at || '').slice(0, 10) || today() });
+        essays.push({ key: realKey, company: finalCompany || '', title: finalTitle || '', question: f.label, answer: f.value, date: String(submitted_at || '').slice(0, 10) || today() });
       }
     }
     if (essays.length) saveJsonl(ESSAY_ANSWERS, [...loadJsonl(ESSAY_ANSWERS), ...essays]);
@@ -433,8 +496,8 @@ const server = createServer(async (req, res) => {
     let snapPath;
     if (snapshot) { mkdirSync(SNAPSHOT_DIR, { recursive: true }); snapPath = join('data', 'application-snapshots', sk(realKey) + '.txt'); writeFileSync(P(snapPath), String(snapshot)); }
     const row = upsertApplication(realKey, {
-      status: 'Applied', company: company || r.company || undefined, title: title || r.title || undefined,
-      company_key: r.company_key || deriveCompanyKey('', apply_url), apply_url,
+      status: 'Applied', company: finalCompany, title: finalTitle,
+      company_key: coKey, apply_url,
       cv_pdf: resume_name || undefined, submitted_fields: fields, submitted_snapshot: snapPath,
       date_applied: String(submitted_at || '').slice(0, 10) || undefined,
     });

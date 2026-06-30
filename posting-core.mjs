@@ -20,8 +20,24 @@ export function canonicalUrl(raw) {
   u.protocol = u.protocol.toLowerCase();
   u.hostname = u.hostname.toLowerCase().replace(/^www\./, '');
   u.hash = '';
+  // Greenhouse embedded application iframe (used by company-hosted apply pages) →
+  // canonical job-board URL, so it joins the scanned posting and derives the right company.
+  // e.g. job-boards.greenhouse.io/embed/job_app?for=acme&token=123 → job-boards.greenhouse.io/acme/jobs/123
+  if (/greenhouse\.io$/i.test(u.hostname) && /\/embed\/job_app/i.test(u.pathname)) {
+    const forC = (u.searchParams.get('for') || '').toLowerCase();
+    const token = u.searchParams.get('token') || '';
+    if (forC && /^\d+$/.test(token)) return `https://job-boards.greenhouse.io/${forC}/jobs/${token}`;
+  }
   for (const k of [...u.searchParams.keys()]) {
     if (/^utm_/i.test(k) || /^(gh_src|gh_jid_src|src|ref|source)$/i.test(k)) u.searchParams.delete(k);
+  }
+  // Strip /apply or /application suffix from individual job paths (e.g. /company/job-id/apply)
+  const pathSegments = u.pathname.split('/').filter(Boolean);
+  if (pathSegments.length > 1) {
+    const last = pathSegments[pathSegments.length - 1];
+    if (last === 'apply' || last === 'application') {
+      u.pathname = '/' + pathSegments.slice(0, -1).join('/');
+    }
   }
   // normalize: no trailing slash on a non-root path
   if (u.pathname.length > 1 && u.pathname.endsWith('/')) u.pathname = u.pathname.replace(/\/+$/, '');
@@ -32,6 +48,21 @@ export function canonicalUrl(raw) {
 
 // slug-safe filename fragment (matches the company console's sk()).
 export const sk = (key) => key.replace(/[:/]/g, '-');
+
+// The Greenhouse job id is the one stable value across every URL shape a posting can take:
+// native (.../jobs/123), company-hosted (...?gh_jid=123 or .../roles/123), and the embed
+// iframe (...?token=123). Used to join a submitted application back to its scanned posting.
+export function ghJobId(raw) {
+  if (typeof raw !== 'string' || !raw) return '';
+  try {
+    const u = new URL(raw);
+    const q = u.searchParams.get('token') || u.searchParams.get('gh_jid');
+    if (q && /^\d+$/.test(q)) return q;
+    const m = u.pathname.match(/\/(?:jobs|roles)\/(\d+)/);
+    if (m) return m[1];
+  } catch {}
+  return '';
+}
 
 // ── jsonl io ────────────────────────────────────────────────────────
 export function loadJsonl(path) {

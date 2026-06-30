@@ -28,7 +28,7 @@ is a deterministic helper only.
      "seniority": "junior|mid|mid-senior|senior|staff|principal|manager|unclear",
      "employment_type": "full_time|contract|internship|unclear",
      "languages": [<programming languages named>],
-     "technologies": [<frameworks/tools/clouds/datastores named>],
+     "technologies": [<frameworks/tools/clouds/datastores/architectures named (e.g. AWS, Kubernetes, Postgres, ML, LLM, data pipeline, distributed systems)>],
      "location_hints": [<locations/regions named>], "timezone": "<e.g. America/… or unclear>",
      "remote_policy": "remote|hybrid|onsite|unclear",
      "geo_eligibility": "canada|us_only|eu_only|global|unclear",

@@ -173,8 +173,9 @@ export function buildLocationFilter(locationFilter) {
     const lower = location.toLowerCase();
     if (alwaysAllow.length > 0 && alwaysAllow.some(k => lower.includes(k))) return true;
     if (block.length > 0 && block.some(k => lower.includes(k))) return false;
+    if (allow.length > 0 && allow.some(k => lower.includes(k))) return true;
     if (allow.length === 0) return true;
-    return allow.some(k => lower.includes(k));
+    return false;
   };
 }
 

@@ -1,0 +1,23 @@
+# core-strategy.yml - Configuration for Job Search Pipeline Strategy
+
+references:
+  profile: "config/profile.yml"
+  rubric: "config/rubric.yml"
+
+triage_gate:
+  min_rank_for_research: 4  # Postings rated 4 or 5 will immediately undergo Stage 3 research
+
+research_criteria:
+  questions:
+    - id: tech_stack
+      label: "Tech Stack"
+      question: "What is the primary tech stack (programming languages, libraries, clouds, datastores, and infrastructure tools)?"
+    - id: on_call
+      label: "On-call & Emergency Support"
+      question: "What are the on-call, operational support, or emergency firefight expectations mentioned in the JD?"
+    - id: work_environment
+      label: "Work Environment & Location Policy"
+      question: "What is the location policy (remote vs hybrid/onsite) and remote region constraints (Canada-remote, US-only, timezone expectations)?"
+    - id: vibes
+      label: "Vibes & Work Culture"
+      question: "What are the cultural signals regarding work-life balance, pace, and company stage (sustainable builder culture vs high-pressure growth startup)?"

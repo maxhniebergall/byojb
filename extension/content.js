@@ -149,6 +149,7 @@
     const payload = {
       apply_url: location.href, fields: snapshotFields(), resume_name: resumeName(),
       submitted_at: new Date().toISOString(), snapshot: (document.body.innerText || '').slice(0, 4000),
+      page_title: document.title,
     };
     try { chrome.runtime.sendMessage({ type: 'SUBMITTED', payload }); } catch (e) { /* dashboard offline; background queues nothing in v1 */ }
   }

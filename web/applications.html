@@ -108,10 +108,14 @@ async function openApplication(key){
   const sf=(a.submitted_fields||[]).map(f=>`<div><b>${esc(f.label||f.name||'')}:</b> ${esc((f.value??'').toString().slice(0,160))}</div>`).join('')||'<small style="color:var(--mut)">none captured</small>';
   const statusBtns=(a.states||[]).map(s=>`<button class="btn sm" data-st="${esc(s)}"${s===a.status?' style="border-color:var(--accent);color:var(--accent)"':''}>${esc(s)}</button>`).join('');
   $('#adetail').className='detail';
-  $('#adetail').innerHTML=`<h3>${esc(a.company)} — ${esc(a.title)} <span class="st">${esc(a.status)}</span></h3>
+  $('#adetail').innerHTML=`<h3>${esc(a.company || 'Unnamed Company')} — ${esc(a.title || 'Untitled Role')} <span class="st">${esc(a.status)}</span></h3>
     <div class="meta">${esc(a.provider||'')} ${a.location?'· '+esc(a.location):''} ${a.date_applied?'· applied '+esc(a.date_applied):''}
       ${a.apply_url?`· <a href="${esc(a.apply_url)}" target="_blank">apply page ↗</a>`:''}
       ${a.report_file?`· <a href="/report?f=${encodeURIComponent(a.report_file)}" target="_blank">report ↗</a>`:''}</div>
+    <div class="row-grid">
+      <div class="field"><label>Company</label><input id="aCompany" placeholder="Company" value="${esc(a.company||'')}" style="width:100%"></div>
+      <div class="field"><label>Role / Title</label><input id="aTitle" placeholder="Role Title" value="${esc(a.title||'')}" style="width:100%"></div>
+    </div>
     <div class="field"><label>Status</label><div class="actrow">${statusBtns}</div></div>
     <div class="field"><label>Status history</label>${tl}</div>
     <div class="field"><label>CV sent</label>${esc(a.cv_pdf||'—')}${a.confirmation?' · confirmation: '+esc(a.confirmation):''}</div>
@@ -119,11 +123,11 @@ async function openApplication(key){
       <div class="actrow"><input id="aRname" placeholder="name" value="${esc(r.name||'')}" style="flex:1;min-width:8rem"><input id="aRemail" placeholder="email" value="${esc(r.email||'')}" style="flex:1;min-width:8rem"><input id="aRphone" placeholder="phone" value="${esc(r.phone||'')}" style="width:9rem"></div>
       <textarea id="aRnotes" placeholder="recruiter / call notes" style="min-height:60px;margin-top:.3rem">${esc(r.notes||'')}</textarea></div>
     <div class="field"><label>Notes</label><textarea id="aNotes" style="min-height:60px">${esc(a.notes||'')}</textarea>
-      <button class="btn sm" id="aSaveMeta" style="margin-top:.3rem">Save recruiter & notes</button></div>
+      <button class="btn sm" id="aSaveMeta" style="margin-top:.3rem">Save details</button></div>
     <div class="field"><label>Submitted fields (${(a.submitted_fields||[]).length})</label><div class="jd">${sf}</div></div>
     ${a.jd_body?`<div class="field"><label>Job description</label><div class="jd">${esc(a.jd_body)}</div></div>`:''}`;
   $('#adetail').querySelectorAll('[data-st]').forEach(el=>el.onclick=async()=>{await post('/api/application/status',{key,status:el.dataset.st});toast('status → '+el.dataset.st);await loadApplications();openApplication(key);});
-  $('#aSaveMeta').onclick=async()=>{await post('/api/application/meta',{key,recruiter:{name:$('#aRname').value,email:$('#aRemail').value,phone:$('#aRphone').value,notes:$('#aRnotes').value},notes:$('#aNotes').value});toast('saved');await loadApplications();};
+  $('#aSaveMeta').onclick=async()=>{await post('/api/application/meta',{key,company:$('#aCompany').value,title:$('#aTitle').value,recruiter:{name:$('#aRname').value,email:$('#aRemail').value,phone:$('#aRphone').value,notes:$('#aRnotes').value},notes:$('#aNotes').value});toast('saved');await loadApplications();openApplication(key);};
 }
 ['aq','aStatus'].forEach(id=>{const e=$('#'+id);e.oninput=renderApplications;e.onchange=renderApplications;});
 

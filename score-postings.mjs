@@ -49,14 +49,45 @@ export function levelMatch(ex, desiredLevel = 'senior') {
   return clamp(5 - Math.abs(li - di));
 }
 
-// Score one stack subset (e.g. ex.languages) against a preference group {love, ok, avoid}.
-function stackScore(items, group) {
+// Check if an item matches any entry in the needles list (exact case-insensitive match)
+function itemMatchesList(item, needles) {
+  if (!needles || !needles.length) return false;
+  const itemLc = String(item).toLowerCase();
+  return needles.some(n => String(n).toLowerCase() === itemLc);
+}
+
+// Score one stack subset (e.g. ex.languages) against a preference group {love, ok, avoid, neutral}.
+function stackScore(items, group, prefs) {
   if (!items || !items.length) return null;
   const love = group?.love || [], ok = group?.ok || [], avoid = group?.avoid || [];
-  if (avoid.length && hasAny(items, avoid)) return 1.5;
+  const neutral = group?.neutral || [];
+  
+  if (avoid.length && items.some(item => itemMatchesList(item, avoid))) {
+    return 1.5;
+  }
+  
   let s = 3;
-  if (love.length && hasAny(items, love)) s += 1.5;
-  else if (ok.length && hasAny(items, ok)) s += 0.5;
+  const hasLove = love.length && items.some(item => itemMatchesList(item, love));
+  const hasOk = ok.length && items.some(item => itemMatchesList(item, ok));
+  
+  if (hasLove) s += 1.5;
+  else if (hasOk) s += 0.5;
+
+  // Calculate mismatch penalty for unlisted items (neither loved, ok, avoided, nor neutral)
+  const unlistedItems = items.filter(item => {
+    return !itemMatchesList(item, love) &&
+           !itemMatchesList(item, ok) &&
+           !itemMatchesList(item, avoid) &&
+           !itemMatchesList(item, neutral);
+  });
+
+  if (unlistedItems.length > 0) {
+    const penaltyPerItem = prefs?.mismatch_penalty ?? 0.3;
+    const maxPenalty = prefs?.max_mismatch_penalty ?? 1.5;
+    const totalPenalty = Math.min(unlistedItems.length * penaltyPerItem, maxPenalty);
+    s -= totalPenalty;
+  }
+  
   return clamp(s);
 }
 
@@ -75,8 +106,8 @@ export const COMPUTERS = {
   },
   // Per-facet stack scoring — `compute: languages` and `compute: technologies` each score their own
   // facet against their own preference group, so the rubric can weight them independently.
-  languages(ex, prefs) { return stackScore(ex.languages, prefs?.languages); },
-  technologies(ex, prefs) { return stackScore(ex.technologies, prefs?.technologies); },
+  languages(ex, prefs) { return stackScore(ex.languages, prefs?.languages, prefs); },
+  technologies(ex, prefs) { return stackScore(ex.technologies, prefs?.technologies, prefs); },
   // Formerly "qualitative" dims, now FACET-DRIVEN: the LLM extracts a normalized enum (not a score),
   // and these map it to 1-5 via a preference table (tunable, recomputable, re-weightable live).
   scope(ex, prefs) {                       // from ex.autonomy: high|medium|low
@@ -102,7 +133,8 @@ export const COMPUTERS = {
       love: [...(L.love || []), ...(T.love || [])],
       ok: [...(L.ok || []), ...(T.ok || [])],
       avoid: [...(L.avoid || []), ...(T.avoid || [])],
-    });
+      neutral: [...(L.neutral || []), ...(T.neutral || [])]
+    }, prefs);
   },
   // Level is CATEGORICAL, not "more = better": score by how close the posting's level is to the
   // desired one (prefs.desired_level), so a too-senior role is penalized like a too-junior one.

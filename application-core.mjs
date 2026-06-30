@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
-import { loadJsonl, saveJsonl, canonicalUrl } from './posting-core.mjs';
+import { loadJsonl, saveJsonl, canonicalUrl, ghJobId } from './posting-core.mjs';
 import { normalizeReportLink as normalizeLink } from './tracker-links.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -123,6 +123,26 @@ export function upsertApplication(key, patch = {}) {
   row.last_updated = today();
 
   saveApplications(rows);
+
+  // Sync to postings-personal.jsonl if the application status is applied (non-Evaluated)
+  if (row.status && row.status !== 'Evaluated') {
+    const POST_PERSONAL = join(ROOT, 'data', 'postings-personal.jsonl');
+    if (existsSync(POST_PERSONAL)) {
+      try {
+        const personalRows = loadJsonl(POST_PERSONAL);
+        const ghId = ghJobId(key);
+        const p = personalRows.find(x => x.key === key || (ghId && ghJobId(x.key) === ghId));
+        if (p && p.decision !== 'applied') {
+          p.decision = 'applied';
+          p.last_reviewed = p.last_reviewed || 'web';
+          saveJsonl(POST_PERSONAL, personalRows);
+        }
+      } catch (err) {
+        // Silently catch error
+      }
+    }
+  }
+
   return row;
 }
 

@@ -29,7 +29,11 @@ export default {
       title: j.text || '',
       url: j.hostedUrl || '',
       company: entry.name,
-      location: j.categories?.location || j.workplaceType || '',
+      location: Array.from(new Set([
+        j.categories?.location,
+        j.workplaceType,
+        ...(j.categories?.allLocations || [])
+      ])).filter(Boolean).join(', '),
       // additive (postings registry) — all present in the same postings call
       description: j.descriptionPlain || j.description || '',
       department: j.categories?.team || j.categories?.department || '',
