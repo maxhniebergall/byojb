@@ -19,10 +19,10 @@ Originally derived from `career-ops`, BYOJB transitions the tool from a CLI-cent
    ```
 
 2. **Run AI Vetting & Facet Extraction:**
-   Run the triage and research pipelines using your agent subscription. In Gemini CLI or Claude Code:
-   * `/byojb-triage-jobs` (Triage: fast ranking of new postings using world knowledge)
-   * `/byojb-research-jobs` (Research: full JD reading and facet extraction)
-   * `/byojb-triage-companies` / `/byojb-research-companies` (for company vetting and dossier building)
+   Run the triage and research pipelines using your agent subscription to process the queue of unprocessed postings and companies. In Gemini CLI or Claude Code:
+   * `/byojb-triage-jobs` (Triage: processes the queue of raw postings with fast ranking using world knowledge)
+   * `/byojb-research-jobs` (Research: reads the queue of triaged JDs for full facet extraction)
+   * `/byojb-triage-companies` / `/byojb-research-companies` (for company vetting and dossier building queues)
 
 3. **Manage and Track in the Web Dashboard:**
    Start the local web dashboard:
@@ -96,7 +96,11 @@ npm run doctor
 ```
   [ Scan: /byojb-scan or npm run scan ]  → Pulls raw listings from lever/greenhouse/ashby/etc. in portals.yml
             ↓
+  [ Queue (unprocessed postings) ]       → Stores raw listings awaiting triage
+            ↓
   [ Triage: /byojb-triage-jobs ]         → Quick world-knowledge fit filtering (1-5) via LLM
+            ↓
+  [ Queue (triaged postings) ]           → Stores shortlisted listings awaiting research
             ↓
   [ Research: /byojb-research-jobs ]     → Reads full JDs, extracts structured JSON facets (no scoring)
             ↓
@@ -107,7 +111,7 @@ npm run doctor
 
 * **Company Discovery & Vetting:** Search for target corporations matching filters using `/byojb-find-companies` (or `node find-companies.mjs`), filter out mismatches with `/byojb-triage-companies` (or `node llm-triage.mjs`), and generate detailed dossiers with `/byojb-research-companies` (or `node llm-triage.mjs --research`). Verified portals are automatically added to `portals.yml`.
 * **Job Scanners:** Hits public ATS APIs (Greenhouse, Lever, Ashby, BambooHR, Workday, etc.) or uses local parsers via `/byojb-scan` or `npm run scan` (which runs `node scan.mjs`). Zero LLM token costs.
-* **AI Job Triage & Research:** Runs sequentially on your own agent subscription (Gemini Antigravity or Claude Code) using custom slash commands `/byojb-triage-jobs` (or `node llm-triage-jobs.mjs`) and `/byojb-research-jobs` (or `node llm-triage-jobs.mjs --research`) to filter and extract objective facets (languages, remote constraints, salary, tech stack).
+* **AI Job Triage & Research:** Runs sequentially on your own agent subscription (Gemini Antigravity or Claude Code) using custom slash commands `/byojb-triage-jobs` (or `node llm-triage-jobs.mjs`) and `/byojb-research-jobs` (or `node llm-triage-jobs.mjs --research`) to filter and extract objective facets (languages, remote constraints, salary, tech stack) from the queues.
 * **Re-weightable Scores:** The dashboard scores each role dynamically on a facet-weighted model. Start the dashboard with `npm run dashboard` (running `node web/server.mjs`) to adjust rubric sliders and instantly re-sort the queue without re-running the LLM.
 * **Tracking & Autofill:** Track applications, sync status records, and use the MV3 Chrome Extension to autofill forms from your profile and record submissions back to the DB.
 
