@@ -8,22 +8,35 @@ Originally derived from `career-ops`, BYOJB transitions the tool from a CLI-cent
 
 ## Architecture & Workflows
 
+### 1. Company Discovery & Research Pipeline (Target Vetting)
 ```
-  [ Scrapers (scan.mjs) ]  →  Pulls raw listings from lever/greenhouse/ashby/etc.
-           ↓
-  [ Stage 2 (triage) ]     →  Quick world-knowledge fit filtering (1-5) via LLM
-           ↓
-  [ Stage 3 (research) ]   →  Reads full JDs, extracts structured JSON facets (no scoring)
-           ↓
-  [ Stage 4 (dashboard) ]  →  Interactive UI: sliders re-weight & score, keep/skip
-           ↓
-  [ Chrome Extension ]     →  DOM autofill & records applications back to the dashboard
+  [ Discovery (/byojb-find-companies) ]   → Search & import target companies (YC, Sequoia, etc.)
+                   ↓
+  [ Stage 2 Company Triage ]              → Quick LLM vetting based on criteria & fit
+                   ↓
+  [ Stage 3 Company Research ]            → Scraping careers & about pages to compile dossiers
+                   ↓
+  [ portals.yml Configuration ]           → List of verified company portals fed to scanner
 ```
 
-1. **Scanners:** Hits public ATS APIs (Greenhouse, Lever, Ashby, BambooHR, Workday, etc.) or uses local parsers to gather fresh jobs. Zero LLM token costs.
-2. **AI Triage & Research:** Runs sequentially on your own agent subscription (Gemini Antigravity or Claude Code) using custom slash commands. Extracts objective facets (languages, remote constraints, salary, tech stack).
-3. **Re-weightable Scores:** The dashboard scores each role dynamically on a facet-weighted model. You can adjust rubric sliders and instantly re-sort the queue without re-running the LLM.
-4. **Tracking & Autofill:** Track applications, sync status records, and use the MV3 Chrome Extension to autofill forms from your profile and record submissions back to the DB.
+### 2. Job Posting & Tracking Pipeline
+```
+  [ Scrapers (scan.mjs) ]      → Pulls raw listings from lever/greenhouse/ashby/etc. in portals.yml
+            ↓
+  [ Stage 2 Job Triage ]       → Quick world-knowledge fit filtering (1-5) via LLM
+            ↓
+  [ Stage 3 Job Research ]     → Reads full JDs, extracts structured JSON facets (no scoring)
+            ↓
+  [ Stage 4 Dashboard ]        → Interactive UI: sliders re-weight & score, keep/skip
+            ↓
+  [ Chrome Extension ]         → DOM autofill & records applications back to the dashboard
+```
+
+* **Company Discovery & Vetting:** Search for target corporations matching filters using `/byojb-find-companies`, filter out mismatches with `/byojb-triage-companies`, and generate detailed dossiers with `/byojb-research-companies`. Verified portals are automatically added to `portals.yml`.
+* **Job Scanners:** Hits public ATS APIs (Greenhouse, Lever, Ashby, BambooHR, Workday, etc.) or uses local parsers to gather fresh jobs. Zero LLM token costs.
+* **AI Job Triage & Research:** Runs sequentially on your own agent subscription (Gemini Antigravity or Claude Code) using custom slash commands `/byojb-triage-jobs` and `/byojb-research-jobs` to filter and extract objective facets (languages, remote constraints, salary, tech stack).
+* **Re-weightable Scores:** The dashboard scores each role dynamically on a facet-weighted model. You can adjust rubric sliders and instantly re-sort the queue without re-running the LLM.
+* **Tracking & Autofill:** Track applications, sync status records, and use the MV3 Chrome Extension to autofill forms from your profile and record submissions back to the DB.
 
 ---
 
