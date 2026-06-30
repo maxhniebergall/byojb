@@ -1,0 +1,12 @@
+description = "BYOJB — Scan configured portals and pull new job postings"
+
+prompt = """
+You are running the BYOJB **scan** mode.
+
+Run the scan locally:
+`node scan.mjs`
+
+This scans all target company portals (Greenhouse, Lever, Ashby, etc.) configured in `portals.yml`.
+
+Arguments: {{args}}
+"""

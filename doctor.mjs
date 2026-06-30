@@ -62,20 +62,6 @@ async function checkPlaywright() {
   }
 }
 
-function checkCv() {
-  if (existsSync(join(projectRoot, 'cv.md'))) {
-    return { pass: true, label: 'cv.md found' };
-  }
-  return {
-    pass: false,
-    label: 'cv.md not found',
-    fix: [
-      'Create cv.md in the project root with your CV in markdown',
-      'See examples/ for reference CVs',
-    ],
-  };
-}
-
 function checkProfile() {
   if (existsSync(join(projectRoot, 'config', 'profile.yml'))) {
     return { pass: true, label: 'config/profile.yml found' };
@@ -104,34 +90,6 @@ function checkPortals() {
   };
 }
 
-function checkFonts() {
-  const fontsDir = join(projectRoot, 'fonts');
-  if (!existsSync(fontsDir)) {
-    return {
-      pass: false,
-      label: 'fonts/ directory not found',
-      fix: 'The fonts/ directory is required for PDF generation',
-    };
-  }
-  try {
-    const files = readdirSync(fontsDir);
-    if (files.length === 0) {
-      return {
-        pass: false,
-        label: 'fonts/ directory is empty',
-        fix: 'The fonts/ directory must contain font files for PDF generation',
-      };
-    }
-  } catch {
-    return {
-      pass: false,
-      label: 'fonts/ directory not readable',
-      fix: 'Check permissions on the fonts/ directory',
-    };
-  }
-  return { pass: true, label: 'Fonts directory ready' };
-}
-
 function checkAutoDir(name) {
   const dirPath = join(projectRoot, name);
   if (existsSync(dirPath)) {
@@ -150,19 +108,16 @@ function checkAutoDir(name) {
 }
 
 async function main() {
-  console.log('\ncareer-ops doctor');
-  console.log('================\n');
+  console.log('\nBYOJB doctor');
+  console.log('============\n');
 
   const checks = [
     checkNodeVersion(),
     checkDependencies(),
     await checkPlaywright(),
-    checkCv(),
     checkProfile(),
     checkPortals(),
-    checkFonts(),
     checkAutoDir('data'),
-    checkAutoDir('output'),
     checkAutoDir('reports'),
   ];
 
@@ -186,9 +141,8 @@ async function main() {
     console.log(`Result: ${failures} issue${failures === 1 ? '' : 's'} found. Fix them and run \`npm run doctor\` again.`);
     process.exit(1);
   } else {
-    console.log('Result: All checks passed. You\'re ready to go! Run `claude` to start.');
+    console.log('Result: All checks passed. You\'re ready to go! Start the dashboard with `npm run dashboard`.');
     console.log('');
-    console.log('Join the community: https://discord.gg/8pRpHETxa4');
     process.exit(0);
   }
 }

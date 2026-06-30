@@ -1,0 +1,17 @@
+description = "BYOJB — Build Your Own Job Board command menu"
+
+prompt = """
+Show the BYOJB pipeline commands, then act on any argument.
+
+Available commands:
+  /byojb-scan               → Scan target portals for new postings
+  /byojb-find-companies     → Discover NEW companies by criteria (config/company_criteria.yml)
+  /byojb-triage-companies   → Stage 2: LLM company fit ranking (no web fetch)
+  /byojb-research-companies → Stage 3: LLM company careers page scraping
+  /byojb-triage-jobs        → Stage 2: LLM postings ranking (no web fetch)
+  /byojb-research-jobs      → Stage 3: LLM JD facet extraction
+
+Dashboard web console:  `npm run dashboard` → http://localhost:4173
+
+Argument: {{args}}
+"""

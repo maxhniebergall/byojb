@@ -1,0 +1,42 @@
+description = "BYOJB Stage 2 — LLM world-knowledge prerank of the company queue (no web fetch)"
+
+prompt = """
+You are running the BYOJB **triage-companies** mode (Stage 2: world-knowledge prerank).
+
+SUBSCRIPTION ONLY: score the companies YOURSELF, here, in your own response. Do NOT use a
+`GEMINI_API_KEY`/`.env`, do NOT import `@google/generative-ai`, and do NOT write a script that calls
+an LLM API. `llm-triage.mjs` is a deterministic helper only.
+
+First read and follow `modes/triage-companies.md` exactly. Also read the user's criteria:
+`config/rubric.yml`, `config/company_fit.yml`, and `config/profile.yml` (target_roles, anti_targets,
+work_style_priorities).
+
+Loop:
+1. Get a batch:  run `node llm-triage.mjs --emit 50`  (each item: key, name, company_type, remote_openings, titles[]).
+2. Score EACH company **1-5** for fit to the rubric using your world knowledge + the provided job
+   titles. **No web fetching in this stage.** Be calibrated: most companies are 2-3; reserve 4-5
+   for genuine infrastructure/utility/backend/data/platform fit; give 1 to staffing/gig/freelance/
+   outsourcing/recruiting firms and pure hype/AI-wrapper companies.
+
+   CRITICAL — how to score (this is judgement work, not automation):
+   - **Use what YOU actually know about each company.** Do NOT write or run a keyword-matching
+     script/classifier to assign scores — that just reproduces the cheap heuristic and defeats the
+     purpose. Score in your own reasoning.
+   - **If you don't recognize a company, score it CONSERVATIVELY (2-3)** based only on the titles —
+     do NOT inflate to 4-5 just because a title contains "platform"/"infrastructure". Reserve 5 for
+     companies you genuinely know to be strong infra/data/devtools fits.
+   - **No subagents, no decomposition scripts.** Process the batch yourself, sequentially.
+   - Keep batches small (≤50) so you can judge each company rather than reaching for automation.
+3. Write `/tmp/scores.json` = `[{"key": "...", "llm_rank": <1-5>, "llm_reason": "<<=12 words>"}, ...]`.
+   **If a company is actually a consulting / outsourcing / staffing / gig / freelance / recruiting
+   firm (NOT a genuine product employer)**, also add `"company_type": "consulting"|"outsourcing"|"staffing"`
+   to its entry — that permanently flags it landscape-only (excluded from the queue and the watchlist),
+   not merely ranked 1. (Use "staffing" for gig/freelance/recruiting platforms.) Omit company_type for
+   genuine product companies.
+4. Apply:  run `node llm-triage.mjs --apply /tmp/scores.json`.
+5. Repeat for the number of batches requested. Show progress with `node llm-triage.mjs --stats`.
+
+This stage RANKS only — it never decides keep/skip and never web-fetches.
+
+Arguments (how many companies / batches to prerank): {{args}}
+"""

@@ -565,4 +565,4 @@ const server = createServer(async (req, res) => {
   if (path === '/') { res.writeHead(302, { 'location': '/postings' }); return res.end(); }
   res.writeHead(404); res.end('not found');
 });
-server.listen(PORT, () => console.log(`career-ops dashboard → http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Build Your Own Job Board (BYOJB) dashboard → http://localhost:${PORT}`));

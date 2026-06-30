@@ -65,13 +65,7 @@ for (const f of mjsFiles) {
 console.log('\n2. Script execution (graceful on empty data)');
 
 const scripts = [
-  { name: 'cv-sync-check.mjs', expectExit: 1, allowFail: true }, // fails without cv.md (normal in repo)
-  { name: 'verify-pipeline.mjs', expectExit: 0 },
-  { name: 'normalize-statuses.mjs', expectExit: 0 },
-  { name: 'dedup-tracker.mjs', expectExit: 0 },
-  { name: 'merge-tracker.mjs', expectExit: 0 },
-  { name: 'analyze-patterns.mjs --self-test', expectExit: 0 },
-  { name: 'update-system.mjs check', expectExit: 0 },
+  { name: 'doctor.mjs', expectExit: 0, allowFail: true },
 ];
 
 for (const { name, allowFail } of scripts) {
@@ -146,11 +140,13 @@ console.log('\n5. Data contract validation');
 
 // Check system files exist
 const systemFiles = [
-  'CLAUDE.md', 'VERSION', 'DATA_CONTRACT.md',
+  'DATA_CONTRACT.md',
   'modes/_shared.md', 'modes/_profile.template.md',
-  'modes/oferta.md', 'modes/pdf.md', 'modes/scan.md',
-  'templates/states.yml', 'templates/cv-template.html',
-  '.claude/skills/career-ops/SKILL.md',
+  'modes/scan.md', 'modes/find-companies.md',
+  'modes/triage-companies.md', 'modes/research-companies.md',
+  'modes/triage-jobs.md', 'modes/research-jobs.md',
+  'templates/states.yml',
+  '.agents/skills/byojb/SKILL.md',
 ];
 
 for (const f of systemFiles) {
@@ -187,16 +183,11 @@ const leakPatterns = [
 
 const scanExtensions = ['md', 'yml', 'html', 'mjs', 'sh', 'go', 'json'];
 const allowedFiles = [
-  // English README + localized translations (all legitimately credit Santiago)
-  'README.md', 'README.es.md', 'README.ja.md', 'README.ko-KR.md',
-  'README.pt-BR.md', 'README.ru.md', 'README.cn.md', 'README.zh-TW.md',
-  // Standard project files
-  'LICENSE', 'CITATION.cff', 'CONTRIBUTING.md', 'CHANGELOG.md', 'TRADEMARK.md',
-  'package.json', '.github/FUNDING.yml', 'CLAUDE.md', 'AGENTS.md', 'test-all.mjs',
-  '.claude-plugin/marketplace.json', '.claude-plugin/plugin.json',
-  // Community / governance files (added in v1.3.0, all legitimately reference the maintainer)
-  'CODE_OF_CONDUCT.md', 'GOVERNANCE.md', 'SECURITY.md', 'SUPPORT.md',
-  '.github/SECURITY.md',
+  'README.md',
+  'LICENSE',
+  'package.json',
+  '.github/FUNDING.yml',
+  'test-all.mjs',
 ];
 
 // Build pathspec for git grep — only scan tracked files matching these
@@ -246,9 +237,9 @@ if (!absPathResult) {
 console.log('\n8. Mode file integrity');
 
 const expectedModes = [
-  '_shared.md', '_profile.template.md', 'oferta.md', 'pdf.md', 'scan.md',
-  'batch.md', 'apply.md', 'auto-pipeline.md', 'contacto.md', 'deep.md',
-  'ofertas.md', 'pipeline.md', 'project.md', 'tracker.md', 'training.md',
+  '_shared.md', '_profile.template.md', 'scan.md',
+  'find-companies.md', 'triage-companies.md', 'research-companies.md',
+  'triage-jobs.md', 'research-jobs.md',
 ];
 
 for (const mode of expectedModes) {
@@ -327,39 +318,7 @@ if (
   fail('portals example still points at a bundled Cohere parser');
 }
 
-// ── 10. AGENTS.md INTEGRITY ─────────────────────────────────────
 
-console.log('\n10. AGENTS.md integrity');
-
-const agents = readFile('AGENTS.md');
-const requiredSections = [
-  'Data Contract', 'Update Check', 'Ethical Use',
-  'Offer Verification', 'Canonical States', 'TSV Format',
-  'First Run', 'Onboarding',
-];
-
-for (const section of requiredSections) {
-  if (agents.includes(section)) {
-    pass(`AGENTS.md has section: ${section}`);
-  } else {
-    fail(`AGENTS.md missing section: ${section}`);
-  }
-}
-
-// ── 11. VERSION FILE ─────────────────────────────────────────────
-
-console.log('\n11. Version file');
-
-if (fileExists('VERSION')) {
-  const version = readFile('VERSION').trim();
-  if (/^\d+\.\d+\.\d+$/.test(version)) {
-    pass(`VERSION is valid semver: ${version}`);
-  } else {
-    fail(`VERSION is not valid semver: "${version}"`);
-  }
-} else {
-  fail('VERSION file missing');
-}
 
 // ── 11. LOCATION FILTER — always_allow tier ───────────────────────
 
@@ -490,83 +449,6 @@ try {
 
 } catch (e) {
   fail(`always_allow tests crashed: ${e.message}`);
-}
-// ── 12. FOLLOW-UP CADENCE LOGIC ─────────────────────────────────
-
-console.log('\n12. Follow-up cadence logic');
-
-try {
-  const cadence = await import(pathToFileURL(join(ROOT, 'followup-cadence.mjs')).href);
-
-  // CLI regression: the import.meta.url guard must still let the module run as a CLI.
-  // Data-independent — default mode emits the result as JSON: a `metadata` object when
-  // the tracker has applications, or an `{error}` object (exit 1) when it is empty.
-  // Empty output would mean the guard wrongly suppressed main().
-  let cliOut = '';
-  try {
-    cliOut = execFileSync(NODE, [join(ROOT, 'followup-cadence.mjs')], { cwd: ROOT, encoding: 'utf-8', timeout: 30000 });
-  } catch (cliErr) {
-    cliOut = `${cliErr.stdout || ''}`; // exit 1 on an empty tracker is expected; keep stdout
-  }
-  let cliJson = null;
-  try { cliJson = JSON.parse(cliOut.trim()); } catch { /* leave null → fail below */ }
-  if (cliJson && typeof cliJson === 'object' && ('metadata' in cliJson || 'error' in cliJson)) {
-    pass('CLI still executes under the import.meta.url guard (emits result JSON)');
-  } else {
-    fail('CLI produced no structured JSON when run directly — import.meta.url guard may be broken');
-  }
-
-  // Date helpers
-  if (cadence.addDays(cadence.parseDate('2026-05-01'), 7) === '2026-05-08') {
-    pass('addDays advances a parsed date by N days (UTC)');
-  } else {
-    fail(`addDays produced ${cadence.addDays(cadence.parseDate('2026-05-01'), 7)}`);
-  }
-  if (cadence.daysBetween(cadence.parseDate('2026-05-01'), cadence.parseDate('2026-05-08')) === 7) {
-    pass('daysBetween counts whole days between two dates');
-  } else {
-    fail('daysBetween miscounted');
-  }
-  if (cadence.parseDate('not-a-date') === null && cadence.parseDate('2026-05-01') instanceof Date) {
-    pass('parseDate rejects malformed input and accepts ISO dates');
-  } else {
-    fail('parseDate validation wrong');
-  }
-
-  // Status normalization (strips bold + trailing date, lowercases, maps aliases)
-  if (cadence.normalizeStatus('**Applied** 2026-05-01') === 'applied') {
-    pass('normalizeStatus strips bold + trailing date and lowercases');
-  } else {
-    fail(`normalizeStatus produced ${cadence.normalizeStatus('**Applied** 2026-05-01')}`);
-  }
-
-  // Urgency decision tree (CADENCE defaults: applied_first=7, max_followups=2, responded_initial=1, interview_thankyou=1)
-  const urgencyCases = [
-    [['applied', 7, null, 0], 'overdue', 'applied past applied_first → overdue'],
-    [['applied', 3, null, 0], 'waiting', 'applied within window → waiting'],
-    [['applied', 30, null, 2], 'cold', 'applied at max follow-ups → cold'],
-    [['responded', 0, null, 0], 'urgent', 'responded before responded_initial → urgent'],
-    [['interview', 1, null, 0], 'overdue', 'interview past thank-you window → overdue'],
-  ];
-  for (const [args, expected, label] of urgencyCases) {
-    const got = cadence.computeUrgency(...args);
-    if (got === expected) pass(`computeUrgency: ${label}`);
-    else fail(`computeUrgency ${label}: expected ${expected}, got ${got}`);
-  }
-
-  // Next follow-up date scheduling
-  const nextCases = [
-    [['applied', '2026-05-01', null, 0], '2026-05-08', 'first applied follow-up = appDate + applied_first'],
-    [['applied', '2026-05-01', null, 2], null, 'cold (max follow-ups) → null'],
-    [['interview', '2026-05-01', null, 0], '2026-05-02', 'interview = appDate + interview_thankyou'],
-  ];
-  for (const [args, expected, label] of nextCases) {
-    const got = cadence.computeNextFollowupDate(...args);
-    if (got === expected) pass(`computeNextFollowupDate: ${label}`);
-    else fail(`computeNextFollowupDate ${label}: expected ${expected}, got ${got}`);
-  }
-} catch (e) {
-  fail(`follow-up cadence module crashed: ${e.message}`);
 }
 
 // ── 12. PROVIDERS — Workable ────────────────────────────────────────
@@ -1040,30 +922,7 @@ try {
     fail(`non-report link altered: ${other}`);
   }
 
-  // End-to-end migration against a fictional fixture tracker (no personal data)
-  const tmpDir = mkdtempSync(join(tmpdir(), 'career-ops-migrate-'));
-  try {
-    mkdirSync(join(tmpDir, 'data'));
-    mkdirSync(join(tmpDir, 'reports'));
-    writeFileSync(join(tmpDir, 'reports', '012-acme-2026-01-04.md'), '# fixture\n');
-    const tracker = join(tmpDir, 'data', 'applications.md');
-    writeFileSync(tracker,
-      '# Applications Tracker\n\n' +
-      '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n' +
-      '|---|------|---------|------|-------|--------|-----|--------|-------|\n' +
-      '| 12 | 2026-01-04 | Acme | Engineer | 4.2/5 | Evaluated | ✅ | [12](reports/012-acme-2026-01-04.md) | ok |\n');
 
-    // Migrate by pointing the script at the fixture tracker via env override.
-    run(NODE, ['merge-tracker.mjs', '--migrate'], { env: { ...process.env, CAREER_OPS_TRACKER: tracker } });
-    const after = readFileSync(tracker, 'utf-8');
-    if (after.includes('[12](../reports/012-acme-2026-01-04.md)')) {
-      pass('migration rewrites fixture tracker links to ../reports/...');
-    } else {
-      fail('migration did not rewrite fixture tracker link');
-    }
-  } finally {
-    rmSync(tmpDir, { recursive: true, force: true });
-  }
 } catch (e) {
   fail(`tracker-link normalization tests crashed: ${e.message}`);
 }

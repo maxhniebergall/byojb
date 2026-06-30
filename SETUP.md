@@ -1,73 +1,56 @@
-# Job Finder — Setup & Usage
+# Build Your Own Job Board (BYOJB) — Setup & Configuration
 
-This is [career-ops](https://github.com/santifer/career-ops) (MIT) scoped to **discovery →
-research → ranked reports**, with four additions for this setup. It runs on your LLM
-**subscription** (Claude Code or Gemini CLI) — no per-token API billing.
+This guide helps you set up the web dashboard, background scrapers, and AI pipelines.
 
-## 1. Fill in your details (required)
+---
 
-The system can't run evaluations until these have your real info (replace every `[FILL IN]`):
+## 1. Configure Personal Settings
 
-| File | What goes in it |
-|------|-----------------|
-| `cv.md` | Your CV in markdown. Drives match scoring + the "why it matched" explanations. |
-| `config/profile.yml` | Identity, target roles, comp, location. Your email is already set. |
-| `portals.yml` → `title_filter` | Keywords for YOUR target roles (currently AI/ML defaults). |
-| `config/jobspy.yml` → `search_terms` | Your role keywords for broad-board scraping. |
-| `config/company_criteria.yml` | Criteria for the company finder (industry, location, …). |
+You must customize the following templates to match your search profile. Create them from templates and customize (these are gitignored to keep your search private):
 
-> On a fresh clone, create your live configs from the templates (they're gitignored so your
-> search terms / criteria stay private):
-> `cp config/jobspy.example.yml config/jobspy.yml && cp config/company_criteria.example.yml config/company_criteria.yml`
+| Config File | Configuration details |
+|-------------|-----------------------|
+| `config/profile.yml` | Set your full name, email, target roles (e.g. `Platform Engineer`), timezone, and application defaults. |
+| `modes/_profile.md` | Write details about your background, target archetypes, and narrative to help the LLM align. |
+| `config/rubric.yml` | Set weights and preference values (desired salary, tech keywords, desired seniority) to calculate computed matching scores. |
+| `portals.yml` | Configure the list of companies you want to track (ATS names and URLs). |
 
-Run `npm run doctor` anytime to check readiness.
-
-## 2. Pick your LLM (subscription, zero-token)
-
-- **Gemini CLI** (your preference): `npm i -g @google/gemini-cli && gemini auth`, then run
-  `gemini` in this folder and use `/career-ops-*` commands. Free tier covers a full search.
-- **Claude Code**: run `claude` here and use `/career-ops …`.
-- **No API keys, ever.** All LLM work runs on the agent subscription. There is no `GEMINI_API_KEY` /
-  `@google/generative-ai` path in this fork — agents score/research directly and use the `.mjs`
-  scripts only as deterministic helpers.
-
-## 3. Daily flow
-
+Run the doctor script to verify everything is set up:
 ```bash
-# (occasionally) discover NEW companies matching your criteria → portals.yml
-#   in Claude Code / Gemini CLI:  /career-ops find-companies
-
-# refresh broad-board (LinkedIn/Indeed/Glassdoor/ZipRecruiter) cache — slow, run on its own
-npm run jobspy:refresh
-
-# discover jobs from target companies + JobSpy cache (zero-token)
-npm run scan            # = node scan.mjs
-
-# research + score + write ranked reports (uses your subscription)
-#   in Claude Code / Gemini CLI:  /career-ops pipeline
-
-# browse everything, ranked by relevance, with explanations
-npm run dashboard:web   # → http://localhost:4173
+npm run doctor
 ```
 
-## 4. The four additions (what's custom here)
+---
 
-1. **Company finder** — `config/company_criteria.yml` + `modes/find-companies.md` (LLM web
-   research) + `find-companies.mjs` (zero-token ATS-board resolver → appends to `portals.yml`).
-   Run via `/career-ops find-companies`. Standalone test: `node find-companies.mjs --resolve "Stripe"`.
-2. **Broad-board ingestion (JobSpy)** — `config/jobspy.yml` + `ingest/jobspy_pull.py`, wired
-   into the scanner as the "JobSpy Boards" entry in `portals.yml` via the local-parser provider.
-   `--refresh` scrapes into `data/jobspy-cache.json`; the scanner reads that cache instantly.
-3. **User-defined rubric** — `config/rubric.yml` is the single source of truth for scoring
-   weights/dimensions. Edit it, then `npm run rubric` re-renders it into the evaluation prompts
-   (`modes/_profile.md`, `modes/ofertas.md`, `modes/_shared.md`) and the dashboard.
-4. **Web dashboard** — `web/server.mjs` + `web/index.html`. Read-only; ranks evaluated jobs by
-   score with explanations + report links, lists discovered (pending) jobs, shows the active rubric.
+## 2. Load the Chrome Extension
 
-## Notes
-- `reports/SAMPLE-*.md` are demo fixtures so the dashboard's ranked view isn't empty — delete
-  them once you have real evaluations.
-- Python deps live in `.venv` (JobSpy + PyYAML). The JobSpy portal entry calls `.venv/bin/python`.
-- JobSpy scraping (esp. LinkedIn) is rate-limit/ToS-sensitive — keep `--refresh` runs modest.
-  Target-company ATS scanning is the reliable backbone.
-- Out of scope by design (left unused): resume PDF generation, auto-apply, interview prep.
+To enable automatic application submission recording and ATS form autofill:
+1. Open Google Chrome.
+2. Navigate to `chrome://extensions/`.
+3. Enable **Developer mode** (top right switch).
+4. Click **Load unpacked** (top left button).
+5. Select the `extension/` folder in the project root.
+
+---
+
+## 3. Running the Pipeline
+
+Follow these steps periodically:
+
+### Step 1: Scan
+Scan for new postings across tracked companies:
+```bash
+npm run scan
+```
+
+### Step 2: AI Triage & Extraction
+Run custom slash commands in your agent console (Gemini CLI or Claude Code) to triage the queue:
+* `/byojb-triage-jobs` (rapidly filters the queue down using world knowledge)
+* `/byojb-research-jobs` (reads full job descriptions and extracts objective JSON facets)
+
+### Step 3: Browse in Dashboard
+Start the local server:
+```bash
+npm run dashboard
+```
+Open `http://localhost:4173` to browse postings sorted by matches, modify sliders live, shortlist roles, and track applications.
