@@ -18,11 +18,11 @@ Originally derived from `career-ops`, BYOJB transitions the tool from a CLI-cent
    /byojb-scan
    ```
 
-2. **Run AI Triage (Prerank & Facet Extraction):**
-   Run the Stage 2/3 triage pipeline using your agent subscription. In Gemini CLI or Claude Code:
-   * `/byojb-triage-jobs` (Stage 2: fast ranking of new postings)
-   * `/byojb-research-jobs` (Stage 3: full JD reading and facet extraction)
-   * `/byojb-triage-companies` / `/byojb-research-companies` (for company vetting)
+2. **Run AI Vetting & Facet Extraction:**
+   Run the triage and research pipelines using your agent subscription. In Gemini CLI or Claude Code:
+   * `/byojb-triage-jobs` (Triage: fast ranking of new postings using world knowledge)
+   * `/byojb-research-jobs` (Research: full JD reading and facet extraction)
+   * `/byojb-triage-companies` / `/byojb-research-companies` (for company vetting and dossier building)
 
 3. **Manage and Track in the Web Dashboard:**
    Start the local web dashboard:
@@ -85,9 +85,9 @@ npm run doctor
 ```
   [ Discovery: /byojb-find-companies ]   → Search & import target companies (YC, Sequoia, etc.)
                    ↓
-  [ Stage 2: /byojb-triage-companies ]   → Quick LLM vetting based on criteria & fit
+  [ Triage: /byojb-triage-companies ]     → Quick LLM vetting based on criteria & fit
                    ↓
-  [ Stage 3: /byojb-research-companies ] → Scraping careers & about pages to compile dossiers
+  [ Research: /byojb-research-companies ] → Scraping careers & about pages to compile dossiers
                    ↓
   [ portals.yml Configuration ]          → List of verified company portals fed to scanner
 ```
@@ -96,11 +96,11 @@ npm run doctor
 ```
   [ Scan: /byojb-scan or npm run scan ]  → Pulls raw listings from lever/greenhouse/ashby/etc. in portals.yml
             ↓
-  [ Stage 2: /byojb-triage-jobs ]        → Quick world-knowledge fit filtering (1-5) via LLM
+  [ Triage: /byojb-triage-jobs ]         → Quick world-knowledge fit filtering (1-5) via LLM
             ↓
-  [ Stage 3: /byojb-research-jobs ]      → Reads full JDs, extracts structured JSON facets (no scoring)
+  [ Research: /byojb-research-jobs ]     → Reads full JDs, extracts structured JSON facets (no scoring)
             ↓
-  [ Stage 4: npm run dashboard ]         → Interactive UI: sliders re-weight & score, keep/skip
+  [ Dashboard: npm run dashboard ]       → Interactive UI: sliders re-weight & score, keep/skip
             ↓
   [ Chrome Extension ]                   → DOM autofill & records applications back to the dashboard
 ```
