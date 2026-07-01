@@ -1,6 +1,6 @@
 {
   "name": "byojb",
-  "version": "1.0.0",
+  "version": "1.9.0",
   "description": "Build Your Own Job Board (BYOJB) -- A personal, self-hosted web job board & automated pipeline tracker",
   "private": true,
   "scripts": {
