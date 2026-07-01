@@ -18,8 +18,8 @@ Loop:
 2. For EACH posting: extract the facet schema as STRICT JSON (use the exact enums; `unclear`/`null`/
    `[]` rather than guessing — especially `geo_eligibility`: only roles open to Canadians in Canada
    pass the user's hard filter). Write a short qualitative fit verdict → `data/posting-fit/<sk(key)>.md`
-   (no numeric "Fit: X/5" in prose).
-3. Build `/tmp/job-research.json` = `[{"key","extracted":{…},"llm_holistic_fit":<1-5>,"fit_brief","llm_reason"}]`
+   (no numeric 'Fit: X/5' in prose).
+3. Build `/tmp/job-research.json` = `[{'key', 'extracted': {…}, 'llm_holistic_fit': <1-5>, 'fit_brief', 'llm_reason'}]`
    and apply:  `node llm-triage-jobs.mjs --apply /tmp/job-research.json`  (writes facets + recomputes score).
 4. Repeat down the queue as far as requested.
 

@@ -17,7 +17,7 @@ Loop:
    reserve 4-5 for well-scoped backend/platform/infra/data/MLOps/cloud IC roles; 1 for off-target
    (product/growth/customer-facing/management, internships, wrong stack). Conservative on unknowns —
    Stage 3 reads the full JD. No keyword-script, no subagents; judge each posting yourself.
-3. Write `/tmp/job-scores.json` = `[{"key":"…","llm_rank":<1-5>,"llm_reason":"<=10 words"}, …]`.
+3. Write `/tmp/job-scores.json` = `[{'key': '…', 'llm_rank': <1-5>, 'llm_reason': '<=10 words'}, …]`.
 4. Apply:  `node llm-triage-jobs.mjs --apply /tmp/job-scores.json`.
 5. Repeat for the number of batches requested; show progress with `node llm-triage-jobs.mjs --stats`.
 

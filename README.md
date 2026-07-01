@@ -115,6 +115,22 @@ npm run doctor
 * **Re-weightable Scores:** The dashboard scores each role dynamically on a facet-weighted model. Start the dashboard with `npm run dashboard` (running `node web/server.mjs`) to adjust rubric sliders and instantly re-sort the queue without re-running the LLM.
 * **Tracking & Autofill:** Track applications, sync status records, and use the MV3 Chrome Extension to autofill forms from your profile and record submissions back to the DB.
 
+## Dashboard Gallery
+
+Here is a preview of the local web dashboard:
+
+| Postings Queue (Main View) | Posting Detail View |
+| :---: | :---: |
+| ![Postings Queue](docs/screenshots/postings.png) | ![Posting Detail](docs/screenshots/posting_detail.png) |
+
+| Compare View | Companies Vetting Console |
+| :---: | :---: |
+| ![Compare View](docs/screenshots/compare.png) | ![Companies Console](docs/screenshots/companies.png) |
+
+| Applications Tracker |
+| :---: |
+| ![Applications Tracker](docs/screenshots/applications.png) |
+
 ---
 
 ## Contributing

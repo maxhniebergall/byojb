@@ -27,11 +27,11 @@ Loop:
      companies you genuinely know to be strong infra/data/devtools fits.
    - **No subagents, no decomposition scripts.** Process the batch yourself, sequentially.
    - Keep batches small (≤50) so you can judge each company rather than reaching for automation.
-3. Write `/tmp/scores.json` = `[{"key": "...", "llm_rank": <1-5>, "llm_reason": "<<=12 words>"}, ...]`.
+3. Write `/tmp/scores.json` = `[{'key': '...', 'llm_rank': <1-5>, 'llm_reason': '<=12 words'}, ...]`.
    **If a company is actually a consulting / outsourcing / staffing / gig / freelance / recruiting
-   firm (NOT a genuine product employer)**, also add `"company_type": "consulting"|"outsourcing"|"staffing"`
+   firm (NOT a genuine product employer)**, also add `'company_type': 'consulting'|'outsourcing'|'staffing'`
    to its entry — that permanently flags it landscape-only (excluded from the queue and the watchlist),
-   not merely ranked 1. (Use "staffing" for gig/freelance/recruiting platforms.) Omit company_type for
+   not merely ranked 1. (Use 'staffing' for gig/freelance/recruiting platforms.) Omit company_type for
    genuine product companies.
 4. Apply:  run `node llm-triage.mjs --apply /tmp/scores.json`.
 5. Repeat for the number of batches requested. Show progress with `node llm-triage.mjs --stats`.
