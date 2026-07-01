@@ -117,6 +117,21 @@ npm run doctor
 
 ---
 
+## Contributing
+
+Contributions are welcome! Since BYOJB is designed to be paired with agentic AI coders (like Gemini Antigravity or Claude Code), here are some great ways to use AI assistants to contribute to this repository:
+
+1. **Broadening Scraper Coverage:** Expand the crawler capabilities in `scan.mjs` to target new platforms.
+2. **Adding Vetted Companies & Portals:** Share company careers page URLs and scraped company dossiers (under `data/company-research/`) to grow the default tracked target list in `templates/portals.example.yml`.
+3. **Specializing for Non-Engineering Roles:** Currently, BYOJB is optimized for software engineering searches. Propose prompt updates under the `modes/` folder or rubric overrides in `rubric.yml` to specialize matching for product, design, marketing, or other job types.
+4. **Adding Custom ATS Parsers:** Use LLMs to generate new parser configurations under the `providers/` directory or write bespoke company parsers for local scraping.
+5. **Improving UI/UX of the Web Dashboard:** Ask Claude or Gemini to propose premium styling changes, micro-animations, or layout optimizations inside the `web/` folder.
+6. **Enhancing Autofill Heuristics:** Suggest LLM prompts to analyze form inputs and refine field classification rules inside `autofill-fields.mjs`.
+
+Feel free to open a Pull Request or file an issue to report bugs and suggest improvements!
+
+---
+
 ## License & Attribution
 
 BYOJB is released under the **MIT License**.
