@@ -1,6 +1,6 @@
 ---
 name: byojb-triage-companies
-description: Stage 2: LLM company fit ranking (no web fetch)
+description: "Stage 2: LLM company fit ranking (no web fetch)"
 arguments: args
 user-invocable: true
 license: MIT

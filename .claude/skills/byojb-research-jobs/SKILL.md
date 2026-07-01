@@ -1,6 +1,6 @@
 ---
 name: byojb-research-jobs
-description: Stage 3: LLM JD facet extraction
+description: "Stage 3: LLM JD facet extraction"
 arguments: args
 user-invocable: true
 license: MIT

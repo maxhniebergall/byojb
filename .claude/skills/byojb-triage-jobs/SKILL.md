@@ -1,6 +1,6 @@
 ---
 name: byojb-triage-jobs
-description: Stage 2: LLM postings ranking (no web fetch)
+description: "Stage 2: LLM postings ranking (no web fetch)"
 arguments: args
 user-invocable: true
 license: MIT

@@ -1,6 +1,6 @@
 ---
 name: byojb-research-companies
-description: Stage 3: LLM company careers page scraping
+description: "Stage 3: LLM company careers page scraping"
 arguments: args
 user-invocable: true
 license: MIT
