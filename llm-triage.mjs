@@ -23,7 +23,7 @@ const RESULTS = join(ROOT, 'data', 'survey', 'results.jsonl');
 const RESEARCH = join(ROOT, 'data', 'company-research.jsonl');
 const PERSONAL = join(ROOT, 'data', 'companies-personal.jsonl');
 
-const EXCLUDED_TYPES = new Set(['consulting', 'outsourcing', 'staffing']);
+const EXCLUDED_TYPES = new Set(['consulting', 'outsourcing', 'staffing', 'unresolved']);
 
 function loadJsonl(path) {
   const out = [];

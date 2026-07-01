@@ -115,21 +115,48 @@ npm run doctor
 * **Re-weightable Scores:** The dashboard scores each role dynamically on a facet-weighted model. Start the dashboard with `npm run dashboard` (running `node web/server.mjs`) to adjust rubric sliders and instantly re-sort the queue without re-running the LLM.
 * **Tracking & Autofill:** Track applications, sync status records, and use the MV3 Chrome Extension to autofill forms from your profile and record submissions back to the DB.
 
-## Dashboard Gallery
+## Dashboard Showcase
 
-Here is a preview of the local web dashboard:
+The local web dashboard integrates live weights adjustment, company vetting details, comparison metrics, and application pipelines:
 
-| Postings Queue (Main View) | Posting Detail View |
-| :---: | :---: |
-| ![Postings Queue](docs/screenshots/postings.png) | ![Posting Detail](docs/screenshots/posting_detail.png) |
+<p align="center">
+  <img src="docs/screenshots/postings.png" alt="Postings Queue View" width="90%" style="border-radius: 8px; border: 1px solid #2a2d4a;" />
+  <br />
+  <sub><b>Postings Queue View:</b> Dynamic slider controls to adjust rubric weights live, filter postings, and review scored openings.</sub>
+</p>
 
-| Compare View | Companies Vetting Console |
-| :---: | :---: |
-| ![Compare View](docs/screenshots/compare.png) | ![Companies Console](docs/screenshots/companies.png) |
+<br />
 
-| Applications Tracker |
-| :---: |
-| ![Applications Tracker](docs/screenshots/applications.png) |
+<table width="100%">
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <h4>Posting Detail View</h4>
+      <img src="docs/screenshots/posting_detail.png" alt="Posting Detail View" width="98%" style="border-radius: 8px; border: 1px solid #2a2d4a;" />
+      <br />
+      <sub>Review full job descriptions, AI analysis, and fit verdicts.</sub>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <h4>Comparison View</h4>
+      <img src="docs/screenshots/compare.png" alt="Compare View" width="98%" style="border-radius: 8px; border: 1px solid #2a2d4a;" />
+      <br />
+      <sub>Compare selected jobs side-by-side on custom dimensions.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <h4>Companies Console</h4>
+      <img src="docs/screenshots/companies.png" alt="Companies Console" width="98%" style="border-radius: 8px; border: 1px solid #2a2d4a;" />
+      <br />
+      <sub>Vet company fit and review scraped employer dossiers.</sub>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <h4>Applications Tracker</h4>
+      <img src="docs/screenshots/applications.png" alt="Applications Tracker" width="98%" style="border-radius: 8px; border: 1px solid #2a2d4a;" />
+      <br />
+      <sub>Manage applied jobs, update recruiting stages, and store interview notes.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 

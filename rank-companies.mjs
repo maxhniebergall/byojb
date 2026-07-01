@@ -24,7 +24,7 @@ const CSV_DIR = join(ROOT, 'data', 'ats-companies');
 const RESEARCH = join(ROOT, 'data', 'company-research.jsonl');
 const PERSONAL = join(ROOT, 'data', 'companies-personal.jsonl');
 
-const EXCLUDED_TYPES = new Set(['consulting', 'outsourcing', 'staffing']);
+const EXCLUDED_TYPES = new Set(['consulting', 'outsourcing', 'staffing', 'unresolved']);
 
 // Objective company_type heuristic — known services/consulting/outsourcing/staffing brands.
 const TYPE_NAMES = [
