@@ -83,7 +83,12 @@ function renderApplications(){
   $('#acount').textContent=`${list.length} application${list.length===1?'':'s'}`;
   let h='<table><thead><tr>'+ath('date_applied','Date')+ath('company','Company')+ath('title','Role')+ath('status','Status')+'<th>CV</th><th>Links</th><th>Recruiter</th><th>Close</th></tr></thead><tbody>';
   for(const a of list){
-    const links=[a.apply_url?`<a href="${esc(a.apply_url)}" target="_blank">apply ↗</a>`:'', a.report?`<a href="/report?f=${encodeURIComponent(a.report)}" target="_blank">report ↗</a>`:''].filter(Boolean).join(' · ');
+    const links=[
+      a.has_posting?`<a href="/posting?key=${encodeURIComponent(a.key)}" target="_blank">posting ↗</a>`:'',
+      `<a href="/postings?q=${encodeURIComponent(a.company)}" target="_blank">postings ↗</a>`,
+      a.apply_url?`<a href="${esc(a.apply_url)}" target="_blank">apply ↗</a>`:'',
+      a.report?`<a href="/report?f=${encodeURIComponent(a.report)}" target="_blank">report ↗</a>`:''
+    ].filter(Boolean).join(' · ');
     const close=isOpenStatus(a.status)?`<button class="btn sm aclose" data-ak="${esc(a.key)}" data-to="Rejected" title="got turned down">Reject</button> <button class="btn sm aclose" data-ak="${esc(a.key)}" data-to="Discarded" title="no longer pursuing">Discard</button>`:'·';
     h+=`<tr class="arow" data-ak="${esc(a.key)}">
       <td>${esc(a.date_applied||'·')}</td><td>${esc(a.company)}</td><td>${esc(a.title)}</td>
@@ -110,6 +115,8 @@ async function openApplication(key){
   $('#adetail').className='detail';
   $('#adetail').innerHTML=`<h3>${esc(a.company || 'Unnamed Company')} — ${esc(a.title || 'Untitled Role')} <span class="st">${esc(a.status)}</span></h3>
     <div class="meta">${esc(a.provider||'')} ${a.location?'· '+esc(a.location):''} ${a.date_applied?'· applied '+esc(a.date_applied):''}
+      ${a.has_posting?`· <a href="/posting?key=${encodeURIComponent(key)}" target="_blank">posting detail ↗</a>`:''}
+      · <a href="/postings?q=${encodeURIComponent(a.company)}" target="_blank">postings page ↗</a>
       ${a.apply_url?`· <a href="${esc(a.apply_url)}" target="_blank">apply page ↗</a>`:''}
       ${a.report_file?`· <a href="/report?f=${encodeURIComponent(a.report_file)}" target="_blank">report ↗</a>`:''}</div>
     <div class="row-grid">

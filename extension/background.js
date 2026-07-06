@@ -1,4 +1,4 @@
-// background.js — Career-Ops Autofill service worker.
+// background.js — BYOJB Autofill service worker.
 //
 // All dashboard (localhost) requests go through here: with host_permissions granted, the
 // service worker's fetch bypasses page CORS (a content script's fetch would not). It proxies

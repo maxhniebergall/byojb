@@ -42,6 +42,9 @@
   .btn-ap:hover{background:rgba(124,140,255,0.15)!important;}
   .btn-sk{border-color:rgba(224,85,110,0.4)!important;color:var(--bad)!important;}
   .btn-sk:hover{background:rgba(224,85,110,0.15)!important;}
+  .badge-today{background:rgba(62,201,138,.18);color:var(--good);border:1px solid rgba(62,201,138,.3);font-size:.7rem;padding:.08rem .35rem;border-radius:6px;font-weight:600;margin-left:.4rem;display:inline-block;white-space:nowrap;}
+  .badge-week{background:rgba(124,140,255,.18);color:var(--accent);border:1px solid rgba(124,140,255,.3);font-size:.7rem;padding:.08rem .35rem;border-radius:6px;font-weight:600;margin-left:.4rem;display:inline-block;white-space:nowrap;}
+  .badge-date{font-size:.68rem;padding:.08rem .45rem;border-radius:99px;background:#23264a;color:var(--mut);margin-left:.4rem;display:inline-block;white-space:nowrap;cursor:help;}
 </style>
 </head>
 <body>
@@ -63,6 +66,9 @@
     <label class="chk"><input type="checkbox" id="hideCapped" checked> hide capped companies</label>
     <label class="chk"><input type="checkbox" id="hideApplied" checked> hide applied</label>
     <div style="margin-top:.5rem"><small style="color:var(--mut)">min score <span id="minLbl">0</span></small><input type="range" id="minScore" min="0" max="5" step="0.5" value="0" style="width:100%"></div>
+    <div style="margin-top:.5rem"><small style="color:var(--mut)">max age: <span id="ageLbl">any</span> days</small><input type="range" id="maxAge" min="1" max="31" step="1" value="31" style="width:100%"></div>
+    <div style="margin-top:.5rem"><small style="color:var(--mut)">age penalty: <span id="penaltyLbl">0.10</span> pts/day</small><input type="range" id="agePenalty" min="0" max="1" step="0.05" value="0.10" style="width:100%"></div>
+    <label class="chk" style="margin-top:.3rem"><input type="checkbox" id="hideOlder"> hide older (don't de-rank)</label>
   </aside>
   <div>
     <div class="panel pad" id="funnel" style="margin-bottom:1rem;display:none"></div>
@@ -115,6 +121,52 @@ function vetCompany(key){ if(!key) return; window.location.href='/companies?vet=
 // ==================== POSTINGS ====================
 let RUBRIC={dimensions:[]}, ROWS=[], WEIGHTS={}, psort={key:'display',dir:-1}, FUNNEL={}, WORKFLOW={max_open_per_company:3,apply_floor:3.5};
 let SELECTED=new Set();   // posting keys ticked for comparison (persisted)
+let SERVER_TODAY = '';
+
+function getAgeInDays(r, todayStr) {
+  let dateStr = r.date_posted;
+  let usingFallback = false;
+  if (dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    dateStr = dateStr.slice(0, 10);
+  } else {
+    dateStr = r.first_seen;
+    usingFallback = true;
+  }
+  if (!dateStr) {
+    console.error(`[BYOJB] No date available for posting: ${r.key}`);
+    return 999;
+  }
+  
+  const parseDate = (s) => {
+    const parts = s.slice(0, 10).split('-');
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  };
+  
+  try {
+    const pDate = parseDate(dateStr);
+    const tDate = parseDate(todayStr);
+    if (isNaN(pDate.getTime()) || isNaN(tDate.getTime())) {
+      throw new Error("Invalid Date parsed");
+    }
+    const diffTime = tDate - pDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  } catch (e) {
+    console.error(`[BYOJB] Failed to parse age for posting: ${r.key}. date_posted='${r.date_posted}', first_seen='${r.first_seen}', usingFallback=${usingFallback}. Error:`, e);
+    return 999;
+  }
+}
+
+function getDateInfo(r) {
+  if (r.date_posted && /^\d{4}-\d{2}-\d{2}/.test(r.date_posted)) {
+    return { date: r.date_posted.slice(0, 10), isFallback: false };
+  }
+  if (r.first_seen && /^\d{4}-\d{2}-\d{2}/.test(r.first_seen)) {
+    return { date: r.first_seen.slice(0, 10), isFallback: true };
+  }
+  console.error(`[BYOJB] No valid date found for posting: ${r.key}. date_posted='${r.date_posted}', first_seen='${r.first_seen}'`);
+  return { date: 'unknown', isFallback: true };
+}
 const LEVEL_LADDER=['junior','mid','mid-senior','senior','staff','principal'];
 let DESIRED_LEVEL='senior';
 function levelScore(r){
@@ -127,17 +179,19 @@ function levelScore(r){
 }
 function effDims(r){ if(!r.dim_scores) return r.dim_scores; if(!('level' in r.dim_scores)) return r.dim_scores; return {...r.dim_scores, level:levelScore(r)}; }
 
-const LS_KEY='careerops.postings.v1';
+const LS_KEY='byojb.postings.v1';
+const LS_KEY_FALLBACK='careerops.postings.v1';
 function saveState(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify({
     weights:WEIGHTS, psort, desired_level:DESIRED_LEVEL, selected:[...SELECTED],
     f:{ q:$('#q').value, fLang:$('#fLang').value, fSen:$('#fSen').value, fRemote:$('#fRemote').value,
         fGeo:$('#fGeo').value, fDec:$('#fDec').value, liveOnly:$('#liveOnly').checked,
         showExcl:$('#showExcl').checked, resOnly:$('#resOnly').checked, minScore:$('#minScore').value,
-        hideCapped:$('#hideCapped').checked, hideApplied:$('#hideApplied').checked },
+        hideCapped:$('#hideCapped').checked, hideApplied:$('#hideApplied').checked,
+        maxAge:$('#maxAge').value, agePenalty:$('#agePenalty').value, hideOlder:$('#hideOlder').checked },
   })); }catch{}
 }
-function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch{ return null; } }
+function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||localStorage.getItem(LS_KEY_FALLBACK)||'null'); }catch{ return null; } }
 function restoreFilters(f){
   if(!f) return;
   const set=(id,v)=>{ const e=$('#'+id); if(e&&v!=null&&v!=='') e.value=v; };
@@ -148,6 +202,9 @@ function restoreFilters(f){
   if(f.hideCapped!=null)$('#hideCapped').checked=f.hideCapped;
   if(f.hideApplied!=null)$('#hideApplied').checked=f.hideApplied;
   if(f.minScore!=null){ $('#minScore').value=f.minScore; $('#minLbl').textContent=f.minScore; }
+  if(f.maxAge!=null){ $('#maxAge').value=f.maxAge; $('#ageLbl').textContent=f.maxAge === '31' ? 'any' : f.maxAge; }
+  if(f.agePenalty!=null){ $('#agePenalty').value=f.agePenalty; $('#penaltyLbl').textContent=Number(f.agePenalty).toFixed(2); }
+  if(f.hideOlder!=null)$('#hideOlder').checked=f.hideOlder;
 }
 
 function weightedScore(dim){ if(!dim) return null; let w=0,a=0; for(const id in WEIGHTS){const s=dim[id]; if(s!=null){w+=WEIGHTS[id];a+=WEIGHTS[id]*s;}} return w?+(a/w).toFixed(2):null; }
@@ -156,13 +213,17 @@ function liveScore(r){ if(r.manual_score!=null) return r.manual_score; const ws=
 async function loadPostings(){
   const d=await (await fetch('/api/postings')).json();
   RUBRIC=d.rubric||{dimensions:[]}; ROWS=d.rows||[]; FUNNEL=d.funnel||{}; WORKFLOW=d.workflow||WORKFLOW;
+  SERVER_TODAY=d.today || new Date().toISOString().slice(0, 10);
   WEIGHTS={}; for(const dm of RUBRIC.dimensions) WEIGHTS[dm.id||dm.name]=+dm.weight||0;
   const st=loadState();
   if(st&&st.weights){ for(const id in WEIGHTS) if(st.weights[id]!=null) WEIGHTS[id]=+st.weights[id]; }
   if(st&&st.psort&&st.psort.key) psort=st.psort;
   if(st&&Array.isArray(st.selected)) SELECTED=new Set(st.selected);
   DESIRED_LEVEL=(st&&st.desired_level)||(RUBRIC.preferences&&RUBRIC.preferences.desired_level)||'senior';
-  renderSliders(); fillFacetFilters(); restoreFilters(st&&st.f); renderCounts(); renderFunnel(); renderPostings();
+  renderSliders(); fillFacetFilters(); restoreFilters(st&&st.f);
+  const qParam = new URLSearchParams(window.location.search).get('q');
+  if (qParam !== null) $('#q').value = qParam;
+  renderCounts(); renderFunnel(); renderPostings();
 }
 function renderFunnel(){
   const el=$('#funnel'); if(!el) return;
@@ -207,7 +268,24 @@ function pfiltered(){
   const q=$('#q').value.trim().toLowerCase(),lang=$('#fLang').value,sen=$('#fSen').value,rem=$('#fRemote').value,geo=$('#fGeo').value,dec=$('#fDec').value;
   const minS=+$('#minScore').value,liveOnly=$('#liveOnly').checked,showExcl=$('#showExcl').checked,resOnly=$('#resOnly').checked;
   const hideCapped=$('#hideCapped').checked,hideApplied=$('#hideApplied').checked;
-  let list=ROWS.map(r=>({...r,_s:liveScore(r)}));
+  const maxAge=+$('#maxAge').value;
+  const agePenalty=+$('#agePenalty').value;
+  const hideOlder=$('#hideOlder').checked;
+
+  let list=ROWS.map(r=>{
+    const score = liveScore(r);
+    const age = getAgeInDays(r, SERVER_TODAY);
+    let penalty = 0;
+    let finalScore = score;
+    if (maxAge < 31 && age > maxAge && !hideOlder && agePenalty > 0) {
+      penalty = Math.min(4.0, (age - maxAge) * agePenalty);
+      if (finalScore != null) {
+        finalScore = Math.max(0, finalScore - penalty);
+      }
+    }
+    return {...r, _s: finalScore, _orig_s: score, _penalty: penalty, _age: age};
+  });
+
   list=list.filter(r=>r.company_decision!=='skip'); // always hide postings from skipped companies
   if(liveOnly) list=list.filter(r=>r.live);
   if(!showExcl) list=list.filter(r=>!r.hard_excluded);
@@ -219,6 +297,11 @@ function pfiltered(){
   if(rem) list=list.filter(r=>r.remote_policy===rem);
   if(geo) list=list.filter(r=>r.geo_eligibility===geo);
   if(dec) list=list.filter(r=>r.decision===dec);
+  
+  if (maxAge < 31 && hideOlder) {
+    list=list.filter(r=>r._age<=maxAge);
+  }
+
   if(minS>0) list=list.filter(r=>(r._s??-1)>=minS);
   if(q) list=list.filter(r=>(r.company+r.title+r.reason+(r.languages||[]).join()+(r.technologies||[]).join()).toLowerCase().includes(q));
   const k=psort.key,dir=psort.dir;
@@ -274,11 +357,27 @@ function renderPostings(){
         <button class="btn sm btn-sk act-btn" data-k="${esc(r.key)}" data-dec="skip">Skip</button>
       </div>`;
     }
+    const hasPenalty = r._penalty && r._penalty > 0;
+    const scoreTooltip = hasPenalty ? `title="Original score: ${r._orig_s.toFixed(1)} (penalized by -${r._penalty.toFixed(2)} due to age: ${r._age} days)"` : '';
+    const penaltyIndicator = hasPenalty ? ` <span style="cursor:help;color:var(--warn);" title="De-ranked due to age: ${r._age} days (penalty -${r._penalty.toFixed(2)})">⏳</span>` : '';
+
+    let ageBadge = '';
+    if (r._age === 0) {
+      ageBadge = ' <span class="badge-today">New Today</span>';
+    } else if (r._age <= 7) {
+      ageBadge = ' <span class="badge-week">New this Week</span>';
+    }
+
+    const dInfo = getDateInfo(r);
+    const dateIcon = dInfo.isFallback ? '🔍' : '📅';
+    const dateTooltip = dInfo.isFallback ? `First discovered by scan on ${dInfo.date}` : `Posted by company on ${dInfo.date}`;
+    const datePill = dInfo.date !== 'unknown' ? ` <span class="badge-date" title="${dateTooltip}">${dateIcon} ${dInfo.date}</span>` : '';
+
     h+=`<tr class="${r.hard_excluded||r.capped?'hx':''}" data-k="${esc(r.key)}">
       <td class="selcol"><input type="checkbox" class="rsel" data-k="${esc(r.key)}"${SELECTED.has(r.key)?' checked':''}></td>
-      <td><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}</td>
+      <td ${scoreTooltip}><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}${penaltyIndicator}</td>
       <td>${companyLink(r)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}</td>
-      <td>${esc(r.title)}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
+      <td>${esc(r.title)}${ageBadge}${datePill}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
       <td>${stack||'·'}</td><td>${esc(comp(r.comp))||'·'}</td>
       <td>${esc(r.location||r.remote_policy||'·')}${r.geo_eligibility&&r.geo_eligibility!=='unclear'?` <span class="chip">${esc(r.geo_eligibility)}</span>`:''}</td>
       <td>${r.culture?`<span class="chip">${esc(r.culture)}</span>`:'·'}</td>
@@ -305,8 +404,20 @@ function renderSelBar(list){
   // keep the select-all box in sync with what's currently shown
   if(list){const all=list.length&&list.every(r=>SELECTED.has(r.key));const sa=$('#selAll');if(sa)sa.checked=all;}
 }
-['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly','hideCapped','hideApplied'].forEach(id=>{const e=$('#'+id);const h=()=>{renderPostings();saveState();};e.oninput=h;e.onchange=h;});
+['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly','hideCapped','hideApplied','hideOlder'].forEach(id=>{const e=$('#'+id);const h=()=>{renderPostings();saveState();};e.oninput=h;e.onchange=h;});
 $('#minScore').oninput=()=>{$('#minLbl').textContent=$('#minScore').value;renderPostings();saveState();};
+$('#maxAge').oninput=()=>{
+  const val = $('#maxAge').value;
+  $('#ageLbl').textContent = val === '31' ? 'any' : val;
+  renderPostings();
+  saveState();
+};
+$('#agePenalty').oninput=()=>{
+  const val = $('#agePenalty').value;
+  $('#penaltyLbl').textContent = Number(val).toFixed(2);
+  renderPostings();
+  saveState();
+};
 $('#cmpBtn').onclick=()=>{ if(SELECTED.size<2) return; window.open('/compare?keys='+encodeURIComponent([...SELECTED].join('\n')),'_blank'); };
 $('#cmpClear').onclick=(e)=>{e.preventDefault();SELECTED.clear();renderPostings();saveState();};
 

@@ -31,6 +31,7 @@ import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, rea
 import { pathToFileURL, fileURLToPath } from 'url';
 import path from 'path';
 import yaml from 'js-yaml';
+import { execSync } from 'child_process';
 
 import { makeHttpCtx } from './providers/_http.mjs';
 import { canonicalUrl } from './posting-core.mjs';
@@ -39,7 +40,7 @@ const parseYaml = yaml.load;
 
 // ── Config ──────────────────────────────────────────────────────────
 
-const PORTALS_PATH = process.env.CAREER_OPS_PORTALS || 'portals.yml';
+const PORTALS_PATH = process.env.BYOJB_PORTALS || process.env.CAREER_OPS_PORTALS || 'portals.yml';
 const SCAN_HISTORY_PATH = 'data/scan-history.tsv';
 const PIPELINE_PATH = 'data/pipeline.md';
 const APPLICATIONS_PATH = 'data/applications.md';
@@ -394,6 +395,15 @@ async function main() {
     process.exit(1);
   }
 
+  // 1.5. Regenerate watchlist from registry
+  try {
+    const cmd = dryRun ? 'node generate-watchlist.mjs --dry-run' : 'node generate-watchlist.mjs';
+    execSync(cmd, { stdio: 'inherit' });
+    console.log(); // empty line for clean formatting
+  } catch (err) {
+    console.warn(`⚠️  Failed to regenerate watchlist: ${err.message}`);
+  }
+
   // 2. Read portals.yml
   if (!existsSync(PORTALS_PATH)) {
     console.error('Error: portals.yml not found. Run onboarding first.');
@@ -605,7 +615,7 @@ async function main() {
     }
   }
 
-  console.log(`\n→ Run /career-ops pipeline to evaluate new offers.`);
+  console.log(`\n→ Run /byojb-triage-jobs to evaluate new offers.`);
   console.log('→ Share results and get help: https://discord.gg/8pRpHETxa4');
 }
 

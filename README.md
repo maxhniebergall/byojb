@@ -1,5 +1,7 @@
 # Build Your Own Job Board (BYOJB)
 
+[![Tests](https://github.com/maxhniebergall/byojb/actions/workflows/test.yml/badge.svg)](https://github.com/maxhniebergall/byojb/actions/workflows/test.yml)
+
 **Build Your Own Job Board (BYOJB)** is a self-hosted, personal web job board and automated application tracker. It combines background scraping, automated AI-assisted ranking and triage, an interactive local dashboard, and a Chrome Extension to help you run a high-quality, targeted job search.
 
 Originally derived from `career-ops`, BYOJB transitions the tool from a CLI-centric application to a rich web dashboard layout with background pipeline automation.
@@ -157,6 +159,35 @@ The local web dashboard integrates live weights adjustment, company vetting deta
     </td>
   </tr>
 </table>
+
+---
+
+## Testing
+
+BYOJB includes a comprehensive test suite that validates script syntax, file structures, data contracts, and integration scenarios.
+
+### Running Tests Locally
+
+You can run the test suite locally using the following npm command:
+
+```bash
+npm test
+```
+
+To run tests quickly without building the dashboard (skipping the slower dashboard-compilation step):
+
+```bash
+node test-all.mjs --quick
+```
+
+### CI/CD Testing Workflow
+
+A GitHub Actions workflow is configured in [test.yml](file:///Users/mh/workplace/job-finder/.github/workflows/test.yml). It automatically runs on:
+- Every push to the `main` branch
+- Pull requests targeting the `main` branch
+- Manual triggers (`workflow_dispatch`)
+
+The workflow checks out the code, sets up a Node.js v20 environment, installs dependencies, and runs the test suite via `node test-all.mjs --quick`.
 
 ---
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * doctor.mjs — Setup validation for career-ops
+ * doctor.mjs — Setup validation for BYOJB
  * Checks all prerequisites and prints a pass/fail checklist.
  */
 

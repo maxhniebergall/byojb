@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Career-Ops Autofill",
+  "name": "BYOJB Autofill",
   "version": "0.1.0",
-  "description": "Deterministically fills standard fields on job application forms from your career-ops profile, and tracks submissions back to the dashboard. You always click Submit.",
+  "description": "Deterministically fills standard fields on job application forms from your BYOJB profile, and tracks submissions back to the dashboard. You always click Submit.",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "host_permissions": [
     "http://localhost:4173/*",
@@ -22,7 +22,7 @@
     "https://*.canonical.com/*"
   ],
   "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html", "default_title": "Career-Ops Autofill" },
+  "action": { "default_popup": "popup.html", "default_title": "BYOJB Autofill" },
   "content_scripts": [
     {
       "matches": [

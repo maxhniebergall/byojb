@@ -1,4 +1,4 @@
-// content.js — Career-Ops Autofill content script.
+// content.js — BYOJB Autofill content script.
 //
 // Runs in YOUR Chrome on the ATS application page: enumerates visible form fields, applies
 // deterministic fill values (computed by the dashboard, never an LLM), highlights the fields
@@ -28,10 +28,16 @@
   function labelFor(el) {
     if (el.id) {
       const l = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
-      if (l && cleanText(l.textContent)) return cleanText(l.textContent);
+      if (l) {
+        const sub = l.querySelector('[class*="label"], [class*="Label"]');
+        if (sub && cleanText(sub.textContent)) return cleanText(sub.textContent);
+        if (cleanText(l.textContent)) return cleanText(l.textContent);
+      }
     }
     const wrap = el.closest('label');
     if (wrap) {
+      const sub = wrap.querySelector('[class*="label"], [class*="Label"]');
+      if (sub && cleanText(sub.textContent)) return cleanText(sub.textContent);
       const clone = wrap.cloneNode(true);
       clone.querySelectorAll('input,select,textarea').forEach(n => n.remove());
       const t = cleanText(clone.textContent);
@@ -44,8 +50,19 @@
       const t = lb.split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' ');
       if (cleanText(t)) return cleanText(t);
     }
-    const cont = el.closest('div,fieldset,section,li,p');
-    if (cont) { const lbl = cont.querySelector('label'); if (lbl && cleanText(lbl.textContent)) return cleanText(lbl.textContent); }
+    
+    // Walk parent elements to search for label elements or legend
+    let parent = el.parentElement;
+    while (parent && parent.tagName !== 'FORM' && parent.tagName !== 'BODY') {
+      const lbl = parent.querySelector('label, [class*="label"], [class*="Label"], legend');
+      if (lbl && cleanText(lbl.textContent)) {
+        const sub = lbl.querySelector('[class*="label"], [class*="Label"]');
+        if (sub && cleanText(sub.textContent)) return cleanText(sub.textContent);
+        return cleanText(lbl.textContent);
+      }
+      parent = parent.parentElement;
+    }
+
     if (el.placeholder) return cleanText(el.placeholder);
     return cleanText(el.name || '');
   }

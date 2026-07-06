@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// web/server.mjs — the SINGLE career-ops dashboard (read+write, localhost-only).
+// web/server.mjs — the SINGLE BYOJB dashboard (read+write, localhost-only).
 //
 // Unifies the former two UIs:
 //   • POSTINGS  — the faceted ranking queue over the postings registry: facet search/filter,
@@ -203,6 +203,7 @@ function postingsQueue() {
       company_decision: co.decision || 'undecided', company_fit: co.llm_fit ?? null,
       title: r.title, provider: r.provider,
       location: r.location, department: r.department, date_posted: r.date_posted, live: r.live !== false,
+      first_seen: r.first_seen || null,
       researched: !!r.extracted, has_body: !!r.has_body,
       // application/cap state
       applied: hasApplied || p.decision === 'applied', company_open_count: open_count, capped: open_count >= max_open_per_company,
@@ -272,6 +273,7 @@ function applicationsQueue() {
       provider: r.provider || '', location: r.location || '',
       recruiter: a.recruiter || {}, confirmation: a.confirmation || '', notes: a.notes || '',
       report: reportFileOf(a), has_body: !!r.has_body, last_updated: a.last_updated || '',
+      has_posting: research.has(a.key),
     };
   }).sort((x, y) => String(y.date_applied || '').localeCompare(String(x.date_applied || '')) || (y.tracker_num - x.tracker_num));
 }
@@ -286,6 +288,7 @@ function applicationDetail(key) {
     apply_url: a.apply_url || r.apply_url || r.url || '',
     jd_body: r.has_body ? readMd(join(POST_BODY_DIR, sk(key) + '.md')) : '',
     report_file: reportFileOf(a),
+    has_posting: !!r.key,
   };
 }
 
@@ -341,7 +344,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
 
   // ----- POSTINGS -----
-  if (path === '/api/postings') { const rows = postingsQueue(); return json(res, { rubric: loadRubric(), workflow: workflowCfg(), funnel: funnelStats(rows), rows }); }
+  if (path === '/api/postings') { const rows = postingsQueue(); return json(res, { rubric: loadRubric(), workflow: workflowCfg(), funnel: funnelStats(rows), rows, today: today() }); }
   if (path === '/api/posting') {
     const key = url.searchParams.get('key');
     const d = postingDetail(key);
@@ -510,7 +513,7 @@ const server = createServer(async (req, res) => {
   if (req.method === 'POST' && path === '/api/autofill/plan') {
     const { fields = [] } = await body(req);
     const profile = loadAppProfile(); const userMap = loadUserMap(); const memory = loadAnswerMemory();
-    const { fields: cf, allStandard, counts, requiredUnresolved } = classifyForm(fields, userMap);
+    const { fields: cf, allStandard, counts } = classifyForm(fields, userMap);
     const out = cf.map(f => {
       // 1) standard profile value wins for identity fields it covers
       if (f.kind === 'standard' && f.profileKey) {
@@ -525,7 +528,8 @@ const server = createServer(async (req, res) => {
       // 3) else the heuristic classification (free_text / salary / demographic / unmapped / file)
       return { name: f.name, label: f.label, type: f.type, required: !!f.required, kind: f.kind, profileKey: f.profileKey, value: '' };
     });
-    return json(res, { fields: out, allStandard, counts, requiredUnresolved: requiredUnresolved.map(f => f.label), default_resume: profile.default_resume || '', profile_keys: PROFILE_KEYS });
+    const unresolved = out.filter(f => f.required && !String(f.value || '').trim()).map(f => f.label);
+    return json(res, { fields: out, allStandard, counts, requiredUnresolved: unresolved, default_resume: profile.default_resume || '', profile_keys: PROFILE_KEYS });
   }
   // Memorize answers the user picked, so identical questions auto-fill next time. Bulk or single.
   if (req.method === 'POST' && path === '/api/autofill/remember') {

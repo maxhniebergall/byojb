@@ -81,7 +81,7 @@ function main() {
   if (!existsSync(profilePath)) {
     const tmpl = join(ROOT, 'modes', '_profile.template.md');
     if (existsSync(tmpl)) copyFileSync(tmpl, profilePath);
-    else writeFileSync(profilePath, '# User Profile Context -- career-ops\n', 'utf-8');
+    else writeFileSync(profilePath, '# User Profile Context -- BYOJB\n', 'utf-8');
   }
   let profile = readFileSync(profilePath, 'utf-8');
   const overrideBody =

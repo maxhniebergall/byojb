@@ -1,4 +1,4 @@
-// popup.js — Career-Ops Autofill popup.
+// popup.js — BYOJB Autofill popup.
 //
 // Flow: ENUMERATE the page's fields (content script) → PLAN them (dashboard classifies + attaches
 // values) → render groups → you click "Fill standard fields" → content script fills + highlights.

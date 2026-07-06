@@ -75,7 +75,7 @@ async function load(){
   RUBRIC=COLS[0].rubric||{dimensions:[]};
   // rubric-weight + desired-level overrides shared via the postings page localStorage
   WEIGHTS={}; for(const dm of (RUBRIC.dimensions||[])) WEIGHTS[dm.id||dm.name]=+dm.weight||0;
-  let st=null; try{ st=JSON.parse(localStorage.getItem('careerops.postings.v1')||'null'); }catch{}
+  let st=null; try{ st=JSON.parse(localStorage.getItem('byojb.postings.v1')||localStorage.getItem('careerops.postings.v1')||'null'); }catch{}
   if(st&&st.weights){ for(const id in WEIGHTS) if(st.weights[id]!=null) WEIGHTS[id]=+st.weights[id]; }
   DESIRED=(st&&st.desired_level)||(RUBRIC.preferences&&RUBRIC.preferences.desired_level)||'senior';
   // precompute per-column derived dim scores + overall

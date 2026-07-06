@@ -287,7 +287,7 @@ Nuevas añadidas a pipeline.md: N
   + {company} | {title} | {query_name}
   ...
 
-→ Ejecuta /career-ops pipeline para evaluar las nuevas ofertas.
+→ Ejecuta /byojb-triage-jobs para evaluar las nuevas ofertas.
 ```
 
 ## Gestión de careers_url

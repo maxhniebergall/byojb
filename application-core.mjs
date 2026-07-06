@@ -18,8 +18,8 @@ import { normalizeReportLink as normalizeLink } from './tracker-links.mjs';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 export const APPLICATIONS_JSONL = join(ROOT, 'data', 'applications.jsonl');
 // Match merge-tracker.mjs: prefer data/applications.md, fall back to root layout.
-export const APPLICATIONS_MD = process.env.CAREER_OPS_TRACKER
-  ? process.env.CAREER_OPS_TRACKER
+export const APPLICATIONS_MD = (process.env.BYOJB_TRACKER || process.env.CAREER_OPS_TRACKER)
+  ? (process.env.BYOJB_TRACKER || process.env.CAREER_OPS_TRACKER)
   : existsSync(join(ROOT, 'data/applications.md'))
     ? join(ROOT, 'data/applications.md')
     : join(ROOT, 'applications.md');

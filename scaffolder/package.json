@@ -1,9 +1,9 @@
 {
-  "name": "@santifer/career-ops",
+  "name": "byojb",
   "version": "1.8.1",
-  "description": "One-command installer for career-ops — the AI-powered job search pipeline built on Claude Code.",
+  "description": "One-command installer for BYOJB — the AI-powered job search pipeline.",
   "bin": {
-    "career-ops": "bin/cli.mjs"
+    "byojb": "bin/cli.mjs"
   },
   "type": "module",
   "files": [
@@ -14,7 +14,7 @@
     "node": ">=18"
   },
   "keywords": [
-    "career-ops",
+    "byojb",
     "claude-code",
     "job-search",
     "scaffold",
@@ -22,14 +22,14 @@
     "cli"
   ],
   "author": "Santiago Fernández de Valderrama <hi@santifer.io> (https://santifer.io)",
-  "homepage": "https://github.com/santifer/career-ops#readme",
+  "homepage": "https://github.com/maxhniebergall/byojb#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/santifer/career-ops.git",
+    "url": "git+https://github.com/maxhniebergall/byojb.git",
     "directory": "scaffolder"
   },
   "bugs": {
-    "url": "https://github.com/santifer/career-ops/issues"
+    "url": "https://github.com/maxhniebergall/byojb/issues"
   },
   "license": "MIT",
   "dependencies": {}

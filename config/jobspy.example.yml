@@ -1,4 +1,4 @@
-# JobSpy broad-board ingestion config  (NEW — feeds career-ops via the local-parser provider)
+# JobSpy broad-board ingestion config  (NEW — feeds BYOJB via the local-parser provider)
 #
 # Workflow:
 #   1. Edit search_terms / locations / sites below to match your search.

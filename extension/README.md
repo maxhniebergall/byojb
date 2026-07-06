@@ -1,4 +1,4 @@
-# Career-Ops Autofill — Chrome extension
+# BYOJB Autofill — Chrome extension
 
 Deterministically fills the **standard** fields of a job application form (name, email, phone,
 links, location, work authorization, …) from your `config/profile.yml`, flags everything that

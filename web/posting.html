@@ -58,7 +58,7 @@ async function load(){
   if('level' in ds){
     const LADDER=['junior','mid','mid-senior','senior','staff','principal'];
     let desired='senior';
-    try{const st=JSON.parse(localStorage.getItem('careerops.postings.v1')||'null');desired=(st&&st.desired_level)||(c.rubric&&c.rubric.preferences&&c.rubric.preferences.desired_level)||'senior';}catch{}
+    try{const st=JSON.parse(localStorage.getItem('byojb.postings.v1')||localStorage.getItem('careerops.postings.v1')||'null');desired=(st&&st.desired_level)||(c.rubric&&c.rubric.preferences&&c.rubric.preferences.desired_level)||'senior';}catch{}
     const di=LADDER.indexOf(String(desired).toLowerCase());
     if(di>=0){
       const sen=(ex.seniority||'').toLowerCase(); let li=LADDER.indexOf(sen);
@@ -67,8 +67,23 @@ async function load(){
     }
   }
   const dimRow=dims.map(d=>{const id=d.id||d.name;const v=ds[id];return `<div class="d"><small title="${esc(d.guidance||'')}">${esc(d.name)}${d.compute?'':' ·llm'}</small> <b class="badge ${bcls(v)}">${v!=null?(+v).toFixed(1):'·'}</b></div>`;}).join('');
+  const hasDate = c.date_posted && /^\d{4}-\d{2}-\d{2}/.test(c.date_posted);
+  let dateToShow = '';
+  let isFallback = false;
+  if (hasDate) {
+    dateToShow = c.date_posted.slice(0, 10);
+  } else if (c.first_seen && /^\d{4}-\d{2}-\d{2}/.test(c.first_seen)) {
+    dateToShow = c.first_seen.slice(0, 10);
+    isFallback = true;
+  } else {
+    console.error(`[BYOJB] No valid date found for posting: ${c.key}. date_posted='${c.date_posted}', first_seen='${c.first_seen}'`);
+  }
+  const dateIcon = !isFallback ? '📅' : '🔍';
+  const dateLabel = !isFallback ? `Posted: ${dateToShow}` : `Discovered: ${dateToShow}`;
+  const dateHtml = dateToShow ? `· <span title="${!isFallback ? 'Posted by company' : 'First discovered by scan'}" style="cursor:help;">${dateIcon} ${dateLabel}</span>` : '';
+
   $('#detail').innerHTML=`<h3>${companyLink(c.company_key||c.company, c.company)} — ${esc(c.title)} ${c.hard_excluded?'<span class="row-excl">⛔ hard-excluded</span>':''} ${c.decision&&c.decision!=='undecided'?`<span class="dec ${c.decision}">${c.decision}</span>`:''}</h3>
-    <div class="meta">${esc(c.provider||'')} ${c.location?'· '+esc(c.location):''} ${c.date_posted?'· '+esc(String(c.date_posted).slice(0,10)):''}
+    <div class="meta">${esc(c.provider||'')} ${c.location?'· '+esc(c.location):''} ${dateHtml}
       ${c.url?`· <a href="${esc(c.url)}" target="_blank">open posting ↗</a>`:''}
       ${c.apply_url?`· <a href="${esc(c.apply_url)}" target="_blank">apply / autofill ↗</a>`:''}
       ${c.report?`· <a href="/report?f=${encodeURIComponent(c.report)}" target="_blank">report ↗</a>`:''}</div>

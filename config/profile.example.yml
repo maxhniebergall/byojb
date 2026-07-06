@@ -1,4 +1,4 @@
-# Career-Ops Profile Configuration
+# BYOJB Profile Configuration
 # Copy this file to config/profile.yml and fill in your details.
 # This is the single source of truth for your personal data across all modes.
 
@@ -68,7 +68,7 @@ location:
 
 cv:
   output_format: "html" # "html" (default) or "latex"
-  # (Optional) Canva resume design ID for visual CV generation via /career-ops pdf.
+  # (Optional) Canva resume design ID for visual CV generation via BYOJB PDF.
   # Find it in your Canva design URL: https://www.canva.com/design/DAxxxxxxx/...
   # The ID starts with "D" and is 11 characters long.
   # canva_resume_design_id: "DAxxxxxxxxx"
@@ -98,7 +98,7 @@ application_profile:
   how_did_you_hear: "Company careers page"
   default_resume: "output/your-cv.pdf"   # path to your generated CV PDF
 
-# Auto-PDF threshold during evaluation (used by `/career-ops pipeline` and
+# Auto-PDF threshold during evaluation (used by BYOJB pipeline and
 # `bash batch/batch-runner.sh`).
 #
 # An offer's tailored CV PDF is auto-generated only when its score is
@@ -107,12 +107,12 @@ application_profile:
 # become an actual application — so the gate avoids wasted renders.
 #
 # Default (key absent OR commented out): 3.0 — the original gate of
-# `/career-ops pipeline`. Both evaluation paths apply the same default, so
+# BYOJB pipeline. Both evaluation paths apply the same default, so
 # a batch run and an interactive run treat the same offer identically.
 #
 # Raise it (e.g. 4.0) to auto-generate PDFs only for stronger matches and
 # leave the rest report-only — those can still be produced on demand via
-# `/career-ops pdf {company-slug}`. Fractional thresholds work (e.g. 3.5 —
+# BYOJB PDF `{company-slug}`. Fractional thresholds work (e.g. 3.5 —
 # half-point scores like 3.5/5 occur in evaluations). Set it to 0 to
 # generate a PDF for every offer.
 # auto_pdf_score_threshold: 4.0
