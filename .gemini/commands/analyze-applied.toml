@@ -1,0 +1,12 @@
+description = "Run static analysis on applied jobs and review rubric scoring performance"
+
+prompt = """
+You are analyzing the BYOJB scoring rubric performance.
+First, run the analysis script to see how the jobs the user has actually applied to rank against the rest of the queue:
+`node analyze-applied.mjs`
+
+After running the script, read the output. Then, have a conversation with the user about the results:
+- Which applied jobs are ranking poorly or getting hard-excluded?
+- Which rubric dimensions (e.g. comp, stability, wlb) seem to have significantly lower averages for applied jobs compared to the rest of the pool?
+- Propose concrete changes to `config/rubric.yml` (such as adjusting weights, relaxing preferences, or modifying hard filters) based on this discrepancy.
+"""

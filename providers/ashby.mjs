@@ -1,71 +1,108 @@
 // @ts-check
 /** @typedef {import('./_types.js').Provider} Provider */
 
-// Ashby provider — hits the public posting-api endpoint.
-// Auto-detects from careers_url pattern `https://jobs.ashbyhq.com/<slug>`.
-//
-// Ashby's public posting-api carries a ~10s+ server-side latency floor
-// (response time is independent of board size) and rate-limits repeated
-// unauthenticated hits. The global default timeout (10s, providers/_http.mjs)
-// sits right on that floor, so requests race the timeout and abort. We give
-// Ashby a longer timeout plus a backoff+jitter retry (the backoff spaces
-// requests out to dodge rate-limiting).
-// See .planning/codebase/ashby-scan-abort-diagnosis.md.
-const ASHBY_TIMEOUT_MS = 30_000;
-const ASHBY_RETRIES = 2;
+// Ashby provider — hits the public GraphQL non-user-graphql endpoint.
+// This is robust against companies that have disabled REST API access.
 
-function resolveApiUrl(entry) {
+const ASHBY_TIMEOUT_MS = 30_000;
+
+function resolveCompanySlug(entry) {
   const url = entry.careers_url || '';
   const match = url.match(/jobs\.ashbyhq\.com\/([^/?#]+)/);
-  if (!match) return null;
-  return `https://api.ashbyhq.com/posting-api/job-board/${match[1]}?includeCompensation=true`;
+  return match ? match[1] : null;
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const BROAD_TECH_REGEX = /(engineer|developer|platform|infra|backend|data|systems|mlops|devops|cloud|inference|java|architect|programmer|reliability|technical)/i;
 
 /** @type {Provider} */
 export default {
   id: 'ashby',
 
   detect(entry) {
-    const apiUrl = resolveApiUrl(entry);
-    return apiUrl ? { url: apiUrl } : null;
+    const slug = resolveCompanySlug(entry);
+    return slug ? { url: `https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams` } : null;
   },
 
   async fetch(entry, ctx) {
-    const apiUrl = resolveApiUrl(entry);
-    if (!apiUrl) throw new Error(`ashby: cannot derive API URL for ${entry.name}`);
+    const slug = resolveCompanySlug(entry);
+    if (!slug) throw new Error(`ashby: cannot derive slug for ${entry.name}`);
 
-    let lastErr;
-    for (let attempt = 0; attempt <= ASHBY_RETRIES; attempt++) {
-      if (attempt > 0) {
-        // exponential backoff + jitter — spaces out retries to dodge Ashby rate-limiting
-        const backoff = 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
-        await sleep(backoff);
-      }
+    const listBody = {
+      operationName: "ApiJobBoardWithTeams",
+      variables: { organizationHostedJobsPageName: slug },
+      query: `query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
+        jobBoard: jobBoardWithTeams(
+          organizationHostedJobsPageName: $organizationHostedJobsPageName
+        ) {
+          jobPostings {
+            id
+            title
+            locationName
+            workplaceType
+            employmentType
+            secondaryLocations {
+              locationName
+            }
+            compensationTierSummary
+          }
+        }
+      }`
+    };
+
+    const listJson = await ctx.fetchJson("https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(listBody),
+      timeoutMs: ASHBY_TIMEOUT_MS
+    });
+
+    const rawJobs = listJson?.data?.jobBoard?.jobPostings || [];
+
+    // Filter to only tech/relevant roles to avoid fetching JDs for unrelated roles in parallel
+    const candidateJobs = rawJobs.filter(j => BROAD_TECH_REGEX.test(j.title));
+
+    // Fetch JDs for candidates in parallel
+    const jds = new Map();
+    await Promise.all(candidateJobs.map(async (j) => {
       try {
-        const json = await ctx.fetchJson(apiUrl, { timeoutMs: ASHBY_TIMEOUT_MS });
-        const jobs = Array.isArray(json?.jobs) ? json.jobs : [];
-        return jobs.map((j) => {
-          const locs = [j.location, ...(j.secondaryLocations || []).map(x => x.location)].filter(Boolean);
-          return {
-            title: j.title || '',
-            url: j.jobUrl || '',
-            company: entry.name,
-            location: locs.join(', '),
-            // additive (postings registry) — descriptionPlain/compensation come free in the same call
-            description: j.descriptionPlain || j.descriptionHtml || '',
-            department: j.department || j.team || '',
-            date_posted: j.publishedAt || '',
-            comp: j.compensation || null,
-            remote_flag: j.isRemote === true ? 'remote' : undefined,
-            employment_type: j.employmentType || '',
-          };
+        const detailBody = {
+          operationName: "ApiJobPosting",
+          variables: { organizationHostedJobsPageName: slug, jobPostingId: j.id },
+          query: `query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) {
+            jobPosting(
+              organizationHostedJobsPageName: $organizationHostedJobsPageName
+              jobPostingId: $jobPostingId
+            ) {
+              descriptionHtml
+            }
+          }`
+        };
+        const detailJson = await ctx.fetchJson("https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(detailBody),
+          timeoutMs: ASHBY_TIMEOUT_MS
         });
+        const desc = detailJson?.data?.jobPosting?.descriptionHtml || '';
+        jds.set(j.id, desc);
       } catch (e) {
-        lastErr = e;
+        // ignore errors for individual JD fetches
       }
-    }
-    throw lastErr;
+    }));
+
+    return rawJobs.map((j) => {
+      const locs = [j.locationName, ...(j.secondaryLocations || []).map(x => x.locationName)].filter(Boolean);
+      return {
+        title: j.title || '',
+        url: `https://jobs.ashbyhq.com/${slug}/${j.id}`,
+        company: entry.name,
+        location: locs.join(', '),
+        description: jds.get(j.id) || '',
+        department: '',
+        date_posted: '',
+        comp: j.compensationTierSummary || null,
+        employment_type: j.employmentType || '',
+      };
+    });
   },
 };

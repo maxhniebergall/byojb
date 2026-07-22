@@ -1,5 +1,5 @@
 # Cerebras Systems — research
-Provider/key: greenhouse:cerebrassystems | company_type: product
+Provider/key: ashby:cerebras | company_type: product
 What they do: Cerebras Systems builds wafer-scale computing systems designed from first principles to solve the fundamental limits of AI compute. Their core product is the Wafer-Scale Engine (WSE), which powers systems that drastically accelerate deep learning training and inference compared to traditional GPU clusters.
 How they describe themselves: Cerebras focuses on "fearless engineering" to solve the "compute wall" in artificial intelligence. Their core philosophy is to build solutions from the ground up, questioning established norms, and maintaining a systems-level approach that integrates hardware, software, and architecture. They value speed, autonomy, and collaboration, keeping the organization un-bureaucratic and focusing strictly on hard technical work.
 Size / stage / funding: Estimated 400-600 employees; private, late-stage startup (Series F, valued at $4B+).

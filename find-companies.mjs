@@ -65,10 +65,23 @@ const PROVIDERS = {
     return null;
   },
   async ashby(slug) {
-    const api = `https://api.ashbyhq.com/posting-api/job-board/${slug}`;
-    const json = await getJson(api);
-    const count = Array.isArray(json?.jobs) ? json.jobs.length : 0;
-    if (count > 0) return { provider: 'ashby', careers_url: `https://jobs.ashbyhq.com/${slug}`, api, count };
+    const query = `query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
+      jobBoard: jobBoardWithTeams(organizationHostedJobsPageName: $organizationHostedJobsPageName) {
+        jobPostings { id }
+      }
+    }`;
+    const body = JSON.stringify({
+      operationName: "ApiJobBoardWithTeams",
+      variables: { organizationHostedJobsPageName: slug },
+      query
+    });
+    const json = await getJson('https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body
+    });
+    const count = Array.isArray(json?.data?.jobBoard?.jobPostings) ? json.data.jobBoard.jobPostings.length : 0;
+    if (count > 0) return { provider: 'ashby', careers_url: `https://jobs.ashbyhq.com/${slug}`, api: 'https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams', count };
     return null;
   },
   async lever(slug) {

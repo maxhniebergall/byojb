@@ -46,7 +46,7 @@
       <input type="search" id="aq" placeholder="search company / role / recruiter / status / notes…" style="flex:1;min-width:200px">
       <select id="aStatus"><option value="">any status</option></select>
     </div>
-    <div id="acount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem"></div>
+    <div id="acount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);background:rgba(124,140,255,0.02)"></div>
     <div id="atable"></div>
   </div>
   <div class="panel" style="margin-top:1rem"><div class="detail empty" id="adetail">Select an application →</div></div>
@@ -80,7 +80,16 @@ function afiltered(){
 function ath(k,l){const ar=asort.key===k?(asort.dir<0?' ▼':' ▲'):'';return `<th data-ak="${k}">${esc(l)}${ar}</th>`;}
 function renderApplications(){
   const list=afiltered();
-  $('#acount').textContent=`${list.length} application${list.length===1?'':'s'}`;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 6);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
+
+  const todayCount = AQUEUE.filter(a => a.date_applied && a.date_applied === todayStr).length;
+  const weekCount = AQUEUE.filter(a => a.date_applied && a.date_applied >= sevenDaysAgoStr && a.date_applied <= todayStr).length;
+
+  $('#acount').innerHTML = `<span>${list.length} application${list.length===1?'':'s'} shown</span>` +
+    `<span style="color:var(--mut)">Submitted today: <strong style="color:var(--good)">${todayCount}</strong> &middot; This week: <strong style="color:var(--accent)">${weekCount}</strong></span>`;
   let h='<table><thead><tr>'+ath('date_applied','Date')+ath('company','Company')+ath('title','Role')+ath('status','Status')+'<th>CV</th><th>Links</th><th>Recruiter</th><th>Close</th></tr></thead><tbody>';
   for(const a of list){
     const links=[

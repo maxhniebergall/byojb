@@ -12,6 +12,7 @@ Performs a fast first-pass world-knowledge ranking (1-5) of individual scanned p
 
 ## Execution
 Follow the instructions in `modes/triage-jobs.md`:
+0. Run `node rank-postings.mjs` to ensure the registry is up to date with any newly scanned jobs.
 1. Emit a batch of undecided postings:
    `node llm-triage-jobs.mjs --emit 50`
 2. Rate each posting 1-5 based on your world knowledge + target profiles in `config/profile.yml`.
