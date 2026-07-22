@@ -1,6 +1,6 @@
 {
   "name": "byojb",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "One-command installer for BYOJB — the AI-powered job search pipeline.",
   "bin": {
     "byojb": "bin/cli.mjs"
