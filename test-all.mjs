@@ -1089,6 +1089,17 @@ try {
   if (dual?.min === 175000 && dual?.max === 245000 && dual?.currency === 'CAD')
     pass('a dual-currency JD binds each range to its own currency (and prefers CAD)');
   else fail(`dual-currency wrong: ${JSON.stringify(dual)}`);
+  // Greenhouse splits a posted range across spans joined by &mdash;. Leaving the entity undecoded
+  // meant the range was missed and jd-comp fell through to the extractor's guess — manufacturing
+  // an `estimated` band for a company that had published a real number.
+  const gh = C.parseCompFromBody('<div>The base salary range for this role is:</div><div class="pay-range"><span>$150,000</span><span class="divider">&mdash;</span><span>$200,000 USD</span></div>');
+  if (gh?.min === 150000 && gh?.max === 200000 && gh?.currency === 'USD')
+    pass('parseCompFromBody decodes &mdash; in Greenhouse pay-range markup');
+  else fail(`greenhouse pay-range not parsed: ${JSON.stringify(gh)}`);
+  if (C.parseCompFromBody('salary range $120,000 &ndash; $160,000 CAD')?.currency === 'CAD')
+    pass('parseCompFromBody decodes &ndash; too');
+  else fail('ndash not decoded');
+
   const bodyOnly = C.parseCompFromBody('salary range for this role is $165,000 to $260,000.');
   if (bodyOnly?.min === 165000 && bodyOnly?.max === 260000) pass('parseCompFromBody reads a plain JD range');
   else fail(`body range wrong: ${JSON.stringify(bodyOnly)}`);

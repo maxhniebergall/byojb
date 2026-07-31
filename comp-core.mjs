@@ -157,7 +157,16 @@ const RE_PAY_CUE = /salary|compensation|base pay|pay range|pay band|pay scale|pe
 const RE_DISQUALIFY = /equity|option|RSU|shares|401\(?k\)?|revenue|funding|valuation|raised|ARR|budget|contract value/i;
 export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
   if (!text) return null;
-  const plain = String(text).replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
+  // Greenhouse renders a posted range as
+  //   <div class="pay-range"><span>$150,000</span><span>&mdash;</span><span>$200,000 USD</span></div>
+  // Leaving &mdash; undecoded meant the separator never matched, the range was missed, and
+  // jd-comp.mjs fell through to the Stage-3 extractor's guess — manufacturing an `estimated`
+  // band for a company that had published a real number in its own JD.
+  const plain = String(text)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&[mn]dash;|&minus;|&#821[12];|&#x201[34];/gi, '-')
+    .replace(/&amp;/g, '&');
   RE_RANGE.lastIndex = 0;
   const found = [];
   let m;
