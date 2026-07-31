@@ -155,6 +155,9 @@ const RE_RANGE = /\$\s?([\d,]{6,})(?:\.\d+)?\s*(?:to|through|-|–|—)\s*\$?\s?
 // Every cue here has to be about paying a person.
 const RE_PAY_CUE = /salary|compensation|base pay|pay range|pay band|pay scale|per year|\/yr\b|\/year|OTE|total cash|earn/i;
 const RE_DISQUALIFY = /equity|option|RSU|shares|401\(?k\)?|revenue|funding|valuation|raised|ARR|budget|contract value/i;
+// A label that unambiguously introduces THIS number as pay for a person. Checked in the 60 chars
+// immediately preceding the figure, so it can only apply to the range it actually precedes.
+const RE_SALARY_LABEL = /(base\s+)?(salary|pay|compensation)\s*(range|band|scale)?\s*(for this (role|position))?\s*(is|:|of)?\s*$|base (salary|pay)\s*$|salary\s*$/i;
 export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
   if (!text) return null;
   // Greenhouse renders a posted range as
@@ -175,10 +178,20 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
     if (!(lo >= min && hi <= max && hi >= lo)) continue;
     const ctx = plain.slice(Math.max(0, m.index - 200), m.index + m[0].length + 200);
     if (!RE_PAY_CUE.test(ctx)) continue;
-    // Disqualify on proximity, not on word order: a figure sitting right next to equity, revenue
-    // or funding language is not a salary, whichever word happens to come first.
-    const near = plain.slice(Math.max(0, m.index - 90), m.index + m[0].length + 90);
-    if (RE_DISQUALIFY.test(near)) continue;
+    // An EXPLICIT salary label immediately before the number settles it, and must win over the
+    // proximity check below. Otherwise the near-universal JD sentence
+    //   "…salary, equity, and a comprehensive benefits package. Base salary range: $160,700 - $231,000"
+    // is rejected because "equity" happens to sit within the window — discarding a real, posted,
+    // first-party range and letting the pipeline fall through to a model guess instead.
+    const label = plain.slice(Math.max(0, m.index - 60), m.index);
+    const labelled = RE_SALARY_LABEL.test(label);
+
+    // Only when nothing labelled it: a figure sitting right next to equity, revenue or funding
+    // language is not a salary, whichever word happens to come first.
+    if (!labelled) {
+      const near = plain.slice(Math.max(0, m.index - 90), m.index + m[0].length + 90);
+      if (RE_DISQUALIFY.test(near)) continue;
+    }
 
     // Currency must bind to THIS range, not to the paragraph. Plenty of JDs post both:
     //   "$180,000 to $240,000 USD ($175,000 to $245,000 CAD) per year"

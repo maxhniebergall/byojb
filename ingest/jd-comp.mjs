@@ -226,8 +226,25 @@ function main() {
     if (prev) r.first_seen = prev;
   }
 
-  saveJsonl(COMP, [...kept, ...rows]);
-  console.log(`✓ ${rows.length} JD-derived bands across ${new Set(rows.map(r => r.key)).size} companies → ${COMP}`);
+  // Don't re-add our own row for a slot a PRESERVED row already covers with better evidence.
+  // Research agents write `direct`/`jd_posted` bands read straight off a JD; regenerating an
+  // `estimated` row for that same slot afterwards leaves both in place, and doctor rightly flags
+  // the weaker one as un-superseded. Ownership means we may rewrite our rows — not that ours win.
+  const RANK = { direct: 3, inferred: 2, estimated: 1 };
+  const bestKept = new Map();
+  for (const r of kept) {
+    const k = `${r.key}|${r.title_family}|${r.ladder_level}|${r.band?.currency}|${r.provenance?.geo}`;
+    bestKept.set(k, Math.max(bestKept.get(k) || 0, RANK[r.derivation] || 0));
+  }
+  const surviving = rows.filter(r => {
+    const k = `${r.key}|${r.title_family}|${r.ladder_level}|${r.band?.currency}|${r.provenance?.geo}`;
+    return (RANK[r.derivation] || 0) >= (bestKept.get(k) || 0);
+  });
+  const yielded = rows.length - surviving.length;
+
+  saveJsonl(COMP, [...kept, ...surviving]);
+  console.log(`✓ ${surviving.length} JD-derived bands across ${new Set(surviving.map(r => r.key)).size} companies → ${COMP}`);
+  if (yielded) console.log(`  (${yielded} of ours yielded to better researched evidence)`);
   console.log(`  (preserved ${kept.length} rows from other sources)`);
 }
 
