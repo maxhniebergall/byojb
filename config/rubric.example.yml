@@ -87,6 +87,25 @@ preferences:
     - { min: 150000, score: 2 }
     - { min: 0,      score: 1 }
   timezone_ok: [Mountain, Pacific, Canada, "America/", MT, PT, MST, PST]
+  # ── comp imputation from company pay bands (data/company-comp.jsonl) ──────────────
+  # Most live postings state no salary, so the comp dimension goes null and its weight silently
+  # redistributes. When a posting lists nothing, fall back to the company's own band for that
+  # (title_family, ladder_level) — shrunk toward the neutral 3 by how good the evidence is, so a
+  # derived number can never score like a stated one.
+  comp_impute: true
+  comp_direct_shrink: 1.0      # company STATED this band (its own posted range / pay page)
+  comp_imputed_shrink:         # band DERIVED from company evidence (rollup, ladder hop, research)
+    high: 0.8
+    medium: 0.55
+    low: 0.3
+  # LLM-prior bands (a model's guess, no citable source). Safe to enable because the dashboard's
+  # "comp evidence" filter excludes them at read time and each renders visibly as a guess.
+  comp_use_estimated: false
+  comp_estimated_shrink: 0.15
+  comp_imputed_min_sample: 1   # bands thinner than this stay null (dimension skipped)
+  base_to_tc: 1.0              # 1.0 = do NOT invent equity/bonus on top of a base-only band
+  comp_band_max_age_days: 540  # older provenance.as_of → confidence forced to low
+
 
 # hard_filters: facets that, when matched, set hard_excluded=true (row hidden/flagged in the
 # dashboard, toggleable). Dealbreakers, NOT soft weights. facet = a key in `extracted`.
