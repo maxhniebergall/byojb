@@ -136,7 +136,10 @@ async function checkCompBands() {
     }
     const age = (now - Date.parse(row.provenance?.as_of || '')) / 86400000;
     if (Number.isFinite(age) && age > maxAge) stale++;
-    const slot = `${row.key}|${row.title_family}|${row.ladder_level}`;
+    // Include currency AND geo: a company can legitimately hold a CAD band and a USD band, or a
+    // North-American band and an offshore one, for the same role and level. Those are different
+    // facts, not duplicates — only a collision on the full tuple is worth reporting.
+    const slot = `${row.key}|${row.title_family}|${row.ladder_level}|${row.band?.currency}|${row.provenance?.geo}`;
     const rank = C.DERIVATION_RANK[row.derivation] || 0;
     seen.set(slot, Math.max(seen.get(slot) || 0, rank));
     if ((seen.get(slot) || 0) > rank && rank === 1) {

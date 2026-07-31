@@ -8,8 +8,8 @@
 # End-to-end test of the company levels & pay research feature.
 # Runs the real pipeline against the real registry, exercises the HTTP write path,
 # and checks the invariants that unit tests can't see (idempotency, cross-run preservation).
-cd /Users/mh/workplace/job-finder
 S=$(cd "$(dirname "$0")" && pwd)
+cd "$S/.."   # repo root, derived — never hardcode an absolute path
 PORT=4199
 PASS=0; FAIL=0
 ok(){ echo "  ✅ $1"; PASS=$((PASS+1)); }
