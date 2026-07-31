@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import yaml from 'js-yaml';
-import { saveJsonl } from './posting-core.mjs';
+import { saveJsonl, sk } from './posting-core.mjs';
 import {
   loadResearchLedger, appendResearchAttempts, inBackoff, backoffHours,
   RESEARCH_LEDGER_PATH, DEFAULT_SKIP_HOURS,
@@ -345,6 +345,131 @@ function main() {
         attempts: l?.fails || 0, last_attempt_status: l?.status || null,
       };
     }), null, 1));
+    return;
+  }
+
+// Turn a stored JD body into the most informative ~1200 chars available.
+//
+// Two things were wasting most of the budget. Raw markup (`<div class="content-intro">`, Word's
+// `data-ccp-charstyle` blobs) ate a large share of every Greenhouse excerpt; and the first ~600
+// chars are almost always mission/about-us marketing, so the scope and remote-eligibility
+// sentences — the two things the screen actually weighs — usually fell past the cut.
+const RE_SECTION = /\b(about the role|about this role|what you'?ll do|what you will do|the role|responsibilities|your impact|role overview|position summary)\b/i;
+function cleanExcerpt(body) {
+  let t = String(body || '')
+    .replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&#\d+;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/enable JavaScript|You need to enable/i.test(t) || t.length < 400) return null;
+  // Keep the first line (company — title) for context, then jump to the substantive section.
+  const head = t.slice(0, 160);
+  const m = t.slice(160).match(RE_SECTION);
+  if (m && m.index != null) t = `${head} … ${t.slice(160 + m.index)}`;
+  return t;
+}
+
+  // --emit-screen N [--offset K]: the Stage-2 SCREEN — a wide, zero-fetch triage over companies
+  // that have live postings but no rank yet.
+  //
+  // Deep research costs 2-4 web fetches and two dossiers per company; at ~4,000 companies that is
+  // a day of wall clock. But 3,673 of them already have JD bodies on disk, which is enough to say
+  // "worth a closer look?" without touching the network. This emits a compact brief per company so
+  // one agent can screen 40 in a single pass.
+  //
+  // It sets llm_rank, NEVER llm_fit. llm_fit is what drains the research queue, so a screen that
+  // wrote it would consume companies instead of prioritising them. RANK_BOOST in researchEligible()
+  // already reads llm_rank, so a screened 5 rises immediately.
+  if (args.includes('--emit-screen')) {
+    const n = num('--emit-screen', 40);
+    const offset = num('--offset', 0);
+    const excerptChars = num('--excerpt', 1200);
+    const research = loadJsonl(join(ROOT, 'data', 'posting-research.jsonl'));
+    const personalPost = new Map(loadJsonl(join(ROOT, 'data', 'postings-personal.jsonl')).map(x => [x.key, x]));
+
+    const byCo = new Map();
+    for (const r of research) {
+      if (!r?.company_key || r.live === false) continue;
+      if (!byCo.has(r.company_key)) byCo.set(r.company_key, []);
+      byCo.get(r.company_key).push(r);
+    }
+
+    // name → all keys sharing it, for the cross-ATS duplicate hint below
+    const normName = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const dupeNames = new Map();
+    for (const p of personal) {
+      const nn = normName(p.name);
+      if (!nn) continue;
+      if (!dupeNames.has(nn)) dupeNames.set(nn, new Set());
+      dupeNames.get(nn).add(p.key);
+    }
+    for (const [k, v] of dupeNames) if (v.size < 2) dupeNames.delete(k);
+
+    const seenK = new Set();
+    const pool = personal
+      .filter(p => { if (seenK.has(p.key)) return false; seenK.add(p.key); return true; })
+      .filter(p => !p.excluded_by_type && p.decision === 'undecided'
+        && p.llm_fit == null && p.llm_rank == null && byCo.has(p.key))
+      // Best first, so a run that stops early still covered the most valuable companies.
+      .sort((a, b) => (postingQuality(agg(b.key)).value ?? 0) - (postingQuality(agg(a.key)).value ?? 0)
+        || String(a.key).localeCompare(String(b.key)))
+      .slice(offset, offset + n);
+
+    const out = pool.map(p => {
+      const posts = byCo.get(p.key) || [];
+      const a = agg(p.key);
+      // Lead with the highest-scoring posting: its body is the most representative sample of the
+      // work actually on offer, and it is the one the user would look at first.
+      const scored = [...posts].sort((x, y) => {
+        const sx = personalPost.get(x.key) || {}, sy = personalPost.get(y.key) || {};
+        return ((sy.manual_score ?? sy.computed_score ?? sy.llm_rank ?? 0) - (sx.manual_score ?? sx.computed_score ?? sx.llm_rank ?? 0));
+      });
+      let excerpt = '';
+      for (const r of scored) {
+        if (!r.has_body) continue;
+        try {
+          const body = readFileSync(join(ROOT, 'data', 'posting-research', sk(r.key) + '.md'), 'utf-8');
+          const flat = cleanExcerpt(body);
+          // A client-rendered shell captured instead of a JD. Presenting it as an excerpt is worse
+          // than presenting nothing — it reads as evidence while containing none.
+          if (!flat) continue;
+          excerpt = flat.slice(0, excerptChars);
+          break;
+        } catch { /* unreadable → try the next posting */ }
+      }
+      return {
+        key: p.key,
+        name: p.name || (research.find(r => r.company_key === p.key) || {}).company || p.key,
+        // The same employer often has boards on two ATSs (ashby:nubank AND greenhouse:nubank).
+        // Naming the twin lets one screening pass cover both instead of burning two slots.
+        also_listed_as: dupeNames.get(normName(p.name || '')) ?
+          [...dupeNames.get(normName(p.name || ''))].filter(k => k !== p.key) : undefined,
+        live_relevant: a.live_relevant,
+        best_posting_score: a.best_posting_score ?? null,
+        best_posting_rank: a.best_posting_rank ?? null,
+        // One entry per role, each carrying its OWN location and pay. A deduped union of
+        // locations across all postings cannot say WHICH role is the Canada-eligible one, and
+        // geography is the second-heaviest factor in the screen.
+        // Workday collapses locations to "3 Locations" and Ashby lists them alphabetically, both of
+        // which hide the one fact that decides eligibility. Compute it once, over ALL postings.
+        has_canada_posting: posts.some(r => /canada|ontario|quebec|british columbia|alberta|toronto|vancouver|montreal|ottawa|calgary|remote.*(americas|anywhere|worldwide|global)/i
+          .test(`${r.location || ''} ${(r.extracted?.location_hints || []).join(' ')} ${r.extracted?.geo_eligibility || ''}`)),
+        roles: scored.slice(0, 8).map(r => {
+          const c = normalizeComp(r.comp) || normalizeComp(r.extracted?.comp);
+          return {
+            title: r.title || null,
+            location: r.location || null,
+            comp: c ? `${c.min ?? '?'}-${c.max ?? '?'} ${c.currency || ''}`.trim() : null,
+          };
+        }),
+        // The single strongest signal in the brief. Empty for the ~282 companies with no body at
+        // all — those must be screened on titles alone, and the reason should say so.
+        jd_excerpt: excerpt || null,
+      };
+    });
+    console.log(JSON.stringify(out, null, 1));
     return;
   }
 
