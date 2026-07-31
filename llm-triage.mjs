@@ -454,7 +454,10 @@ function cleanExcerpt(body) {
         // geography is the second-heaviest factor in the screen.
         // Workday collapses locations to "3 Locations" and Ashby lists them alphabetically, both of
         // which hide the one fact that decides eligibility. Compute it once, over ALL postings.
-        has_canada_posting: posts.some(r => /canada|ontario|quebec|british columbia|alberta|toronto|vancouver|montreal|ottawa|calgary|remote.*(americas|anywhere|worldwide|global)/i
+        // Broadened after two screeners caught false negatives: Finning posts in Surrey BC and
+        // Saputo in Saint-Laurent QC, neither of which the original city list matched. Province
+        // codes and a wider city list close most of the gap.
+        has_canada_posting: posts.some(r => /canada|canadian|ontario|quebec|qu\u00e9bec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland|\b(on|qc|bc|ab|mb|sk|ns|nb|nl|pe)\b[,\s]|toronto|vancouver|montr|ottawa|calgary|edmonton|winnipeg|halifax|victoria|surrey|burnaby|richmond|mississauga|waterloo|kitchener|london on|hamilton|saint-laurent|st-laurent|laval|gatineau|regina|saskatoon|kelowna|kanata|markham|brampton|remote.*(americas|anywhere|worldwide|global|north america)/i
           .test(`${r.location || ''} ${(r.extracted?.location_hints || []).join(' ')} ${r.extracted?.geo_eligibility || ''}`)),
         roles: scored.slice(0, 8).map(r => {
           const c = normalizeComp(r.comp) || normalizeComp(r.extracted?.comp);
