@@ -1100,6 +1100,12 @@ try {
     pass('parseCompFromBody decodes &ndash; too');
   else fail('ndash not decoded');
 
+  // Some employers post min / target / max. Matching only the first pair recorded the MIDPOINT as
+  // the maximum, truncating the top of the band by ~20%.
+  const three = C.parseCompFromBody('The salary range for this role is $88,200 - $110,200 - $132,200 CAD');
+  if (three?.min === 88200 && three?.max === 132200) pass('a three-point band keeps its real maximum');
+  else fail(`three-point band wrong: ${JSON.stringify(three)}`);
+
   const bodyOnly = C.parseCompFromBody('salary range for this role is $165,000 to $260,000.');
   if (bodyOnly?.min === 165000 && bodyOnly?.max === 260000) pass('parseCompFromBody reads a plain JD range');
   else fail(`body range wrong: ${JSON.stringify(bodyOnly)}`);

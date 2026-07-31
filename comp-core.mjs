@@ -174,8 +174,8 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
   const found = [];
   let m;
   while ((m = RE_RANGE.exec(plain)) !== null) {
-    const lo = Number(m[1].replace(/,/g, '')), hi = Number(m[2].replace(/,/g, ''));
-    if (!(lo >= min && hi <= max && hi >= lo)) continue;
+    const lo = Number(m[1].replace(/,/g, '')), hiRaw = Number(m[2].replace(/,/g, ''));
+    if (!(lo >= min && hiRaw <= max && hiRaw >= lo)) continue;
     const ctx = plain.slice(Math.max(0, m.index - 200), m.index + m[0].length + 200);
     if (!RE_PAY_CUE.test(ctx)) continue;
     // An EXPLICIT salary label immediately before the number settles it, and must win over the
@@ -183,6 +183,17 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
     //   "…salary, equity, and a comprehensive benefits package. Base salary range: $160,700 - $231,000"
     // is rejected because "equity" happens to sit within the window — discarding a real, posted,
     // first-party range and letting the pipeline fall through to a model guess instead.
+    // Some employers post a THREE-point band: "$88,200 - $110,200 - $132,200" (min / target /
+    // max). Matching only the first pair recorded the MIDPOINT as the maximum, truncating the top
+    // of the band by ~20% and understating every role at those companies.
+    let hi = hiRaw;
+    const tail3 = plain.slice(m.index + m[0].length, m.index + m[0].length + 24);
+    const third = tail3.match(/^\s*[-–—]\s*\$?\s?([\d,]{6,})/);
+    if (third) {
+      const t = Number(third[1].replace(/,/g, ''));
+      if (t >= hi && t <= max) hi = t;
+    }
+
     const label = plain.slice(Math.max(0, m.index - 60), m.index);
     const labelled = RE_SALARY_LABEL.test(label);
 
