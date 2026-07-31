@@ -22,6 +22,8 @@ import {
   CANONICAL_STATES, today, APPLICATIONS_JSONL, OPEN_STATUSES, isOpen,
 } from '../application-core.mjs';
 import { classifyForm, classifyField, normLabel, PROFILE_KEYS } from '../autofill-fields.mjs';
+import { validateBandRow } from '../comp-core.mjs';
+import { TITLE_FAMILIES, LEVEL_LADDER } from '../title-family.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PORT = Number(process.env.DASHBOARD_PORT || process.env.DECISIONS_PORT || 4173);
@@ -35,6 +37,9 @@ const C_PERSONAL = P('data', 'companies-personal.jsonl');
 const C_RESEARCH = P('data', 'company-research.jsonl');
 const C_RESEARCH_DIR = P('data', 'company-research');
 const C_FIT_DIR = P('data', 'company-fit');
+const C_COMP = P('data', 'company-comp.jsonl');
+const C_COMP_DIR = P('data', 'company-comp');
+const C_AGG = P('data', 'company-aggregates.jsonl');
 const REPORTS_DIR = P('reports');
 const APPLICATIONS = P('data', 'applications.md');
 const RUBRIC = P('config', 'rubric.yml');
@@ -212,6 +217,10 @@ function postingsQueue() {
       languages: ex.languages || [], technologies: ex.technologies || [],
       remote_policy: ex.remote_policy || null, geo_eligibility: ex.geo_eligibility || null,
       employment_type: ex.employment_type || null, comp: ex.comp || r.comp || null,
+      // Comp PROVENANCE. `comp_imputed` is deliberately a SEPARATE field from `comp` so the UI
+      // physically cannot render a company-band estimate in the listed-comp column by accident.
+      comp_source: p.comp_source ?? null,
+      comp_imputed: (p.comp_source || '').startsWith('company_') ? (p.comp_band_ref || null) : null,
       on_call: ex.on_call ?? null, domain: ex.domain || null,
       autonomy: ex.autonomy || null, culture: ex.culture || null, company_stage: ex.company_stage || null,
       // scores
@@ -247,15 +256,38 @@ const cFitPath = (key, prow) => prow?.fit_brief ? P(prow.fit_brief) : join(C_FIT
 function companiesQueue() {
   const personal = loadJsonl(C_PERSONAL);
   const research = new Map(loadJsonl(C_RESEARCH).map(r => [r.key, r]));
+  // Posting-derived signals (company-aggregates.mjs). Shipped to the browser so the client can
+  // re-sort by them; the SERVER's default sort stays the existing tier→score→relevance ordering,
+  // which remains the single authority on "what should I look at next".
+  const agg = new Map(loadJsonl(C_AGG).map(a => [a.key, a]));
   return personal.filter(p => !p.excluded_by_type).map(p => {
     const r = research.get(p.key) || {};
+    const a = agg.get(p.key) || {};
     const score = p.llm_fit ?? p.llm_rank ?? null;
     const tier = p.llm_fit != null ? 2 : p.llm_rank != null ? 1 : 0;
     return { key: p.key, name: p.name || r.name, provider: p.provider || r.provider,
       company_type: r.company_type || 'unknown', remote_relevant: r.remote_relevant ?? null,
       score, tier, relevance_score: p.relevance_score ?? 0, llm_fit: p.llm_fit ?? null, llm_rank: p.llm_rank ?? null,
-      decision: p.decision || 'undecided', researched: !!p.fit_brief, reason: p.llm_reason || '' };
+      decision: p.decision || 'undecided', researched: !!p.fit_brief, reason: p.llm_reason || '',
+      live_relevant: a.live_relevant ?? 0, live_relevant_no_comp: a.live_relevant_no_comp ?? 0,
+      best_posting_score: a.best_posting_score ?? null, comp_band_rows: a.comp_band_rows ?? 0,
+      comp_band_best_confidence: a.comp_band_best_confidence ?? null,
+      comp_band_best_derivation: a.comp_band_best_derivation ?? null,
+      comp_band_as_of: a.comp_band_as_of ?? null };
   }).sort((a, b) => (b.tier - a.tier) || ((b.score ?? -1) - (a.score ?? -1)) || (b.relevance_score - a.relevance_score));
+}
+
+// Every pay band on record for one company, plus the free-text comp dossier. OBJECTIVE tier —
+// shareable alongside data/company-research/, unlike the private fit verdict.
+const cCompPath = (key) => join(C_COMP_DIR, sk(key) + '.md');
+function companyComp(key) {
+  return {
+    comp_bands: loadJsonl(C_COMP).filter(r => r.key === key)
+      .sort((x, y) => String(x.title_family).localeCompare(String(y.title_family))
+        || LEVEL_LADDER.indexOf(y.ladder_level) - LEVEL_LADDER.indexOf(x.ladder_level)),
+    comp_note: readMd(cCompPath(key)),
+    aggregates: loadJsonl(C_AGG).find(a => a.key === key) || null,
+  };
 }
 
 // ── APPLICATIONS + AUTOFILL ─────────────────────────────────────────
@@ -381,7 +413,33 @@ const server = createServer(async (req, res) => {
       company_type: r.company_type, total: r.total, relevant: r.relevant, remote_relevant: r.remote_relevant,
       sample_titles: r.sample_titles || [], llm_fit: p.llm_fit ?? null, llm_rank: p.llm_rank ?? null,
       relevance_score: p.relevance_score ?? null, decision: p.decision || 'undecided', reason: p.llm_reason || '',
-      research_note: note, fit_verdict: readMd(cFitPath(key, p)), links: extractLinks(note, p.name || r.name || '') });
+      research_note: note, fit_verdict: readMd(cFitPath(key, p)), links: extractLinks(note, p.name || r.name || ''),
+      ...companyComp(key) });
+  }
+  // Pay bands are OBJECTIVE data about a company (like headcount), so they are written to the
+  // shareable layer. Every row is validated against the same contract llm-triage --apply-comp
+  // and doctor.mjs use: a mislabeled derivation, an uncited claim, or a ToS-barred source is
+  // rejected here rather than silently stored.
+  if (req.method === 'POST' && path === '/api/company/comp') {
+    const { key, rows: incoming, note } = await body(req);
+    if (!key) return json(res, { error: 'key required' }, 400);
+    if (note != null) {
+      mkdirSync(C_COMP_DIR, { recursive: true });
+      writeFileSync(cCompPath(key), String(note), 'utf8');
+      return json(res, { ok: true });
+    }
+    if (!Array.isArray(incoming)) return json(res, { error: 'rows[] or note required' }, 400);
+    const errors = [];
+    incoming.forEach((row, i) => {
+      const errs = validateBandRow({ ...row, key }, { families: TITLE_FAMILIES });
+      if (errs.length) errors.push({ i, errs });
+    });
+    if (errors.length) return json(res, { error: 'invalid band rows', errors }, 400);
+    const stamp = today();
+    const clean = incoming.map(r => ({ ...r, key, first_seen: r.first_seen || stamp, last_seen: stamp }));
+    // Replace only this company's rows; every other company is untouched.
+    saveJsonl(C_COMP, [...loadJsonl(C_COMP).filter(r => r.key !== key), ...clean]);
+    return json(res, { ok: true, saved: clean.length });
   }
   if (req.method === 'POST' && path === '/api/company/decision') {
     const { key, decision } = await body(req);

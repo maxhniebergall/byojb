@@ -41,6 +41,16 @@ const bcls=v=>v==null?'b-lo':v>=4?'b-hi':v>=3?'b-mid':'b-lo';
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
 const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
 function comp(c){ if(!c) return ''; if(typeof c!=='object')return String(c); const f=n=>n!=null?('$'+Math.round(n/1000)+'k'):''; const r=[f(c.min),f(c.max)].filter(Boolean).join('–'); return r?(r+(c.currency?(' '+c.currency):'')):''; }
+// This posting states no pay — fall back to the COMPANY's band, always visibly marked as such
+// (and never merged into the listed-comp string above, which must stay literally what the JD said).
+function compBand(c){
+  const b=c.comp_band_ref; if(!b) return '·';
+  const v=b.mid??b.max??b.min; if(v==null) return '·';
+  const s=(b.derivation==='direct'?'':b.derivation==='estimated'?'?':'~')+'$'+Math.round(v/1000)+'k'+(b.currency?' '+b.currency:'');
+  const note=[`${b.derivation} · ${b.source}`,b.method||'',`${b.title_family} / ${b.ladder_level||'?'}`,
+    `confidence ${b.confidence}, n=${b.sample_size}`,b.as_of?`as of ${b.as_of}`:'',b.model?`model ${b.model}`:''].filter(Boolean).join('\n');
+  return `<span title="${esc(note)}" style="color:var(--mut);font-style:italic">${esc(s)} <span style="font-size:.7rem">${b.derivation==='direct'?'company band':b.derivation==='estimated'?'guess':'est'}</span></span>`;
+}
 function companyLink(key, name){ return `<a href="/companies?vet=${encodeURIComponent(key)}" style="color:var(--accent);text-decoration:none;">${esc(name)}</a>`; }
 
 const KEY=new URLSearchParams(location.search).get('key')||'';
@@ -92,7 +102,7 @@ async function load(){
       ${facet('Seniority',ex.seniority)}${facet('YOE',ex.yoe_min!=null?(ex.yoe_min+(ex.yoe_max?'–'+ex.yoe_max:'+')):'·')}
       ${facet('Employment',ex.employment_type)}${facet('Remote',ex.remote_policy)}
       ${facet('Geo-eligibility',ex.geo_eligibility)}${facet('On-call',ex.on_call)}
-      ${facet('Comp',comp(ex.comp)||'·')}${facet('Degree',ex.degree_required)}
+      ${facet('Comp',comp(ex.comp)||comp(c.comp)||compBand(c))}${facet('Degree',ex.degree_required)}
       ${facet('Domain',ex.domain)}${facet('PTO',ex.pto_policy)}
       ${facet('Autonomy',ex.autonomy)}${facet('Culture',ex.culture)}
       ${facet('Company stage',ex.company_stage)}<div></div>

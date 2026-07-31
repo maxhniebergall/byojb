@@ -65,6 +65,13 @@
     <label class="chk"><input type="checkbox" id="resOnly"> researched only</label>
     <label class="chk"><input type="checkbox" id="hideCapped" checked> hide capped companies</label>
     <label class="chk"><input type="checkbox" id="hideApplied" checked> hide applied</label>
+    <div style="margin-top:.5rem"><small style="color:var(--mut)">comp evidence</small>
+      <select id="compEv" style="width:100%;font-size:.8rem;margin-top:.15rem">
+        <option value="any">any (incl. estimates)</option>
+        <option value="noguess">no model guesses</option>
+        <option value="cited">cited only (listed or company-stated)</option>
+        <option value="listed">listed on the posting only</option>
+      </select></div>
     <div style="margin-top:.5rem"><small style="color:var(--mut)">min score <span id="minLbl">0</span></small><input type="range" id="minScore" min="0" max="5" step="0.5" value="0" style="width:100%"></div>
     <div style="margin-top:.5rem"><small style="color:var(--mut)">max age: <span id="ageLbl">any</span> days</small><input type="range" id="maxAge" min="1" max="31" step="1" value="31" style="width:100%"></div>
     <div style="margin-top:.5rem"><small style="color:var(--mut)">age penalty: <span id="penaltyLbl">0.10</span> pts/day</small><input type="range" id="agePenalty" min="0" max="1" step="0.05" value="0.10" style="width:100%"></div>
@@ -188,7 +195,8 @@ function saveState(){
         fGeo:$('#fGeo').value, fDec:$('#fDec').value, liveOnly:$('#liveOnly').checked,
         showExcl:$('#showExcl').checked, resOnly:$('#resOnly').checked, minScore:$('#minScore').value,
         hideCapped:$('#hideCapped').checked, hideApplied:$('#hideApplied').checked,
-        maxAge:$('#maxAge').value, agePenalty:$('#agePenalty').value, hideOlder:$('#hideOlder').checked },
+        maxAge:$('#maxAge').value, agePenalty:$('#agePenalty').value, hideOlder:$('#hideOlder').checked,
+        compEv:$('#compEv').value },
   })); }catch{}
 }
 function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||localStorage.getItem(LS_KEY_FALLBACK)||'null'); }catch{ return null; } }
@@ -235,7 +243,7 @@ function renderFunnel(){
   }
   if(low){
     h+=`<div style="font-size:.82rem;border-top:1px solid var(--line);padding-top:.5rem">⚠️ <b>Apply queue is running low.</b> Next steps:<ul style="margin:.3rem 0 0;padding-left:1.1rem;color:var(--mut)">`;
-    h+=`<li>${f.companies_kept_unscanned||0} kept companies not yet scanned, ${f.companies_to_research||0} researched & undecided → <code>node decide.mjs --list</code>, then <code>node generate-watchlist.mjs &amp;&amp; node scan.mjs &amp;&amp; node rank-postings.mjs</code></li>`;
+    h+=`<li>${f.companies_kept_unscanned||0} kept companies not yet scanned, ${f.companies_to_research||0} researched & undecided → decide in <a href="/companies">Companies</a>, then <code>node generate-watchlist.mjs &amp;&amp; node scan.mjs &amp;&amp; node rank-postings.mjs</code></li>`;
     h+=`<li>or lower the min-score floor (slider) to surface decent-but-not-ideal postings</li></ul></div>`;
   }
   el.innerHTML=h; el.style.display='block';
@@ -268,6 +276,7 @@ function pfiltered(){
   const q=$('#q').value.trim().toLowerCase(),lang=$('#fLang').value,sen=$('#fSen').value,rem=$('#fRemote').value,geo=$('#fGeo').value,dec=$('#fDec').value;
   const minS=+$('#minScore').value,liveOnly=$('#liveOnly').checked,showExcl=$('#showExcl').checked,resOnly=$('#resOnly').checked;
   const hideCapped=$('#hideCapped').checked,hideApplied=$('#hideApplied').checked;
+  const compEv=$('#compEv').value;
   const maxAge=+$('#maxAge').value;
   const agePenalty=+$('#agePenalty').value;
   const hideOlder=$('#hideOlder').checked;
@@ -277,8 +286,8 @@ function pfiltered(){
     const age = getAgeInDays(r, SERVER_TODAY);
     let penalty = 0;
     let finalScore = score;
-    if (maxAge < 31 && age > maxAge && !hideOlder && agePenalty > 0) {
-      penalty = Math.min(4.0, (age - maxAge) * agePenalty);
+    if (agePenalty > 0 && age > 0) {
+      penalty = age * agePenalty; // independent of the max-age filter
       if (finalScore != null) {
         finalScore = Math.max(0, finalScore - penalty);
       }
@@ -292,6 +301,11 @@ function pfiltered(){
   if(resOnly) list=list.filter(r=>r.researched);
   if(hideCapped) list=list.filter(r=>!r.capped);
   if(hideApplied) list=list.filter(r=>!r.applied);
+  // Comp evidence floor. Only filters rows that HAVE a comp figure of the excluded kind — a
+  // posting with no comp information at all is unaffected (that's the `min score` filter's job).
+  if(compEv==='noguess') list=list.filter(r=>r.comp_source!=='company_estimated');
+  else if(compEv==='cited') list=list.filter(r=>!r.comp_source||['listed','scanned','company_direct'].includes(r.comp_source));
+  else if(compEv==='listed') list=list.filter(r=>!r.comp_source||['listed','scanned'].includes(r.comp_source));
   if(lang) list=list.filter(r=>(r.languages||[]).includes(lang));
   if(sen) list=list.filter(r=>r.seniority===sen);
   if(rem) list=list.filter(r=>r.remote_policy===rem);
@@ -314,6 +328,25 @@ function pfiltered(){
   return list;
 }
 function comp(c){ if(!c) return ''; if(typeof c!=='object')return String(c); const f=n=>n!=null?('$'+Math.round(n/1000)+'k'):''; const r=[f(c.min),f(c.max)].filter(Boolean).join('–'); return r?(r+(c.currency?(' '+c.currency):'')):''; }
+// Four visually DISTINCT states, because a listed number and an estimated one must never look
+// alike: listed (plain, as before) · company-direct ("$185k co.") · derived ("~$185k est") ·
+// model prior ("?$185k guess", dotted + faded). The estimate is drawn from `comp_imputed`,
+// a separate field from `comp`, so it can never leak into the listed-comp column.
+function compCell(r){
+  const listed=comp(r.comp);
+  if(listed) return esc(listed);
+  const b=r.comp_imputed; if(!b) return '·';
+  const val=b.mid??b.max??b.min; if(val==null) return '·';
+  const s='$'+Math.round(val/1000)+'k'+(b.currency?(' '+b.currency):'');
+  const tip=[`${b.derivation} — ${b.source}`,b.method||'',`${b.title_family} / ${b.ladder_level||'?'}`,
+    `confidence ${b.confidence}, n=${b.sample_size}`,b.as_of?`as of ${b.as_of}`:'',b.model?`model ${b.model}`:'',
+    'NOT listed on this posting — from this company’s pay band'].filter(Boolean).join('\n');
+  if(r.comp_source==='company_direct')
+    return `<span title="${esc(tip)}" style="color:var(--mut)">${esc(s)} <span style="font-size:.7rem">co.</span></span>`;
+  if(r.comp_source==='company_estimated')
+    return `<span title="${esc(tip)}" style="color:var(--mut);opacity:.65;font-style:italic;border-bottom:1px dotted var(--mut)">?${esc(s)}</span>`;
+  return `<span title="${esc(tip)}" style="color:var(--mut);font-style:italic">~${esc(s)} <span style="font-size:.7rem">est</span></span>`;
+}
 function th(k,l){const ar=psort.key===k?(psort.dir<0?' ▼':' ▲'):'';return `<th data-k="${k}">${l}${ar}</th>`;}
 function pipeChip(r){
   const S=r.status;
@@ -357,7 +390,7 @@ function renderPostings(){
         <button class="btn sm btn-sk act-btn" data-k="${esc(r.key)}" data-dec="skip">Skip</button>
       </div>`;
     }
-    const hasPenalty = r._penalty && r._penalty > 0;
+    const hasPenalty = r._orig_s != null && r._penalty >= 0.5; // only flag a materially de-ranked posting
     const scoreTooltip = hasPenalty ? `title="Original score: ${r._orig_s.toFixed(1)} (penalized by -${r._penalty.toFixed(2)} due to age: ${r._age} days)"` : '';
     const penaltyIndicator = hasPenalty ? ` <span style="cursor:help;color:var(--warn);" title="De-ranked due to age: ${r._age} days (penalty -${r._penalty.toFixed(2)})">⏳</span>` : '';
 
@@ -378,7 +411,7 @@ function renderPostings(){
       <td ${scoreTooltip}><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}${penaltyIndicator}</td>
       <td>${companyLink(r)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}</td>
       <td>${esc(r.title)}${ageBadge}${datePill}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
-      <td>${stack||'·'}</td><td>${esc(comp(r.comp))||'·'}</td>
+      <td>${stack||'·'}</td><td>${compCell(r)}</td>
       <td>${esc(r.location||r.remote_policy||'·')}${r.geo_eligibility&&r.geo_eligibility!=='unclear'?` <span class="chip">${esc(r.geo_eligibility)}</span>`:''}</td>
       <td>${r.culture?`<span class="chip">${esc(r.culture)}</span>`:'·'}</td>
       <td>${pipeChip(r)}</td>
@@ -404,7 +437,7 @@ function renderSelBar(list){
   // keep the select-all box in sync with what's currently shown
   if(list){const all=list.length&&list.every(r=>SELECTED.has(r.key));const sa=$('#selAll');if(sa)sa.checked=all;}
 }
-['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly','hideCapped','hideApplied','hideOlder'].forEach(id=>{const e=$('#'+id);const h=()=>{renderPostings();saveState();};e.oninput=h;e.onchange=h;});
+['q','fLang','fSen','fRemote','fGeo','fDec','liveOnly','showExcl','resOnly','hideCapped','hideApplied','hideOlder','compEv'].forEach(id=>{const e=$('#'+id);const h=()=>{renderPostings();saveState();};e.oninput=h;e.onchange=h;});
 $('#minScore').oninput=()=>{$('#minLbl').textContent=$('#minScore').value;renderPostings();saveState();};
 $('#maxAge').oninput=()=>{
   const val = $('#maxAge').value;

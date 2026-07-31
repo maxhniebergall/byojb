@@ -45,6 +45,14 @@
       <button class="btn sm" data-cf="undecided">To decide</button><button class="btn sm" data-cf="keep">Kept</button>
       <button class="btn sm" data-cf="skip">Skipped</button><button class="btn sm" data-cf="all">All</button>
       <input type="search" id="cq" placeholder="filter…" style="flex:1;min-width:120px">
+      <select id="csort" title="sort order" style="font-size:.78rem">
+        <option value="tier">sort: default (tier)</option>
+        <option value="live">sort: live relevant</option>
+        <option value="nocomp">sort: missing comp</option>
+        <option value="best">sort: best posting score</option>
+      </select>
+      <button class="btn sm" id="cNeedsComp" title="companies with relevant open postings that state no pay, and no band on record">needs comp</button>
+      <button class="btn sm" id="cHasBands" title="companies with pay bands on record">has bands</button>
     </div>
     <div class="list" id="clist"></div>
   </div>
@@ -77,19 +85,90 @@ function extractLinks(md, name = '') {
   return kept.filter(u => !seen.has(u) && seen.add(u)).slice(0, 8).map(label);
 }
 
+// ==================== PAY BANDS ====================
+// The `derivation` pill is the LEADING visual on every row, because the difference between a
+// number the company STATED and one we DERIVED is the most important thing about it.
+const money=(n,cur)=>n==null?'—':(cur==='USD'?'US$':cur==='CAD'?'CA$':cur==='GBP'?'£':cur==='EUR'?'€':(cur?cur+' ':'$'))+
+  (n>=1000?Math.round(n/1000)+'k':String(n));
+function bandRange(b){
+  if(!b)return '—';
+  const lo=b.min,hi=b.max,cur=b.currency;
+  // The high end drops the currency prefix ("CA$164k–197k"); computing it as the difference
+  // between the formatted value and the bare number handles any currency, not just the symbols.
+  if(lo!=null&&hi!=null&&lo!==hi){
+    const hiStr=money(hi,cur), bare=money(hi,null).replace(/^\$/,'');
+    return money(lo,cur)+'–'+(hiStr.endsWith(bare)?bare:hiStr);
+  }
+  return money(b.mid??lo??hi,cur);
+}
+const DERIV_STYLE={
+  direct:{bg:'rgba(62,201,138,.18)',fg:'var(--good)',t:'stated by the company itself'},
+  inferred:{bg:'rgba(224,179,65,.18)',fg:'var(--warn)',t:'derived from company-specific evidence'},
+  estimated:{bg:'rgba(224,85,110,.15)',fg:'var(--bad)',t:'a model’s prior — no citable source'},
+};
+function derivPill(d){
+  const s=DERIV_STYLE[d]||DERIV_STYLE.estimated;
+  return `<span class="pill" style="background:${s.bg};color:${s.fg}" title="${esc(s.t)}">${esc(d||'?')}</span>`;
+}
+function compBandsHtml(c){
+  const rows=c.comp_bands||[],a=c.aggregates||{};
+  const summary=[a.live_relevant?`${a.live_relevant} live relevant`:'',
+    a.live_relevant_no_comp?`${a.live_relevant_no_comp} without pay info`:'',
+    a.best_posting_score!=null?`best posting ${Number(a.best_posting_score).toFixed(2)}`:''].filter(Boolean).join(' · ');
+  const table=rows.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem">
+    <tr style="color:var(--mut);text-align:left"><th>role family</th><th>level</th><th>band</th><th>evidence</th><th>src</th><th>conf</th><th>n</th><th>as of</th></tr>
+    ${rows.map(r=>`<tr style="border-top:1px solid var(--line)">
+      <td>${esc(r.title_family)}</td><td>${esc(r.ladder_level||'—')}</td>
+      <td style="font-variant-numeric:tabular-nums;white-space:nowrap">${esc(bandRange(r.band))}${r.band?.component==='base'?' <span style="color:var(--mut)">base</span>':''}</td>
+      <td>${derivPill(r.derivation)}</td>
+      <td style="color:var(--mut)">${esc(r.provenance?.source||'')}</td>
+      <td style="color:var(--mut)">${esc(r.provenance?.confidence||'')}</td>
+      <td style="color:var(--mut)">${r.provenance?.sample_size??''}</td>
+      <td style="color:var(--mut);white-space:nowrap">${esc(r.provenance?.as_of||'')}</td></tr>
+      ${r.derivation!=='direct'&&r.provenance?.method?`<tr><td colspan="8" style="color:var(--mut);font-size:.72rem;padding:0 0 .3rem .2rem">↳ ${esc(r.provenance.method)}${r.provenance?.model?` · model: ${esc(r.provenance.model)}`:''}</td></tr>`:''}`).join('')}
+  </table></div>`:`<div style="color:var(--mut);font-size:.82rem">No pay bands on record.${a.live_relevant_no_comp?` ${a.live_relevant_no_comp} relevant posting(s) state no pay — a good comp-research target.`:''}</div>`;
+  return `<div class="field"><label>Pay bands ${summary?`<span style="text-transform:none;font-weight:400">— ${esc(summary)}</span>`:''}</label>
+    ${table}
+    <textarea id="cComp" placeholder="Comp notes for this company (objective / shareable)…" style="min-height:70px;margin-top:.4rem">${esc(c.comp_note||'')}</textarea>
+    <button class="btn sm" id="cSaveComp" style="margin-top:.3rem">Save comp note</button></div>`;
+}
+
 // ==================== COMPANIES ====================
-let CQUEUE=[],cfilter='undecided',csel=null;
+let CQUEUE=[],cfilter='undecided',csel=null,csort='tier',cNeedsComp=false,cHasBands=false;
 async function loadCompanies(){CQUEUE=await (await fetch('/api/companies')).json();renderCList();}
 document.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{cfilter=b.dataset.cf;renderCList();});
 $('#cq').oninput=renderCList;
+$('#csort').onchange=()=>{csort=$('#csort').value;renderCList();};
+$('#cNeedsComp').onclick=()=>{cNeedsComp=!cNeedsComp;if(cNeedsComp)cHasBands=false;syncCompBtns();renderCList();};
+$('#cHasBands').onclick=()=>{cHasBands=!cHasBands;if(cHasBands)cNeedsComp=false;syncCompBtns();renderCList();};
+function syncCompBtns(){
+  $('#cNeedsComp').style.borderColor=cNeedsComp?'var(--accent)':'var(--line)';
+  $('#cHasBands').style.borderColor=cHasBands?'var(--accent)':'var(--line)';
+}
+// The server's default ordering (tier → score → relevance) stays the authority on "what next";
+// these are alternate lenses, applied client-side only.
+const CSORTS={
+  tier:null,   // keep the server order
+  live:(a,b)=>(b.live_relevant-a.live_relevant),
+  nocomp:(a,b)=>(b.live_relevant_no_comp-a.live_relevant_no_comp)||((b.best_posting_score??0)-(a.best_posting_score??0)),
+  best:(a,b)=>((b.best_posting_score??-1)-(a.best_posting_score??-1)),
+};
 function renderCList(){
   const q=$('#cq').value.trim().toLowerCase();
   let list=CQUEUE.filter(r=>cfilter==='all'?true:r.decision===cfilter);
   if(q)list=list.filter(r=>(r.name+r.company_type+r.reason).toLowerCase().includes(q));
-  $('#clist').innerHTML=list.map(r=>`<div class="crow ${csel===r.key?'sel':''}" data-k="${esc(r.key)}">
+  if(cNeedsComp)list=list.filter(r=>r.live_relevant_no_comp>0&&r.comp_band_rows===0);
+  if(cHasBands)list=list.filter(r=>r.comp_band_rows>0);
+  const cmp=CSORTS[csort]; if(cmp)list=[...list].sort(cmp);
+  $('#clist').innerHTML=list.map(r=>{
+    const sig=[r.live_relevant?`${r.live_relevant} live`:'',r.live_relevant_no_comp?`${r.live_relevant_no_comp} no-comp`:'',
+               r.best_posting_score!=null?`best ${Number(r.best_posting_score).toFixed(1)}`:''].filter(Boolean).join(' · ');
+    return `<div class="crow ${csel===r.key?'sel':''}" data-k="${esc(r.key)}">
     <span class="badge ${bcls(r.score)}">${r.score!=null?Number(r.score).toFixed(1):'·'}</span>
-    <span class="nm"><b>${esc(r.name)}</b><small>${esc(r.provider)} · ${r.remote_relevant??'?'} remote${r.reason?' · '+esc(r.reason):''}</small></span>
-    <span class="pill">${esc(r.company_type)}</span>${r.decision!=='undecided'?`<span class="dec ${r.decision}">${r.decision}</span>`:''}</div>`).join('')||'<div class="detail empty">nothing here</div>';
+    <span class="nm"><b>${esc(r.name)}</b><small>${esc(r.provider)} · ${r.remote_relevant??'?'} remote${sig?' · '+esc(sig):''}${r.reason?' · '+esc(r.reason):''}</small></span>
+    ${r.comp_band_rows?`<span class="pill" title="${r.comp_band_rows} pay band(s) on record">💰${r.comp_band_rows}</span>`:''}
+    <span class="pill">${esc(r.company_type)}</span>${r.decision!=='undecided'?`<span class="dec ${r.decision}">${r.decision}</span>`:''}</div>`;
+  }).join('')||'<div class="detail empty">nothing here</div>';
   $('#clist').querySelectorAll('.crow').forEach(el=>el.onclick=()=>openCompany(el.dataset.k));
 }
 async function openCompany(key){
@@ -100,6 +179,7 @@ async function openCompany(key){
     <div class="meta">${esc(c.provider)} · ${esc(c.company_type||'')} · ${c.remote_relevant??'?'} remote-eligible ${c.careers_url?`· <a href="${esc(c.careers_url)}" target="_blank">careers ↗</a>`:''}${c.links&&c.links.length?' · '+c.links.map(l=>`<a style="color:var(--accent)" href="${esc(l.url)}" target="_blank">${l.tag?'['+esc(l.tag)+'] ':''}${esc(l.label)} ↗</a>`).join(' '):''}</div>
     <div style="margin:.3rem 0">${(c.sample_titles||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div>
     <div class="actrow"><label style="font-size:.78rem;color:var(--mut)">Rank 0–5:</label><input id="cRank" type="number" min="0" max="5" step="0.1" value="${c.llm_fit??c.llm_rank??''}" style="width:5rem"><button class="btn sm" id="cSaveRank">Save</button><span style="flex:1"></span><button class="btn good" id="cKeep">Keep</button><button class="btn bad" id="cSkip">Skip</button><button class="btn sm" id="cUndo">Reset</button></div>
+    ${compBandsHtml(c)}
     <div class="field"><label>Fit verdict</label><textarea id="cFit">${esc(c.fit_verdict)}</textarea><button class="btn sm" id="cSaveFit" style="margin-top:.3rem">Save fit</button></div>
     <div class="field"><label>Research note</label><textarea id="cRes">${esc(c.research_note)}</textarea><button class="btn sm" id="cSaveRes" style="margin-top:.3rem">Save note</button></div>`;
   $('#cKeep').onclick=async()=>{await post('/api/company/decision',{key,decision:'keep'});toast('kept');await loadCompanies();openCompany(key);};
@@ -108,6 +188,7 @@ async function openCompany(key){
   $('#cSaveRank').onclick=async()=>{const r=await post('/api/company/rank',{key,llm_fit:$('#cRank').value});toast((await r.json()).ok?'rank saved':'0–5 only');await loadCompanies();};
   $('#cSaveFit').onclick=async()=>{await post('/api/company/report',{key,which:'fit',content:$('#cFit').value});toast('fit saved');};
   $('#cSaveRes').onclick=async()=>{await post('/api/company/report',{key,which:'research',content:$('#cRes').value});toast('note saved');};
+  $('#cSaveComp').onclick=async()=>{await post('/api/company/comp',{key,note:$('#cComp').value});toast('comp note saved');};
 }
 
 loadCompanies();
