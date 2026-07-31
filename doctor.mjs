@@ -5,7 +5,7 @@
  * Checks all prerequisites and prints a pass/fail checklist.
  */
 
-import { existsSync, mkdirSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -107,6 +107,54 @@ function checkAutoDir(name) {
   }
 }
 
+// Audit the pay-band registry. The whole feature rests on never confusing a number the company
+// STATED with one we derived or a model guessed, so every integrity rule is checked here — not
+// only in the prompt that produced the row.
+async function checkCompBands() {
+  const path = join(projectRoot, 'data', 'company-comp.jsonl');
+  if (!existsSync(path)) return { pass: true, label: 'company pay bands: none yet (optional)' };
+
+  let C, T;
+  try {
+    C = await import('./comp-core.mjs');
+    T = await import('./title-family.mjs');
+  } catch (e) {
+    return { pass: false, label: 'company pay bands: comp-core.mjs failed to load', fix: e.message };
+  }
+
+  const problems = [];
+  const seen = new Map();   // slot → best derivation rank seen
+  let n = 0, stale = 0;
+  const maxAge = 540, now = Date.now();
+
+  for (const line of readFileSync(path, 'utf-8').split('\n')) {
+    if (!line.trim()) continue;
+    let row; try { row = JSON.parse(line); } catch { problems.push('unparseable JSONL line'); continue; }
+    n++;
+    for (const e of C.validateBandRow(row, { families: T.TITLE_FAMILIES })) {
+      problems.push(`${row.key} [${row.title_family}/${row.ladder_level}]: ${e}`);
+    }
+    const age = (now - Date.parse(row.provenance?.as_of || '')) / 86400000;
+    if (Number.isFinite(age) && age > maxAge) stale++;
+    const slot = `${row.key}|${row.title_family}|${row.ladder_level}`;
+    const rank = C.DERIVATION_RANK[row.derivation] || 0;
+    seen.set(slot, Math.max(seen.get(slot) || 0, rank));
+    if ((seen.get(slot) || 0) > rank && rank === 1) {
+      problems.push(`${slot}: an "estimated" row sits alongside better evidence — it should have been superseded`);
+    }
+  }
+
+  if (problems.length) {
+    return {
+      pass: false,
+      label: `company pay bands: ${problems.length} integrity problem(s) across ${n} rows`,
+      fix: [...problems.slice(0, 8), problems.length > 8 ? `…and ${problems.length - 8} more` : '',
+        'Re-run `node ingest/jd-comp.mjs`, or fix/remove the offending rows in data/company-comp.jsonl'].filter(Boolean),
+    };
+  }
+  return { pass: true, label: `company pay bands: ${n} rows valid${stale ? ` (${stale} stale → forced to low confidence)` : ''}` };
+}
+
 async function main() {
   console.log('\nBYOJB doctor');
   console.log('============\n');
@@ -119,6 +167,7 @@ async function main() {
     checkPortals(),
     checkAutoDir('data'),
     checkAutoDir('reports'),
+    await checkCompBands(),
   ];
 
   let failures = 0;

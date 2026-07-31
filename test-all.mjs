@@ -1017,6 +1017,341 @@ try {
   fail(`open-application cap tests crashed: ${e.message}`);
 }
 
+// ── 18. Title-family / level normalization ──────────────────────
+console.log('\n18. Title normalization (title-family.mjs)');
+try {
+  const { normalizeTitle, levelFromYoe, titleFamily, TITLE_FAMILIES } = await import(pathToFileURL(join(ROOT, 'title-family.mjs')).href);
+  const cases = [
+    ['Senior Backend Engineer', 'backend', 'senior'],
+    ['Staff Machine Learning Engineer', 'ml_eng', 'staff'],
+    ['L5 Software Engineer', 'software_general', 'senior'],
+    ['IC4 Infrastructure Engineer', 'platform_infra', 'senior'],
+    ['Senior Member of Technical Staff', 'other', 'senior'],
+    ['SDE II', 'software_general', 'mid'],
+    ['Software Engineer III', 'software_general', 'mid-senior'],
+    ['Distinguished Engineer', 'other', 'principal'],
+    ['Site Reliability Engineer', 'sre_devops', null],
+    ['Data Scientist', 'data_science', null],
+    ['Engineering Manager, Platform', 'eng_manager', null],
+  ];
+  let ok = 0;
+  for (const [title, fam, lvl] of cases) {
+    const r = normalizeTitle(title, {});
+    if (r.title_family === fam && r.ladder_level === lvl) ok++;
+    else fail(`normalizeTitle("${title}") → ${r.title_family}/${r.ladder_level}, expected ${fam}/${lvl}`);
+  }
+  if (ok === cases.length) pass(`normalizeTitle: ${ok}/${cases.length} title+level cases`);
+
+  if (levelFromYoe(9) === 'staff' && levelFromYoe(6) === 'senior' && levelFromYoe(4) === 'mid-senior'
+      && levelFromYoe(1) === 'mid' && levelFromYoe(null) === null) pass('levelFromYoe thresholds (8/5/3)');
+  else fail('levelFromYoe thresholds wrong');
+
+  // Every family the normalizer can emit must be declared, or the server validator rejects it.
+  const emitted = new Set(cases.map(c => c[1]));
+  if ([...emitted].every(f => TITLE_FAMILIES.includes(f))) pass('emitted families are all declared in TITLE_FAMILIES');
+  else fail('normalizeTitle emitted a family missing from TITLE_FAMILIES');
+
+  // A generic SWE title must NOT be guessed into a specialty.
+  if (titleFamily('Software Engineer', {}) === 'software_general') pass('generic SWE is not guessed into a specialty');
+  else fail('generic SWE mapped to a specialty family');
+} catch (e) { fail(`title-family tests crashed: ${e.message}`); }
+
+// ── 19. Comp bands: parsing, selection, validation ──────────────
+console.log('\n19. Comp bands (comp-core.mjs)');
+try {
+  const C = await import(pathToFileURL(join(ROOT, 'comp-core.mjs')).href);
+  const { TITLE_FAMILIES } = await import(pathToFileURL(join(ROOT, 'title-family.mjs')).href);
+
+  // parsing: equity percentages must never be read as salary; hourly must annualize
+  const p1 = C.parseCompString('$180K – $220K • Offers Equity');
+  const p2 = C.parseCompString('$100K – $200K • 0.1% – 0.75%');
+  const p3 = C.normalizeComp({ min: 50, max: 70, currency: 'USD', interval: 'per-hour-wage' });
+  const p4 = C.normalizeComp({ compensationTierSummary: null, compensationTiers: [] });
+  if (p1?.min === 180000 && p1?.max === 220000 && p1?.currency === 'USD') pass('parseCompString reads a $K range');
+  else fail(`parseCompString range wrong: ${JSON.stringify(p1)}`);
+  if (p2?.min === 100000 && p2?.max === 200000) pass('parseCompString ignores the equity-% segment');
+  else fail(`parseCompString leaked equity %: ${JSON.stringify(p2)}`);
+  if (p3?.min === 104000) pass('normalizeComp annualizes an hourly wage');
+  else fail(`hourly annualization wrong: ${JSON.stringify(p3)}`);
+  if (p4 === null) pass("normalizeComp rejects Ashby's empty placeholder");
+  else fail(`empty Ashby object not rejected: ${JSON.stringify(p4)}`);
+
+  // Ashby nests the real numbers; reading only the top level discarded 348 postings of
+  // authoritative, currency-tagged comp and silently fell back to the LLM's prose reading.
+  const ash = C.normalizeComp({ summaryComponents: [
+    { compensationType: 'EquityPercentage', interval: 'NONE', minValue: null, maxValue: null },
+    { compensationType: 'Salary', interval: '1 YEAR', currencyCode: 'USD', minValue: 196900, maxValue: 246100 }] });
+  if (ash?.min === 196900 && ash?.currency === 'USD') pass('normalizeComp reads Ashby nested salary');
+  else fail(`Ashby nested salary not parsed: ${JSON.stringify(ash)}`);
+  // Dual-currency JDs: "$180,000 to $240,000 USD ($175,000 to $245,000 CAD)". A paragraph-wide
+  // currency search stamped CAD onto the USD numbers, inflating a Canadian band by ~35%.
+  const dual = C.parseCompFromBody('The salary range for this position is $180,000 to $240,000 USD ($175,000 to $245,000 CAD) per year');
+  if (dual?.min === 175000 && dual?.max === 245000 && dual?.currency === 'CAD')
+    pass('a dual-currency JD binds each range to its own currency (and prefers CAD)');
+  else fail(`dual-currency wrong: ${JSON.stringify(dual)}`);
+  const bodyOnly = C.parseCompFromBody('salary range for this role is $165,000 to $260,000.');
+  if (bodyOnly?.min === 165000 && bodyOnly?.max === 260000) pass('parseCompFromBody reads a plain JD range');
+  else fail(`body range wrong: ${JSON.stringify(bodyOnly)}`);
+  for (const [txt, why] of [
+    ['annual revenue grew from $200,000 to $900,000', 'revenue'],
+    ['we raised $10,000,000 to $50,000,000 in funding', 'funding'],
+    ['equity grant of $100,000 to $400,000 in RSUs', 'equity'],
+  ]) if (C.parseCompFromBody(txt) !== null) fail(`parseCompFromBody accepted ${why} figures`);
+  pass('parseCompFromBody rejects revenue/funding/equity figures');
+  // Lever emits 0 for an absent bound; a salary of 0 is never a real datum.
+  if (C.normalizeComp({ min: 0, max: 230000, currency: 'CAD' })?.min == null) pass('a zero bound is treated as missing, not as $0');
+  else fail('zero bound survived as a real number');
+  if (C.normalizeComp({ min: 0, max: 0, currency: 'PHP' }) === null) pass('a 0-0 band is rejected outright');
+  else fail('0-0 band survived');
+
+  const ashHour = C.normalizeComp({ summaryComponents: [{ compensationType: 'Salary', interval: '1 HOUR', currencyCode: 'USD', minValue: 60, maxValue: 80 }] });
+  if (ashHour?.min === 124800) pass('Ashby hourly interval is annualized');
+  else fail(`Ashby hourly wrong: ${JSON.stringify(ashHour)}`);
+  // Equity percentages sit in the same array as salary — reading one as pay would be catastrophic.
+  if (C.normalizeComp({ summaryComponents: [{ compensationType: 'EquityPercentage', interval: 'NONE', minValue: 0.1, maxValue: 0.7 }] }) === null)
+    pass('an equity-only Ashby blob is not read as salary');
+  else fail('equity component was read as salary');
+
+  // selection
+  const mk = (fam, lvl, deriv, conf, n) => ({
+    key: 'x:y', title_family: fam, ladder_level: lvl, derivation: deriv,
+    band: { min: 100000, mid: 150000, max: 200000, currency: 'CAD', component: 'base' },
+    provenance: { source: deriv === 'direct' ? 'jd_posted' : 'jd_rollup', confidence: conf, sample_size: n, as_of: '2026-07-01' },
+  });
+  const rows = [mk('backend', 'senior', 'direct', 'high', 5), mk('ml_eng', 'staff', 'direct', 'high', 5)];
+  const prefs = { comp_band_max_age_days: 540 };
+  const NOW = Date.parse('2026-07-31');
+
+  const exact = C.bandFor(rows, 'backend', 'senior', prefs, NOW);
+  if (exact?.derivation === 'direct') pass('bandFor: exact match keeps derivation "direct"');
+  else fail(`exact match derivation wrong: ${exact?.derivation}`);
+
+  const adj = C.bandFor(rows, 'backend', 'staff', prefs, NOW);
+  if (adj?.derivation === 'inferred' && adj?.source === 'ladder_extrapolation')
+    pass('bandFor: adjacent level is DEMOTED to inferred');
+  else fail(`adjacent not demoted: ${JSON.stringify({ d: adj?.derivation, s: adj?.source })}`);
+
+  if (C.bandFor(rows, 'security', 'senior', prefs, NOW) === null)
+    pass('bandFor: returns null ACROSS title families (never a wrong-family number)');
+  else fail('bandFor leaked a band across title families');
+
+  const stale = C.bandFor([{ ...mk('backend', 'senior', 'direct', 'high', 5), provenance: { source: 'jd_posted', confidence: 'high', sample_size: 5, as_of: '2020-01-01' } }], 'backend', 'senior', prefs, NOW);
+  if (stale?.confidence === 'low' && stale?.stale === true) pass('bandFor: a stale band is forced to low confidence');
+  else fail(`staleness not applied: ${JSON.stringify({ c: stale?.confidence, s: stale?.stale })}`);
+
+  // an estimated row must never beat a direct one for the same slot
+  const mixed = [mk('backend', 'senior', 'estimated', 'low', 0), mk('backend', 'senior', 'direct', 'high', 5)];
+  if (C.bandFor(mixed, 'backend', 'senior', prefs, NOW)?.derivation === 'direct')
+    pass('bandFor: direct outranks estimated for the same slot');
+  else fail('estimated band outranked a direct one');
+
+  // validation
+  const base = {
+    key: 'x:y', title_family: 'backend', ladder_level: 'senior', derivation: 'estimated',
+    band: { min: 1, max: 2 },
+    provenance: { source: 'llm_prior', model: 'm', confidence: 'low', sample_size: 0, as_of: '2026-07-31' },
+  };
+  if (C.validateBandRow(base, { families: TITLE_FAMILIES }).length === 0) pass('validateBandRow accepts a well-formed llm_prior row');
+  else fail(`valid row rejected: ${C.validateBandRow(base, { families: TITLE_FAMILIES }).join('; ')}`);
+
+  const checks = [
+    ['a company-agnostic row', { ...base, key: null }],
+    ['a mislabeled derivation', { ...base, derivation: 'direct' }],
+    ['an llm_prior row with no model', { ...base, provenance: { ...base.provenance, model: undefined } }],
+    ['an uncited llm_research row', { ...base, derivation: 'inferred', provenance: { source: 'llm_research', confidence: 'low', sample_size: 1, as_of: '2026-07-31' } }],
+    ['an estimated row claiming high confidence', { ...base, provenance: { ...base.provenance, confidence: 'high' } }],
+  ];
+  let rej = 0;
+  for (const [label, row] of checks) {
+    if (C.validateBandRow(row, { families: TITLE_FAMILIES }).length > 0) rej++;
+    else fail(`validateBandRow ACCEPTED ${label}`);
+  }
+  if (rej === checks.length) pass(`validateBandRow rejects all ${rej} malformed shapes`);
+} catch (e) { fail(`comp-core tests crashed: ${e.message}`); }
+
+// ── 20. Comp scoring: listed wins, derived shrinks ──────────────
+console.log('\n20. Comp imputation (score-postings.mjs)');
+try {
+  const S = await import(pathToFileURL(join(ROOT, 'score-postings.mjs')).href);
+  const prefs = {
+    usd_to_cad: 1.35, base_to_tc: 1.0, comp_impute: true, comp_imputed_min_sample: 1,
+    comp_direct_shrink: 1.0, comp_imputed_shrink: { high: 0.8, medium: 0.55, low: 0.3 },
+    comp_use_estimated: false, comp_estimated_shrink: 0.15,
+    comp_tiers: [{ min: 200000, score: 5 }, { min: 180000, score: 4 }, { min: 160000, score: 3 }, { min: 150000, score: 2 }, { min: 0, score: 1 }],
+  };
+  const band = (d, conf) => ({ mid: 250000, currency: 'CAD', component: 'base', derivation: d, confidence: conf, sample_size: 5 });
+
+  // a LISTED figure must be used verbatim and never replaced by a band
+  const listed = S.COMPUTERS.comp({ comp: { min: 250000, currency: 'CAD' }, _comp_band: band('estimated', 'low') }, prefs);
+  if (listed === 5) pass('listed comp wins over any band');
+  else fail(`listed comp not honored: ${listed}`);
+
+  // The ATS's structured field beats the LLM's prose reading. They disagree on CURRENCY 38% of
+  // the time, and a USD range mislabeled CAD skips usd_to_cad and understates the role by ~35%.
+  const conflict = S.COMPUTERS.comp({
+    comp: { min: 160000, max: 210000, currency: 'CAD' },        // LLM's reading
+    _scanned_comp: { min: 196900, max: 246100, currency: 'USD' }, // ATS ground truth
+  }, prefs);
+  const atsOnly = S.COMPUTERS.comp({ _scanned_comp: { min: 196900, max: 246100, currency: 'USD' } }, prefs);
+  if (conflict === atsOnly) pass('the ATS structured field outranks the LLM comp extraction');
+  else fail(`scanner precedence wrong: conflict=${conflict} atsOnly=${atsOnly}`);
+
+  if (S.COMPUTERS.comp({ _comp_band: band('direct', 'high') }, prefs) === 5) pass('direct band scores at full strength');
+  else fail('direct band was shrunk');
+
+  const inf = S.COMPUTERS.comp({ _comp_band: band('inferred', 'medium') }, prefs);
+  if (inf > 3 && inf < 5) pass(`inferred band shrinks toward neutral (${inf})`);
+  else fail(`inferred shrink wrong: ${inf}`);
+
+  if (S.COMPUTERS.comp({ _comp_band: band('estimated', 'low') }, prefs) === null)
+    pass('estimated band does NOT score while comp_use_estimated is false');
+  else fail('estimated band scored despite being disabled');
+
+  const est = S.COMPUTERS.comp({ _comp_band: band('estimated', 'low') }, { ...prefs, comp_use_estimated: true });
+  if (est > 3 && est < 3.5) pass(`estimated band is a nudge only when enabled (${est})`);
+  else fail(`estimated shrink wrong: ${est}`);
+
+  if (S.COMPUTERS.comp({ _comp_band: band('direct', 'high') }, { ...prefs, comp_impute: false }) === null)
+    pass('comp_impute:false disables band fallback entirely');
+  else fail('comp_impute:false did not disable imputation');
+
+  if (S.COMPUTERS.comp({ _comp_band: { ...band('inferred', 'low'), sample_size: 0 } }, { ...prefs, comp_imputed_min_sample: 3 }) === null)
+    pass('a band under the sample floor stays null');
+  else fail('sample floor not enforced');
+
+  // an imputed band must never be able to hard-exclude a posting
+  const hf = S.evalHardFilters({ _comp_band: band('direct', 'high') }, [{ facet: '_comp_band', in: ['x'] }]);
+  if (!hf.excluded) pass('an imputed band cannot trigger a hard filter');
+  else fail('imputed band triggered a hard filter');
+} catch (e) { fail(`comp scoring tests crashed: ${e.message}`); }
+
+// ── 21. Research ledger (resumability + backoff) ─────────────────
+console.log('\n21. Research ledger (research-ledger.mjs)');
+try {
+  const L = await import(pathToFileURL(join(ROOT, 'research-ledger.mjs')).href);
+  const tmp = join(mkdtempSync(join(tmpdir(), 'ledger-')), 'l.tsv');
+  const T = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+  L.appendResearchAttempts([
+    { key: 'a:ok', at: T(1), status: 'ok' },
+    { key: 'a:f1', at: T(1), status: 'fetch_failed', detail: '404' },
+    { key: 'a:f2', at: T(400), status: 'fetch_failed' },
+    { key: 'a:f2', at: T(1), status: 'fetch_failed' },
+    { key: 'a:rec', at: T(300), status: 'fetch_failed' },
+    { key: 'a:rec', at: T(1), status: 'ok' },
+  ], tmp);
+  const led = L.loadResearchLedger(tmp);
+
+  if (led.get('a:f2').fails === 2) pass('consecutive failures counted');
+  else fail(`consecutive failures wrong: ${led.get('a:f2').fails}`);
+  // A company that recovered must NOT stay exiled — this is why only CONSECUTIVE failures count.
+  if (led.get('a:rec').fails === 0) pass('a later success resets the failure counter');
+  else fail('recovered company still carries failures');
+  if (L.backoffHours(2, 168) > L.backoffHours(1, 168)) pass('backoff grows with repeated failure');
+  else fail('backoff does not grow');
+  if (L.backoffHours(99, 168) === 168 * 16) pass('backoff is capped (a dead site is retried, not exiled)');
+  else fail('backoff not capped');
+  if (L.inBackoff(led.get('a:f1'), 0) === false) pass('SKIP_HOURS=0 disables the window');
+  else fail('SKIP_HOURS=0 did not disable backoff');
+  // A tab in a detail string would corrupt the TSV and silently shift every column.
+  L.appendResearchAttempts([{ key: 'a:tabby', status: 'ok', detail: 'a\tb\nc' }], tmp);
+  if (L.loadResearchLedger(tmp).get('a:tabby')?.status === 'ok') pass('tabs/newlines in detail are sanitized');
+  else fail('a tab in detail corrupted the ledger row');
+} catch (e) { fail(`research-ledger tests crashed: ${e.message}`); }
+
+// ── 22. Research queue ordering (the Stage-3 work-list) ──────────
+console.log('\n22. Research queue ordering (llm-triage.mjs)');
+try {
+  const { researchEligible } = await import(pathToFileURL(join(ROOT, 'llm-triage.mjs')).href);
+  const A = {
+    'c:great':  { live_relevant: 3, live_relevant_no_comp: 1, best_posting_score: 4.9, best_posting_rank: null, comp_band_rows: 0 },
+    'c:ok':     { live_relevant: 9, live_relevant_no_comp: 0, best_posting_score: 3.1, best_posting_rank: null, comp_band_rows: 2 },
+    'c:nopost': { live_relevant: 0, live_relevant_no_comp: 0, best_posting_score: null, best_posting_rank: null, comp_band_rows: 0 },
+    'c:ranked': { live_relevant: 2, live_relevant_no_comp: 0, best_posting_score: 3.0, best_posting_rank: null, comp_band_rows: 0 },
+    'c:dupe':   { live_relevant: 1, live_relevant_no_comp: 0, best_posting_score: 2.0, best_posting_rank: null, comp_band_rows: 0 },
+    // triaged-only: no JD research yet, so only a Stage-2 rank exists
+    'c:triaged':{ live_relevant: 4, live_relevant_no_comp: 2, best_posting_score: null, best_posting_rank: 5, comp_band_rows: 0 },
+  };
+  const agg = (k) => A[k] || { live_relevant: 0, live_relevant_no_comp: 0, best_posting_score: null, best_posting_rank: null, comp_band_rows: 0 };
+  const P = (key, extra = {}) => ({ key, name: key, decision: 'undecided', llm_fit: null, llm_rank: null, excluded_by_type: false, ...extra });
+  const rows = [
+    P('c:great'), P('c:ok'), P('c:nopost'), P('c:ranked', { llm_rank: 5 }), P('c:triaged'),
+    P('c:dupe'), P('c:dupe'),                                   // duplicate key
+    P('c:done', { llm_fit: 4 }), P('c:skipped', { decision: 'skip' }), P('c:excl', { excluded_by_type: true }),
+  ];
+  const keys = (o) => researchEligible(rows, agg, new Map(), o).map(p => p.key);
+
+  const q = keys({});
+  // The whole point of the rewrite: order by the quality of a company's real postings.
+  if (q[0] === 'c:great') pass('orders by best_posting_score (the best live posting wins)');
+  else fail(`wrong head: ${q[0]}`);
+  // A company with no scored live postings is exactly what the old queue emitted alphabetically.
+  if (!q.includes('c:nopost')) pass('excludes companies with no scored live postings');
+  else fail('a zero-posting company entered the queue');
+  if (!q.includes('c:done')) pass('excludes already-researched companies (the queue drains)');
+  else fail('a researched company stayed in the queue');
+  if (!q.includes('c:skipped') && !q.includes('c:excl')) pass('excludes skipped and redlisted companies');
+  else fail('a skipped/redlisted company entered the queue');
+  if (q.filter(k => k === 'c:dupe').length === 1) pass('deduplicates repeated keys (no double fetches)');
+  else fail('a duplicated key was emitted twice');
+
+  // llm_rank must be a BOOST: it reorders within reach, but can't beat a much better posting,
+  // and an UNRANKED company must not be buried (that was the old bug).
+  if (q.indexOf('c:ranked') > q.indexOf('c:great')) pass('a rank-5 does not outrank a much better posting');
+  else fail('llm_rank overpowered posting quality');
+  if (keys({ rankWeight: 0 }).indexOf('c:ranked') > keys({}).indexOf('c:ranked'))
+    pass('--rank-weight 0 removes the llm_rank boost');
+  else fail('rank-weight had no effect');
+
+  if (!keys({ minLive: 5 }).includes('c:great') && keys({ minLive: 5 }).includes('c:ok'))
+    pass('--min-live filters on posting volume');
+  else fail('min-live filter wrong');
+  // needs-comp keeps only companies with unpriced roles AND no band on record.
+  const nc = keys({ needsComp: true });
+  if (nc.includes('c:great') && nc.includes('c:triaged') && !nc.includes('c:ok') && !nc.includes('c:dupe'))
+    pass('--needs-comp keeps only companies with unpriced roles and no band');
+  else fail(`needs-comp wrong: ${nc.join()}`);
+
+  // The fallback: company research must NOT be gated on job research. Only ~15% of live postings
+  // have Stage-3 facets, so without this the queue would hold 590 of 4,096 companies.
+  if (q.includes('c:triaged')) pass('a company with only a triage rank still enters the queue');
+  else fail('triaged-only company was excluded — company research is gated on job research');
+  // …but researched evidence must still outrank an equally-numbered triage guess.
+  const { postingQuality } = await import(pathToFileURL(join(ROOT, 'llm-triage.mjs')).href);
+  if (postingQuality(A['c:triaged']).value < 5 && postingQuality(A['c:triaged']).basis === 'triaged')
+    pass('a triage rank is discounted vs a researched rubric score');
+  else fail('triage rank was not discounted');
+  if (postingQuality(A['c:great']).basis === 'researched') pass('a researched score reports basis "researched"');
+  else fail('basis mislabeled');
+
+  // backoff integration
+  const led = new Map([['c:great', { last: Date.now(), fails: 1 }]]);
+  if (!researchEligible(rows, agg, led, {}).map(p => p.key).includes('c:great'))
+    pass('a recently-failed company is held back by the ledger');
+  else fail('backoff not applied in the queue');
+  if (researchEligible(rows, agg, led, { rescan: true }).map(p => p.key).includes('c:great'))
+    pass('--rescan overrides the backoff window');
+  else fail('rescan did not override backoff');
+} catch (e) { fail(`research queue tests crashed: ${e.message}`); }
+
+// ── 23. Atomic saveJsonl ─────────────────────────────────────────
+console.log('\n23. Atomic registry writes (posting-core.mjs)');
+try {
+  const { saveJsonl, loadJsonl } = await import(pathToFileURL(join(ROOT, 'posting-core.mjs')).href);
+  const dir = mkdtempSync(join(tmpdir(), 'atomic-'));
+  const f = join(dir, 'reg.jsonl');
+  saveJsonl(f, [{ a: 1 }, { a: 2 }]);
+  saveJsonl(f, [{ a: 3 }]);
+  const got = loadJsonl(f);
+  if (got.length === 1 && got[0].a === 3) pass('saveJsonl round-trips and replaces');
+  else fail(`round-trip wrong: ${JSON.stringify(got)}`);
+  // A leftover temp would mean the rename never happened — the file would be stale, not corrupt,
+  // but the leak is the signal that something went wrong.
+  if (!readdirSync(dir).some(n => n.includes('.tmp'))) pass('no temp file left behind');
+  else fail(`temp leaked: ${readdirSync(dir).join()}`);
+  if (readdirSync(dir).length === 1) pass('writes land on the target path, not a sibling');
+  else fail(`unexpected files: ${readdirSync(dir).join()}`);
+} catch (e) { fail(`atomic write tests crashed: ${e.message}`); }
+
 // ── SUMMARY ─────────────────────────────────────────────────────
 
 console.log('\n' + '='.repeat(50));

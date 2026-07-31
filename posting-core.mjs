@@ -4,7 +4,8 @@
 // (recomputable scoring), llm-triage-jobs.mjs (ranking driver), and web/server.mjs.
 // Keep this dependency-light (only Node built-ins) so every consumer can import it.
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, openSync, fsyncSync, closeSync, renameSync, unlinkSync } from 'fs';
+import { createHash } from 'crypto';
 
 // ── canonical posting URL ───────────────────────────────────────────
 // The posting URL is the registry key and the join key to reports (`**URL:**`).
@@ -47,7 +48,18 @@ export function canonicalUrl(raw) {
 }
 
 // slug-safe filename fragment (matches the company console's sk()).
-export const sk = (key) => key.replace(/[:/]/g, '-');
+// Long keys (e.g. Workday apply URLs with big query strings) can exceed the OS's
+// 255-byte filename limit, so cap the slug and append a short hash of the full key
+// to keep it deterministic and collision-safe. Short keys are unchanged for
+// backward compatibility with already-written files.
+export const sk = (key) => {
+  const slug = key.replace(/[:/]/g, '-');
+  // Leave headroom for the caller's extension (.md/.txt) under the 255-byte limit.
+  const MAX = 200;
+  if (slug.length <= MAX) return slug;
+  const hash = createHash('sha1').update(key).digest('hex').slice(0, 12);
+  return slug.slice(0, MAX - hash.length - 1) + '-' + hash;
+};
 
 // The Greenhouse job id is the one stable value across every URL shape a posting can take:
 // native (.../jobs/123), company-hosted (...?gh_jid=123 or .../roles/123), and the embed
@@ -73,8 +85,30 @@ export function loadJsonl(path) {
   }
   return out;
 }
+// ATOMIC. The registries are 8-16MB and are written by the CLI and by web/server.mjs
+// concurrently, so a plain writeFileSync leaves a truncated file if either is interrupted
+// mid-write — and a truncated registry is silent, permanent data loss.
+//
+// Two details matter:
+//   • The temp name carries pid+seq. A shared "<path>.tmp" would let two writers clobber
+//     each other's partial output and rename the wreckage into place.
+//   • fsync BEFORE rename is what makes this durable across a power loss rather than only
+//     across a process kill. rename(2) is atomic within a filesystem, and the temp is
+//     always a sibling of the target, so it never crosses one.
+let _tmpSeq = 0;
 export function saveJsonl(path, rows) {
-  writeFileSync(path, rows.map(r => JSON.stringify(r)).join('\n') + '\n');
+  const tmp = `${path}.tmp.${process.pid}.${_tmpSeq++}`;
+  const body = rows.map(r => JSON.stringify(r)).join('\n') + '\n';
+  let fd;
+  try {
+    writeFileSync(tmp, body);
+    fd = openSync(tmp, 'r+'); fsyncSync(fd); closeSync(fd); fd = undefined;
+    renameSync(tmp, path);
+  } catch (e) {
+    try { if (fd !== undefined) closeSync(fd); } catch { /* already closed */ }
+    try { unlinkSync(tmp); } catch { /* never created */ }
+    throw e;
+  }
 }
 
 // ── company_key derivation ──────────────────────────────────────────

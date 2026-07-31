@@ -16,7 +16,10 @@
     "triage:jobs": "node llm-triage-jobs.mjs",
     "dashboard": "node web/server.mjs",
     "dashboard:web": "node web/server.mjs",
-    "dashboard:decisions": "node web/server.mjs"
+    "dashboard:decisions": "node web/server.mjs",
+    "comp:jd": "node ingest/jd-comp.mjs",
+    "aggregate:companies": "node company-aggregates.mjs",
+    "test:e2e": "bash test/e2e-comp.sh"
   },
   "keywords": [
     "ai",

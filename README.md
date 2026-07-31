@@ -26,14 +26,28 @@ Originally derived from `career-ops`, BYOJB transitions the tool from a CLI-cent
    * `/byojb-research-jobs` (Research: reads the queue of triaged JDs for full facet extraction)
    * `/byojb-triage-companies` / `/byojb-research-companies` (for company vetting and dossier building queues)
 
-3. **Manage and Track in the Web Dashboard:**
+3. **Build pay bands and queue signals:**
+   Most postings never state a salary. This derives a pay band per (company, role family, level)
+   from the ranges companies *do* publish, so unpriced roles can still be compared:
+   ```bash
+   npm run comp:jd              # bands from comp already in the registry (no network access)
+   npm run score:postings       # re-score; unpriced postings inherit their company's band
+   npm run aggregate:companies  # per-company queue signals (incl. "how many roles lack pay")
+   ```
+   Every band records how it was arrived at — `direct` (the company stated it), `inferred`
+   (derived from its own postings), or `estimated` (a model's prior) — and the dashboard renders
+   the three differently so an estimate never reads as a listed figure. `/byojb-research-companies`
+   fills remaining gaps from first-party sources; `node llm-triage.mjs --emit-comp 20` lists the
+   companies where that research buys the most.
+
+4. **Manage and Track in the Web Dashboard:**
    Start the local web dashboard:
    ```bash
    npm run dashboard
    ```
    Open `http://localhost:4173` in your browser. Review rankings, adjust rubric sliders, shortlist postings, keep/skip companies, and view application statuses.
 
-4. **Autofill forms and record applications:**
+5. **Autofill forms and record applications:**
    Load the `extension/` directory into Chrome (Developer Mode -> Load unpacked). The extension autofills ATS application fields based on `config/profile.yml` and automatically reports submissions back to your dashboard.
 
 ---

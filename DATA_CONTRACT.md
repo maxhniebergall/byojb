@@ -23,6 +23,9 @@ These files contain your personal data, credentials, and job-search records. The
 | `data/company-research.jsonl` | Scraped metadata/details for companies |
 | `data/company-research/*` | Detailed dossier notes scraped from company careers/about pages |
 | `data/company-fit/*` | Personal company fit verdicts |
+| `data/company-comp.jsonl` | **Objective** pay bands per (company, role family, level) — every row carries a `derivation` of `direct` / `inferred` / `estimated` and its provenance |
+| `data/company-comp/*` | Objective free-text comp notes per company (shareable, like the research dossier) |
+| `data/company-aggregates.jsonl` | Derived-only queue signals per company (live relevant postings, how many lack pay info, best posting score) — regenerate, never edit |
 | `data/essay-answers.jsonl` | Saved responses to essay questions (harvested by Chrome Extension) |
 | `data/application-snapshots/*` | Saved text snapshots of submitted forms (for record keeping) |
 | `reports/*` | In-depth company or offer evaluation reports (markdown format) |
@@ -38,6 +41,10 @@ These files form the engine, backend, and UI of the application.
 | `providers/*` | ATS scrapers and JSON/markdown parsers (Greenhouse, Ashby, Lever, Workday, etc.) |
 | `ingest/jobspy_pull.py` | Broad-board scraper script wrapper |
 | `scan.mjs` | Multi-provider background portal job scanner |
+| `title-family.mjs` | Normalizes a raw job title into (title_family, ladder_level); owns `LEVEL_LADDER` and the yoe→rung thresholds |
+| `comp-core.mjs` | Pay-band registry: comp string/interval parsing, `bandFor` selection (never crosses role families), and the `validateBandRow` contract |
+| `company-aggregates.mjs` | Rolls the postings registry up into per-company queue signals |
+| `ingest/jd-comp.mjs` | Builds pay bands from comp already present in the postings registry (no network access) |
 | `posting-core.mjs` | Registry reading, saving, and canonical URL normalization utilities |
 | `application-core.mjs` | Applications registry logic and markdown sync engine |
 | `autofill-fields.mjs` | Heuristic field/form classifier for autofill planning |

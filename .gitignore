@@ -64,6 +64,9 @@ package-lock.json
 data/jobspy-cache.json
 # per-company fit briefs from the finder's vetting step (your job-search data)
 data/company-fit/
+data/company-comp.jsonl
+data/company-comp/
+data/company-aggregates.jsonl
 # live user configs (your search terms / criteria) — commit the .example versions instead
 config/jobspy.yml
 config/company_criteria.yml
@@ -97,3 +100,5 @@ data/job-research.json
 data/job-scores.json
 
 
+data/company-research-ledger.tsv
+data/company-research-pending.jsonl
