@@ -40,7 +40,7 @@ Fast and scalable. Deep web research is reserved for the manual vetting step
 
 5. When done, hand the top of the ranked queue to **Stage 3 web research** (`modes/research-companies.md`),
    which fetches each company's careers/about pages and writes a report + fit score. The user's
-   keep/skip (Stage 4, `decide.mjs`) comes only AFTER, by reading those reports.
+   keep/skip (Stage 4, in the web console) comes only AFTER, by reading those reports.
    ```bash
    node llm-triage.mjs --queue 30
    ```
