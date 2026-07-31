@@ -71,7 +71,13 @@ function relevantTitlesByKey() {
 // slots turns "guess a taxonomy" into "fill in these boxes", which is both easier and correct.
 function compSlotsByCompany() {
   const research = loadJsonl(join(ROOT, 'data', 'posting-research.jsonl'));
-  const banded = new Set(loadJsonl(COMP).map(b => `${b.key}|${b.title_family}|${b.ladder_level}`));
+  // An `estimated` band is a model's guess, not coverage. Counting it as `has_band` suppressed the
+  // slot from the comp-research queue while containing no evidence at all — Lookout's estimate
+  // happened to equal the range printed on its own JD, but the pipeline had never checked.
+  // Only verifiable evidence marks a slot covered.
+  const banded = new Set(loadJsonl(COMP)
+    .filter(b => b.derivation === 'direct' || b.derivation === 'inferred')
+    .map(b => `${b.key}|${b.title_family}|${b.ladder_level}`));
   const out = new Map();
   for (const r of research) {
     if (!r?.company_key || r.live === false) continue;
