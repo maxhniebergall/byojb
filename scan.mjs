@@ -25,15 +25,24 @@
  *   node scan.mjs --dry-run        # preview without writing files
  *   node scan.mjs --company Cohere # scan a single company
  *   node scan.mjs --verify         # Playwright-check each new URL; drop expired postings
+ *   node scan.mjs --rescan         # ignore the 24h skip window; re-scan every company
+ *   node scan.mjs --no-rank        # skip the post-scan rank-postings.mjs registry rebuild
+ *
+ * Resumability: each successfully scanned company is appended to data/scan-ledger.tsv,
+ * and companies scanned within BYOJB_SCAN_SKIP_HOURS (default 24) are skipped. A long
+ * run that dies partway can simply be re-run — it picks up where it left off.
+ *
+ * On completion scan.mjs runs rank-postings.mjs to refresh the postings registry that
+ * the triage commands read (scan itself only writes data/postings/raw-latest.jsonl).
  */
 
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, readdirSync, renameSync } from 'fs';
 import { pathToFileURL, fileURLToPath } from 'url';
 import path from 'path';
 import yaml from 'js-yaml';
 import { execSync } from 'child_process';
 
-import { makeHttpCtx } from './providers/_http.mjs';
+import { makeHttpCtx, httpStats } from './providers/_http.mjs';
 import { canonicalUrl } from './posting-core.mjs';
 
 const parseYaml = yaml.load;
@@ -48,12 +57,31 @@ const APPLICATIONS_PATH = 'data/applications.md';
 // postings this scan (with JD bodies), regardless of dedup. rank-postings.mjs reads
 // this to build/refresh data/posting-research.jsonl + data/postings-personal.jsonl.
 const POSTINGS_RAW_PATH = 'data/postings/raw-latest.jsonl';
+// Append-only ledger of when each company was last scanned. Powers resumable /
+// incremental scans: a company scanned within the skip window is skipped, so a
+// crashed 24h run resumes roughly where it left off and a same-day re-run only
+// hits stale boards. Written incrementally (see checkpointing) so it survives a
+// mid-run crash.
+const SCAN_LEDGER_PATH = 'data/scan-ledger.tsv';
 const PROVIDERS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'providers');
 
 // Ensure required directories exist (fresh setup)
 mkdirSync('data', { recursive: true });
 
 const CONCURRENCY = 10;
+
+function envInt(name, fallback) {
+  const raw = process.env[name];
+  if (raw == null || raw === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+// Flush results to disk every N completed companies so a long (multi-hour) run
+// is durable against crashes. 0 disables mid-run checkpoints (write only at end).
+const CHECKPOINT_EVERY = envInt('BYOJB_SCAN_CHECKPOINT_EVERY', 100);
+// Skip companies scanned within this many hours. 0 disables skipping.
+const SKIP_HOURS = envInt('BYOJB_SCAN_SKIP_HOURS', 24);
 
 // ── Provider loading ────────────────────────────────────────────────
 
@@ -279,6 +307,104 @@ function appendToScanHistory(offers, date, status = 'added') {
   appendFileSync(SCAN_HISTORY_PATH, lines, 'utf-8');
 }
 
+// ── Scan ledger (resumability) ──────────────────────────────────────
+
+// name(lowercased) → most-recent scan time (epoch ms). Only successful scans
+// are recorded, so a company that errored (e.g. 429 exhausted) retries next run.
+function loadScanLedger() {
+  const seen = new Map();
+  if (!existsSync(SCAN_LEDGER_PATH)) return seen;
+  const lines = readFileSync(SCAN_LEDGER_PATH, 'utf-8').split('\n');
+  for (const line of lines.slice(1)) { // skip header
+    if (!line) continue;
+    const [name, ts] = line.split('\t');
+    if (!name || !ts) continue;
+    const t = Date.parse(ts);
+    if (!Number.isFinite(t)) continue;
+    const key = name.toLowerCase();
+    const prev = seen.get(key);
+    if (prev == null || t > prev) seen.set(key, t);
+  }
+  return seen;
+}
+
+function appendToScanLedger(entries) {
+  if (!entries.length) return;
+  if (!existsSync(SCAN_LEDGER_PATH)) {
+    writeFileSync(SCAN_LEDGER_PATH, 'company\tscanned_at\tjobs_found\tstatus\n', 'utf-8');
+  }
+  const rows = entries.map(e => `${e.name}\t${e.at}\t${e.found}\t${e.status}`).join('\n') + '\n';
+  appendFileSync(SCAN_LEDGER_PATH, rows, 'utf-8');
+}
+
+// ── Raw postings snapshot (carry-forward for skipped/un-scanned boards) ──
+
+// Load the prior raw cache grouped by a per-company carry key. Rows for
+// companies NOT scanned this run are re-emitted verbatim so rank-postings.mjs
+// (which expires a posting only when its company reappears in the snapshot)
+// never falsely expires a board we simply skipped.
+function loadPriorRawByKey() {
+  const byKey = new Map();
+  if (!existsSync(POSTINGS_RAW_PATH)) return byKey;
+  for (const line of readFileSync(POSTINGS_RAW_PATH, 'utf-8').split('\n')) {
+    if (!line.trim()) continue;
+    let row;
+    try { row = JSON.parse(line); } catch { continue; }
+    if (row._meta || !row.url) continue;
+    const key = row.careers_url || row.company || row.url;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(row);
+  }
+  return byKey;
+}
+
+const rawCarryKey = (m) => m.careers_url || m.company || m.url;
+
+// Write raw-latest.jsonl atomically (temp + rename) so a crash mid-write never
+// leaves a truncated snapshot. Content = fresh postings from companies scanned
+// this run + carried postings for every other company.
+function writeRawSnapshot(matched, priorByKey, meta) {
+  mkdirSync('data/postings', { recursive: true });
+  const freshKeys = new Set(matched.map(rawCarryKey));
+  const carried = [];
+  for (const [key, rows] of priorByKey) {
+    if (freshKeys.has(key)) continue; // a fresh scan replaces this company's rows
+    for (const r of rows) carried.push(r);
+  }
+  const all = [...carried, ...matched];
+  const lines = [JSON.stringify({ _meta: meta }), ...all.map(m => JSON.stringify(m))];
+  const tmp = POSTINGS_RAW_PATH + '.tmp';
+  writeFileSync(tmp, lines.join('\n') + '\n', 'utf-8');
+  renameSync(tmp, POSTINGS_RAW_PATH);
+  return { carried: carried.length, fresh: matched.length };
+}
+
+// ── Interleave targets by host ──────────────────────────────────────
+// portals.yml groups companies by provider, so thousands of consecutive entries
+// share one host (job-boards.greenhouse.io, jobs.ashbyhq.com, …). Scanned in that
+// order, all CONCURRENCY workers pile onto the same host and serialize on its
+// per-host rate limiter — concurrency is wasted and the run crawls. Round-robin
+// the targets across their hosts so the workers hit many distinct hosts at once.
+function targetHost(t) {
+  const u = t.api || t.careers_url || '';
+  try { return new URL(u).hostname; } catch { return t._provider?.id || 'other'; }
+}
+
+function interleaveByHost(items) {
+  const groups = new Map();
+  for (const it of items) {
+    const k = targetHost(it);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(it);
+  }
+  const buckets = [...groups.values()];
+  const out = [];
+  for (let i = 0; out.length < items.length; i++) {
+    for (const b of buckets) if (i < b.length) out.push(b[i]);
+  }
+  return out;
+}
+
 // ── Parallel fetch with concurrency limit ───────────────────────────
 
 async function parallelFetch(tasks, limit) {
@@ -385,8 +511,15 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const verify = args.includes('--verify');
+  const rescan = args.includes('--rescan'); // ignore the skip window; scan everything
+  const noRank = args.includes('--no-rank'); // skip the post-scan registry rebuild
   const companyFlag = args.indexOf('--company');
   const filterCompany = companyFlag !== -1 ? args[companyFlag + 1]?.toLowerCase() : null;
+  // --provider <id> scans only boards served by one provider. Needed whenever a provider's parsing
+  // changes: the fix only affects FUTURE fetches, so the stored bodies for that provider are stale
+  // and have to be refetched, without re-walking all ~28k companies on every other ATS.
+  const providerFlag = args.indexOf('--provider');
+  const filterProvider = providerFlag !== -1 ? args[providerFlag + 1]?.toLowerCase() : null;
 
   // 1. Load providers
   const providers = await loadProviders(PROVIDERS_DIR);
@@ -416,8 +549,14 @@ async function main() {
   const locationFilter = buildLocationFilter(config.location_filter);
 
   // 3. Resolve a provider for each enabled company
+  // Skip window: a company scanned within SKIP_HOURS is skipped so long runs are
+  // resumable and same-day re-runs only touch stale boards. Disabled by
+  // --rescan, by --company (an explicit request), or SKIP_HOURS=0.
+  const scanLedger = SKIP_HOURS > 0 && !rescan && !filterCompany && !filterProvider ? loadScanLedger() : new Map();
+  const skipCutoff = Date.now() - SKIP_HOURS * 3600_000;
   const targets = [];
   let skippedCount = 0;
+  let skippedRecent = 0;
   const resolveErrors = [];
   for (const company of companies) {
     if (!company || typeof company !== 'object') continue;
@@ -427,15 +566,23 @@ async function main() {
       continue;
     }
     if (filterCompany && !company.name.toLowerCase().includes(filterCompany)) continue;
+    const last = scanLedger.get(company.name.toLowerCase());
+    if (last != null && last >= skipCutoff) { skippedRecent++; continue; }
     const resolved = resolveProvider(company, providers);
     if (!resolved) { skippedCount++; continue; }
     if (resolved.error) { resolveErrors.push({ company: company.name, error: resolved.error }); continue; }
+    if (filterProvider && String(resolved.provider?.id || '').toLowerCase() !== filterProvider) continue;
     targets.push({ ...company, _provider: resolved.provider });
   }
 
   const localParserCount = targets.filter(t => t._provider.id === 'local-parser').length;
-  console.log(`Scanning ${targets.length} companies via providers (${localParserCount} local parser; ${skippedCount} skipped — no provider matched)`);
+  const skipNote = skippedRecent > 0 ? `; ${skippedRecent} skipped — scanned <${SKIP_HOURS}h ago` : '';
+  console.log(`Scanning ${targets.length} companies via providers (${localParserCount} local parser; ${skippedCount} skipped — no provider matched${skipNote})`);
+  if (skippedRecent > 0) console.log(`(resumable: use --rescan to force a full re-scan)`);
   if (dryRun) console.log('(dry run — no files will be written)\n');
+
+  // Prior raw postings, for carrying forward boards we skip / don't scan.
+  const priorByKey = dryRun ? new Map() : loadPriorRawByKey();
 
   // 4. Load dedup sets
   const seenUrls = loadSeenUrls();
@@ -451,10 +598,65 @@ async function main() {
   const matched = [];   // ALL title/location-passing postings (with JD bodies) → registry raw cache
   const errors = [...resolveErrors];
 
-  const tasks = targets.map(company => async () => {
+  // Checkpointing: periodically flush results so a multi-hour run survives a
+  // crash. Guarded by a flag (JS is single-threaded, and every flush op is
+  // synchronous, so this only prevents re-entrancy across the done%N trigger).
+  let writtenOffers = 0;         // offers already appended to pipeline/history
+  const pendingLedger = [];      // completed-company rows not yet flushed
+  let flushing = false;
+  let carriedCount = 0;
+  const checkpoint = () => {
+    if (dryRun || flushing) return;
+    flushing = true;
+    try {
+      // New offers → pipeline + history (verify path writes these itself later).
+      if (!verify) {
+        const slice = newOffers.slice(writtenOffers);
+        if (slice.length) {
+          appendToPipeline(slice);
+          appendToScanHistory(slice, date);
+          writtenOffers += slice.length;
+        }
+      }
+      if (pendingLedger.length) appendToScanLedger(pendingLedger.splice(0));
+      const meta = { scanned_at: date, companies: targets.map(t => t.name), partial: !!filterCompany || !!filterProvider || skippedRecent > 0 };
+      ({ carried: carriedCount } = writeRawSnapshot(matched, priorByKey, meta));
+    } finally {
+      flushing = false;
+    }
+  };
+
+  // Live progress: scanning 1000s of portals is slow, so emit a heartbeat as
+  // each company finishes. Rewrites a single line on a TTY; prints periodic
+  // lines otherwise (e.g. piped to a file/CI). Set BYOJB_SCAN_QUIET=1 to mute.
+  const total = targets.length;
+  let done = 0;
+  let okCount = 0;
+  let errCount = 0;
+  const isTty = process.stdout.isTTY;
+  const quiet = process.env.BYOJB_SCAN_QUIET === '1';
+  const reportProgress = (name, ok, found) => {
+    done++;
+    if (ok) { okCount++; pendingLedger.push({ name, at: new Date().toISOString(), found, status: 'ok' }); }
+    else errCount++;
+    if (CHECKPOINT_EVERY > 0 && done % CHECKPOINT_EVERY === 0) checkpoint();
+    if (quiet) return;
+    const line = `  [${done}/${total}] ok:${okCount} err:${errCount} new:${newOffers.length} 429:${httpStats.rateLimited} — ${name}`;
+    if (isTty) {
+      process.stdout.write('\r\x1b[2K' + line.slice(0, (process.stdout.columns || 120) - 1));
+    } else if (done === total || done % 25 === 0) {
+      console.log(line);
+    }
+  };
+
+  // Round-robin across hosts so workers don't all pile onto one shared ATS host.
+  const scanOrder = interleaveByHost(targets);
+  const tasks = scanOrder.map(company => async () => {
     let provider = company._provider;
     const ctx = makeHttpCtx();
     let sourceName = provider.id === 'local-parser' ? 'local-parser' : `${provider.id}-api`;
+    let taskOk = false;
+    let jobsFound = 0;
     try {
       let jobs;
       try {
@@ -475,6 +677,7 @@ async function main() {
         throw new Error(`${provider.id}: fetch() did not return an array`);
       }
       totalFound += jobs.length;
+      jobsFound = jobs.length;
 
       for (const job of jobs) {
         if (!titleFilter(job.title)) {
@@ -518,23 +721,23 @@ async function main() {
         seenCompanyRoles.add(key);
         newOffers.push({ ...job, source: sourceName });
       }
+      taskOk = true;
     } catch (err) {
       errors.push({ company: company.name, error: err.message });
+    } finally {
+      reportProgress(company.name, taskOk, jobsFound);
     }
   });
 
   await parallelFetch(tasks, CONCURRENCY);
+  if (isTty && !quiet && total > 0) process.stdout.write('\n');
 
-  // 5.4. Write the raw postings cache for the registry builder (rank-postings.mjs).
-  // Always written on a real scan (independent of dedup/verify) so the registry sees
-  // the full current set. Dry-run skips it. Empty result still writes (clears stale rows
-  // for the scanned companies — but only when scanning everything, see --company note).
+  // 5.4. Final checkpoint — flush any remaining new offers (non-verify path),
+  // the scan ledger, and the raw postings snapshot for rank-postings.mjs. Carries
+  // forward postings for skipped/un-scanned boards so they aren't falsely expired.
   if (!dryRun) {
-    mkdirSync('data/postings', { recursive: true });
-    const meta = { scanned_at: date, companies: targets.map(t => t.name), partial: !!filterCompany };
-    const lines = [JSON.stringify({ _meta: meta }), ...matched.map(m => JSON.stringify(m))];
-    writeFileSync(POSTINGS_RAW_PATH, lines.join('\n') + '\n', 'utf-8');
-    console.log(`  registry raw cache: ${matched.length} relevant postings → ${POSTINGS_RAW_PATH}`);
+    checkpoint();
+    console.log(`  registry raw cache: ${matched.length} fresh + ${carriedCount} carried → ${POSTINGS_RAW_PATH}`);
   }
 
   // 5.5. Optional liveness verification — drop expired and guard-rejected postings
@@ -552,7 +755,9 @@ async function main() {
   }
 
   // 6. Write results
-  if (!dryRun && verifiedOffers.length > 0) {
+  // Non-verify offers were already flushed incrementally by checkpoint(). Only the
+  // verify path — which filters newOffers down to verifiedOffers — writes here.
+  if (!dryRun && verify && verifiedOffers.length > 0) {
     appendToPipeline(verifiedOffers);
     appendToScanHistory(verifiedOffers, date);
   }
@@ -585,10 +790,12 @@ async function main() {
   console.log(`Portal Scan — ${date}`);
   console.log(`${'━'.repeat(45)}`);
   console.log(`Companies scanned:     ${targets.length}`);
+  if (skippedRecent > 0) console.log(`Skipped (recent):      ${skippedRecent} (scanned <${SKIP_HOURS}h ago)`);
   console.log(`Total jobs found:      ${totalFound}`);
   console.log(`Filtered by title:     ${totalFilteredTitle} removed`);
   console.log(`Filtered by location:  ${totalFilteredLocation} removed`);
   console.log(`Duplicates:            ${totalDupes} skipped`);
+  console.log(`HTTP 429s (retried):   ${httpStats.rateLimited} rate-limited, ${httpStats.retries} retries, ${httpStats.failures} gave up`);
   if (verify) {
     console.log(`Expired (verified):    ${expiredOffers.length} dropped`);
     console.log(`No apply control:      ${droppedOffers.length} dropped`);
@@ -612,6 +819,22 @@ async function main() {
       console.log('\n(dry run — run without --dry-run to save results)');
     } else {
       console.log(`\nResults saved to ${PIPELINE_PATH} and ${SCAN_HISTORY_PATH}`);
+    }
+  }
+
+  // 8. Rebuild the postings registry from the raw cache we just wrote.
+  // scan.mjs only produces data/postings/raw-latest.jsonl; the triage commands read
+  // data/posting-research.jsonl + data/postings-personal.jsonl, which rank-postings.mjs
+  // derives from it. Running it here keeps the registry current so "→ /byojb-triage-jobs"
+  // is actually true — otherwise triage silently reads a pre-scan snapshot.
+  // Skipped on --dry-run (nothing was written) and via --no-rank.
+  if (!dryRun && !noRank) {
+    console.log('\nRebuilding postings registry (rank-postings.mjs)...');
+    try {
+      execSync('node rank-postings.mjs', { stdio: 'inherit' });
+    } catch (err) {
+      console.warn(`⚠️  Failed to rebuild postings registry: ${err.message}`);
+      console.warn('   Run "node rank-postings.mjs" manually before triaging.');
     }
   }
 
