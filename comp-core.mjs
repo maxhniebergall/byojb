@@ -25,6 +25,26 @@ import { readFileSync, existsSync } from 'fs';
 import { LEVEL_LADDER, LEVEL_VALUES } from './title-family.mjs';
 
 export const DERIVATIONS = ['direct', 'inferred', 'estimated'];
+// The identity of a band SLOT — the tuple that decides whether two rows are the same fact.
+//
+// This lives here because it had two independent definitions that disagreed on normalization:
+// --apply-comp upper-cased currency and lower-cased geo, ingest/jd-comp.mjs used the raw strings.
+// A research row tagged geo "CA" and a JD-derived row tagged "ca" were therefore distinct to the
+// ingest and identical to the apply, so the file oscillated by 133 rows depending on which command
+// ran last, and every apply reported a large, alarming "weaker row(s) superseded" count.
+//
+// Currency and geo are part of the identity for the same reason: a senior band in CAD in Toronto
+// and one in USD offshore are different facts about different markets, not duplicates.
+export function bandSlotKey(r) {
+  return [
+    r?.key,
+    r?.title_family,
+    r?.ladder_level,
+    String(r?.band?.currency || '').toUpperCase(),
+    String(r?.provenance?.geo || '').toLowerCase(),
+  ].join('|');
+}
+
 export const DERIVATION_RANK = { direct: 3, inferred: 2, estimated: 1 };
 export const CONFIDENCE_RANK = { high: 3, medium: 2, low: 1 };
 export const COMPONENTS = ['base', 'total_cash', 'tc'];

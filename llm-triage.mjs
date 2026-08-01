@@ -22,7 +22,7 @@ import {
   loadResearchLedger, appendResearchAttempts, inBackoff, backoffHours,
   RESEARCH_LEDGER_PATH, DEFAULT_SKIP_HOURS,
 } from './research-ledger.mjs';
-import { validateBandRow, DERIVATION_RANK, CONFIDENCE_RANK, normalizeComp } from './comp-core.mjs';
+import { validateBandRow, DERIVATION_RANK, CONFIDENCE_RANK, normalizeComp, bandSlotKey } from './comp-core.mjs';
 import { TITLE_FAMILIES, normalizeTitle } from './title-family.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -568,11 +568,7 @@ function cleanExcerpt(body) {
     // every --apply-comp silently collapse those into a single survivor: one run destroyed 326 rows
     // (118 of them `direct`) while reporting them as "weaker row(s) superseded". Dedup must key on
     // the same tuple the producer grouped by, or it is deleting data rather than deduplicating.
-    const slot = (r) => [
-      r.key, r.title_family, r.ladder_level,
-      String(r.band?.currency || '').toUpperCase(),
-      String(r.provenance?.geo || '').toLowerCase(),
-    ].join('|');
+    const slot = bandSlotKey;   // single definition, shared with ingest/jd-comp.mjs
     const better = (a, b) => {
       if (!b) return true;
       const d = (DERIVATION_RANK[a.derivation] || 0) - (DERIVATION_RANK[b.derivation] || 0);

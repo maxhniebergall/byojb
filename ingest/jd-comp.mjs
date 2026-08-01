@@ -24,6 +24,7 @@ import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
 import { loadJsonl, saveJsonl, sk } from '../posting-core.mjs';
 import { normalizeTitle } from '../title-family.mjs';
+import { bandSlotKey } from '../comp-core.mjs';
 import { normalizeComp, parseCompFromBody } from '../comp-core.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -240,13 +241,15 @@ function main() {
   const RANK = { direct: 3, inferred: 2, estimated: 1 };
   const bestKept = new Map();
   for (const r of kept) {
-    const k = `${r.key}|${r.title_family}|${r.ladder_level}|${r.band?.currency}|${r.provenance?.geo}`;
+    const k = bandSlotKey(r);
     bestKept.set(k, Math.max(bestKept.get(k) || 0, RANK[r.derivation] || 0));
   }
-  const surviving = rows.filter(r => {
-    const k = `${r.key}|${r.title_family}|${r.ladder_level}|${r.band?.currency}|${r.provenance?.geo}`;
-    return (RANK[r.derivation] || 0) >= (bestKept.get(k) || 0);
-  });
+  // Strictly-better, not better-or-equal. On a TIE the preserved research row wins: both occupy
+  // the same slot, so only one may survive, and the researched row carries the more specific
+  // provenance (a named source URL and method line rather than a rollup). Keeping ours on ties
+  // left 54 duplicate slots that the next --apply-comp then removed, so the file's row count
+  // depended on which command ran last.
+  const surviving = rows.filter(r => (RANK[r.derivation] || 0) > (bestKept.get(bandSlotKey(r)) || 0));
   const yielded = rows.length - surviving.length;
 
   saveJsonl(COMP, [...kept, ...surviving]);
