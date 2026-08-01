@@ -190,7 +190,7 @@ const RE_DISQUALIFY = /equity|option|RSU|shares|401\(?k\)?|revenue|funding|valua
 // A label that unambiguously introduces THIS number as pay for a person. Checked in the 60 chars
 // immediately preceding the figure, so it can only apply to the range it actually precedes.
 const RE_SALARY_LABEL = /(base\s+)?(salary|pay|compensation)\s*(range|band|scale)?\s*(for this (role|position))?\s*(is|:|of)?\s*$|base (salary|pay)\s*$|salary\s*$/i;
-export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
+export function parseCompFromBody(text, { min = 40000, max = 900000, level = null } = {}) {
   if (!text) return null;
   // Greenhouse renders a posted range as
   //   <div class="pay-range"><span>$150,000</span><span>&mdash;</span><span>$200,000 USD</span></div>
@@ -253,11 +253,26 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
     const head = plain.slice(Math.max(0, m.index - 12), m.index) + m[0].slice(0, 4);
     const local = `${head}${tail}`;
     const cur = /\bCAD\b|\bC\$/i.test(local) ? 'CAD' : /\bUSD\b|\bUS\$/i.test(local) ? 'USD' : null;
-    found.push({ min: lo, max: hi, currency: cur });
+    found.push({ min: lo, max: hi, currency: cur, at: m.index });
   }
   if (!found.length) return null;
   // When a JD states the same pay in two currencies, take CAD — that's the currency this user is
   // actually paid in, so it needs no conversion and carries no FX assumption.
+  // A single JD can advertise TWO levels and post a range for each. Roche's
+  //   "Machine Learning Engineer/Senior Machine Learning Engineer"
+  // states, in one sentence, California $147,600-$274,000 for the ML Engineer and
+  // $167,400-$310,800 for the SENIOR one. Taking the first match filed the non-senior range under
+  // the senior slot, understating it by $20-37k. When the caller knows which rung this posting
+  // resolved to, prefer a range whose immediately preceding text names that rung.
+  if (level) {
+    const lvl = String(level).toLowerCase();
+    const near = (f) => plain.slice(Math.max(0, f.at - 110), f.at).toLowerCase();
+    const levelled = found.filter(f => near(f).includes(lvl));
+    // Only trust the hint when it disambiguates — if every candidate matches, it tells us nothing.
+    if (levelled.length && levelled.length < found.length) {
+      return clean(levelled.find(f => f.currency === 'CAD') || levelled[0]);
+    }
+  }
   return clean(found.find(f => f.currency === 'CAD') || found[0]);
 }
 
@@ -267,6 +282,9 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
 const num = (v) => (v == null || v === '' || Number(v) === 0 || Number.isNaN(Number(v))) ? null : Number(v);
 function clean(c) {
   if (c.min != null && c.max != null && c.max < c.min) { const t = c.min; c.min = c.max; c.max = t; }
+  // `at` is the match offset, used only to pick between multiple ranges in one body. It is
+  // bookkeeping, not a fact about pay, and must not reach callers or be persisted on a band.
+  delete c.at;
   return (c.min == null && c.max == null) ? null : c;
 }
 

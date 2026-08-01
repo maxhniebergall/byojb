@@ -1138,6 +1138,31 @@ try {
   if (ok === cases.length) pass(`effectiveGeo: ${ok}/${cases.length} location-vs-facet precedence cases`);
 } catch (e) { fail(`effectiveGeo tests crashed: ${e.message}`); }
 
+// ── 18d. Dual-level requisitions: pick the range for THIS posting's rung ─────────
+// Roche advertises "Machine Learning Engineer/Senior Machine Learning Engineer" and states four
+// ranges in one sentence. Taking the first match filed the NON-senior range under the senior slot,
+// understating it by $20-37k. The level hint disambiguates; without it, behaviour is unchanged.
+try {
+  const { parseCompFromBody } = await import(pathToFileURL(join(ROOT, 'comp-core.mjs')).href);
+  const roche = 'The expected salary range for this position based on the primary location of '
+    + 'California for the Machine Learning Engineer is $147,600, - $274,000 and New York is '
+    + '$141,100 - $262,100, and the Senior Machine Learning Engineer for California is '
+    + '$167,400 - $310,800 and New York is $160,100 - $297,300.';
+  const noHint = parseCompFromBody(roche);
+  const senior = parseCompFromBody(roche, { level: 'senior' });
+  if (noHint?.min === 147600) pass('dual-level: without a hint, first match is unchanged');
+  else fail(`dual-level: no-hint min ${noHint?.min}, expected 147600`);
+  if (senior?.min === 167400 && senior?.max === 310800) pass('dual-level: level hint selects the senior range');
+  else fail(`dual-level: senior hint → ${JSON.stringify(senior)}, expected 167400-310800`);
+  // The hint must not fire when it cannot discriminate — every candidate matching tells us nothing.
+  const single = parseCompFromBody('Base salary range for this senior role: $150,000 - $200,000', { level: 'senior' });
+  if (single?.min === 150000 && single?.max === 200000) pass('dual-level: a single range is unaffected by the hint');
+  else fail(`dual-level: single range → ${JSON.stringify(single)}`);
+  // Internal match offset must never leak onto a persisted band.
+  if (!('at' in (senior || {}))) pass('dual-level: internal match offset is stripped from the result');
+  else fail('dual-level: `at` leaked into the parsed comp');
+} catch (e) { fail(`dual-level comp tests crashed: ${e.message}`); }
+
 // ── 19. Comp bands: parsing, selection, validation ──────────────
 console.log('\n19. Comp bands (comp-core.mjs)');
 try {

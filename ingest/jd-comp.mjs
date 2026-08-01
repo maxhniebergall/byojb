@@ -51,7 +51,10 @@ const isOurs = (r) => String(r?.provenance?.collected_by || '').startsWith(OWNER
 // conversion and understates the role by ~35%. Fall back to the extraction only when the scanner
 // has nothing — which is the common case, since most boards publish no structured comp at all.
 // Trust order: ATS structured field > verbatim JD text > LLM interpretation.
-function compOf(r) {
+// `level` is the rung this posting's TITLE resolved to. It disambiguates a JD that advertises two
+// levels and posts a range for each — see parseCompFromBody. Optional: without it the parser keeps
+// its previous first-match behaviour.
+function compOf(r, level = null) {
   const raw = normalizeComp(r?.comp);
   if (raw) return { c: raw, from: 'scanned' };
   // The body is verbatim text the company published; the extraction is a reading of it, and it
@@ -59,7 +62,7 @@ function compOf(r) {
   if (r?.has_body) {
     try {
       const body = readFileSync(join(ROOT, 'data', 'posting-research', sk(r.key) + '.md'), 'utf-8');
-      const fromBody = parseCompFromBody(body);
+      const fromBody = parseCompFromBody(body, { level });
       if (fromBody) {
         // A bare "$" in the prose carries no currency. Leaving it null buckets the band under
         // "UNKNOWN", which the scorer then treats as CAD — understating a US role by ~35%. Infer
@@ -129,13 +132,15 @@ function main() {
 
   for (const r of research) {
     if (!r?.company_key) continue;
-    const hit = compOf(r);
-    if (!hit) continue;
-    withComp++;
+    // Resolve the level BEFORE reading comp: a JD advertising two rungs posts a range for each,
+    // and the parser needs to know which one this posting is in order to pick the right range.
     const { title_family, ladder_level } = normalizeTitle(r.title, r.extracted || {});
     // normalizeTitle now returns LEVEL_UNSPECIFIED rather than null for an unlevelled title, so
     // this no longer fires. Kept as a guard: a genuinely absent level would still be unusable.
     if (!ladder_level) { noLevel++; continue; }
+    const hit = compOf(r, ladder_level);
+    if (!hit) continue;
+    withComp++;
     const cur = hit.c.currency || 'UNKNOWN';
     const gk = `${r.company_key}|${title_family}|${ladder_level}|${cur}|${geoBucket(r)}`;
     if (!groups.has(gk)) groups.set(gk, []);
@@ -173,11 +178,19 @@ function main() {
       ? { min: only.c.min ?? only.c.max, mid: mids[0], max: only.c.max ?? only.c.min, currency, component: 'base' }
       : { min: pct(lows, 0.25), mid: pct(mids, 0.5), max: pct(highs, 0.75), currency, component: 'base' };
 
-    // Confidence tracks how much evidence stands behind the band, nothing else.
-    // An unverifiable extraction can never earn confidence, however many postings agree — they
-    // all came from the same fallible reader. Only verifiable evidence scales with sample size.
+    // Confidence tracks the STRENGTH of the evidence, which is quality first and quantity second.
+    //
+    // Scaling on sample size alone put every `direct`/`jd_posted` row at `low`, because a single
+    // posting fell in the `< 2` bucket — so the strongest evidence in the system (a range the
+    // employer published on its own JD for this exact slot, checkable at source_urls) was rated
+    // the same as a model's guess. Two separate research passes flagged it independently.
+    //
+    // A directly posted range is not a small sample of some hidden truth; for that slot it IS the
+    // fact. Sample size still matters for a ROLLUP, where more postings genuinely means more
+    // evidence about a band the company never stated outright.
     const confidence = !verifiable ? 'low'
-      : items.length >= 5 ? 'high' : items.length >= 2 ? 'medium' : 'low';
+      : single ? 'high'
+        : items.length >= 5 ? 'high' : items.length >= 2 ? 'medium' : 'low';
 
     rows.push({
       key,
