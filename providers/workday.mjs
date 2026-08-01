@@ -66,6 +66,30 @@ async function searchPages(ctx, info, searchText, maxResults) {
   return out;
 }
 
+// Workday collapses a multi-site requisition's locationsText to the literal string "2 Locations"
+// / "47 Locations" — 2,099 of 4,539 live Workday postings, 46%, carry that placeholder and nothing
+// else. Geo triage is blind to all of them, and a "3 Locations" string reads as flexibility when
+// the underlying req may be four-days-in-office in one named city.
+//
+// The primary location survives in externalPath: /job/<Location>/<Title>_<ReqId>. Workday encodes
+// spaces as "-" and an existing " - " as "---", so decode longest-first. The count is kept as a
+// suffix because "this req spans several sites" is itself real information.
+function slugLocation(externalPath) {
+  const m = String(externalPath || '').match(/\/job\/([^/]+)\//);
+  if (!m) return '';
+  return decodeURIComponent(m[1])
+    .replace(/---/g, ' - ')
+    .replace(/-/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function resolveLocation(p) {
+  const text = p?.locationsText || '';
+  if (!/^\d+\s+locations?$/i.test(text.trim())) return text;
+  const fromSlug = slugLocation(p?.externalPath);
+  return fromSlug ? `${fromSlug} (+${text.trim()})` : text;
+}
+
 /** @type {Provider} */
 export default {
   id: 'workday',
@@ -94,7 +118,7 @@ export default {
           title: p.title || '',
           url: jobUrl(info, p.externalPath),
           company: entry.name,
-          location: p.locationsText || '',
+          location: resolveLocation(p),
         });
       }
     }

@@ -97,7 +97,13 @@ function geoBucket(r) {
   const loc = `${r.location || ''} ${(r.extracted?.location_hints || []).join(' ')}`;
   if (RE_OFFSHORE.test(loc)) return 'offshore';
   if (RE_EU.test(loc)) return 'eu';
-  if (RE_CA.test(loc) || RE_US.test(loc)) return 'na';
+  // Canada and the US were both bucketed as 'na', which is why nearly every row reported an
+  // uninformative geo. They are different pay markets AND different eligibility: a Toronto band
+  // and an Ohio band are not interchangeable facts, and collapsing them made the field useless
+  // for the currency/cost-of-living comparisons it exists to support. Canada is checked FIRST so
+  // "Toronto, Canada (Remote), United States" resolves to the home market rather than the US.
+  if (RE_CA.test(loc)) return 'ca';
+  if (RE_US.test(loc)) return 'us';
   return 'unknown';
 }
 
