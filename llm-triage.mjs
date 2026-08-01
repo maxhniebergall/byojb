@@ -100,6 +100,11 @@ function compSlotsByCompany() {
     if (slot.example_titles.length < 3 && r.title) slot.example_titles.push(r.title);
     if (!normalizeComp(r.extracted?.comp) && !normalizeComp(r.comp)) slot.needs_comp = true;
   }
+  // has_band and needs_comp answer different questions ("do we hold a band?" vs "does some posting
+  // omit its pay?"), so a slot could carry both — which reads as a contradiction and sent several
+  // research passes hunting for comp that had already been ingested. needs_comp is the ACTIONABLE
+  // flag, so narrow it to what it's used for: a gap research could actually close.
+  for (const m of out.values()) for (const slot of m.values()) if (slot.has_band) slot.needs_comp = false;
   return out;
 }
 
