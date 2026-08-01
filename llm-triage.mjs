@@ -134,7 +134,7 @@ export function postingQuality(a, { rankDiscount = 0.25 } = {}) {
 // THE Stage-3 queue predicate + ordering. Exported and shared by --emit-research, --stats and
 // --queue-research so the queue and its own progress report provably cannot drift apart.
 export function researchEligible(personal, agg, ledger, opts = {}) {
-  const { minLive = 1, needsComp = false, rescan = false, rankWeight = 1, research = new Map(), now = Date.now() } = opts;
+  const { minLive = 1, needsComp = false, rescan = false, rankWeight = 1, minRank = null, research = new Map(), now = Date.now() } = opts;
   const remoteOf = (p) => (research.get(p.key) || {}).remote_relevant || 0;
   const quality = (p) => postingQuality(agg(p.key), opts);
   const queueScore = (p) => (quality(p).value ?? 0) + (RANK_BOOST[p.llm_rank] ?? 0) * rankWeight;
@@ -152,6 +152,13 @@ export function researchEligible(personal, agg, ledger, opts = {}) {
     // applying to, or whose every posting is hard-excluded, cannot enter the queue at all.
     .filter(p => quality(p).value != null && agg(p.key).live_relevant >= minLive)
     .filter(p => !needsComp || (agg(p.key).live_relevant_no_comp > 0 && agg(p.key).comp_band_rows === 0))
+    // minRank turns the Stage-2 rank from a BOOST into a GATE, on purpose and only when asked.
+    // The default ordering is posting-quality-first, which is right for open-ended discovery but
+    // cannot serve "research every company I rated 3+": a rank-5 company whose postings triaged
+    // at rank 1 scores 0.75 + 0.60 = 1.35, just under a generic rank-2 company's 1.45, so it never
+    // surfaces. Affinity, CoinTracker and Nango all sat below position 57 for exactly this reason.
+    // Passing --min-rank makes that campaign expressible without re-weighting the default queue.
+    .filter(p => minRank == null || (p.llm_rank ?? 0) >= minRank)
     .filter(p => rescan || !inBackoff(ledger.get(p.key), DEFAULT_SKIP_HOURS, now))
     .sort((a, b) => (queueScore(b) - queueScore(a))
       || (agg(b.key).live_relevant - agg(a.key).live_relevant)
@@ -321,7 +328,8 @@ function main() {
 
   // --emit-research: the Stage-3 work queue, ordered by how good a company's ACTUAL POSTINGS are.
   //
-  //   node llm-triage.mjs --emit-research 20 [--min-live N] [--needs-comp] [--rescan] [--rank-weight W]
+  //   node llm-triage.mjs --emit-research 20 [--min-live N] [--needs-comp] [--rescan]
+  //                                            [--rank-weight W] [--min-rank N]
   //
   // This used to require llm_rank != null (a Stage-2 prerank). That gate was actively harmful:
   // only 49 companies ever received a rank, and they were picked from a 23,102-way tie on a
@@ -337,6 +345,7 @@ function main() {
       needsComp: args.includes('--needs-comp'),
       rescan: args.includes('--rescan'),
       rankWeight: num('--rank-weight', 1),
+      minRank: args.includes('--min-rank') ? num('--min-rank', 3) : null,
       research,
     }).slice(0, n);
 
