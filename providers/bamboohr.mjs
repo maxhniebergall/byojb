@@ -23,13 +23,24 @@ export default {
     const json = await ctx.fetchJson(`https://${slug}.bamboohr.com/careers/list`);
     const jobs = Array.isArray(json?.result) ? json.result : [];
     return jobs.filter(j => j.id && j.jobOpeningName).map(j => {
+      // BambooHR populates EITHER `location` OR `atsLocation`, per job, never both — and only
+      // atsLocation carries a country (and uses `province` where the other uses `state`). Reading
+      // just `location` left 169 of 334 live postings with an empty location string, which made
+      // geo triage blind to them: samsters' one opening is Edmonton, Alberta, CANADA and showed
+      // up as "". Merge the two, preferring whichever is actually populated.
       const loc = j.location || {};
-      const isRemote = j.isRemote === 'yes' || j.atsLocation?.isRemote;
+      const ats = j.atsLocation || {};
+      const isRemote = j.isRemote === 'yes' || ats.isRemote;
+      const parts = [
+        loc.city || ats.city,
+        loc.state || ats.state || ats.province,
+        loc.country || ats.country,
+      ].filter(Boolean);
       return {
         title: j.jobOpeningName,
         url: `https://${slug}.bamboohr.com/careers/${j.id}`,
         company: entry.name,
-        location: [loc.city, loc.state, loc.country].filter(Boolean).join(', ') + (isRemote ? ' Remote' : ''),
+        location: parts.join(', ') + (isRemote ? (parts.length ? ' ' : '') + 'Remote' : ''),
       };
     });
   },
