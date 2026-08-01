@@ -22,7 +22,7 @@
 // PURE apart from loadCompBands' file read.
 
 import { readFileSync, existsSync } from 'fs';
-import { LEVEL_LADDER } from './title-family.mjs';
+import { LEVEL_LADDER, LEVEL_VALUES } from './title-family.mjs';
 
 export const DERIVATIONS = ['direct', 'inferred', 'estimated'];
 export const DERIVATION_RANK = { direct: 3, inferred: 2, estimated: 1 };
@@ -153,7 +153,16 @@ export function parseCompString(s) {
 // "and" is a real separator in the wild — Helm.ai writes "base range of approximately $150,000
 // and $250,000" — but it is also the most common word in English, so it only survives because
 // every match still has to clear the pay-cue and disqualifier checks below.
-const RE_RANGE = /\$\s?([\d,]{6,})(?:\.\d+)?\s*(?:to|through|and|-|–|—)\s*\$?\s?([\d,]{6,})(?:\.\d+)?/g;
+// The amount marker is not always "$". Ping Identity posts "Compensation Range: CAD 87,000 –
+// 105,000" and ABC Fitness posts "$120,000.00 -- $128,000.00 CAD- annually". Requiring a literal
+// single "$" and a single-character dash missed both, so a first-party posted range fell through
+// to the Stage-3 extractor and was recorded as an `estimated` / `llm_prior` guess instead —
+// the same defect as the undecoded &mdash;, just wearing different punctuation.
+const CUR_PFX = String.raw`(?:CAD|USD|AUD|EUR|GBP|CA\$|US\$|C\$|£|€|\$)`;
+const RE_RANGE = new RegExp(
+  `${CUR_PFX}\\s?([\\d,]{6,})(?:\\.\\d+)?\\s*(?:to|through|and|[-–—]{1,3})\\s*(?:${CUR_PFX})?\\s?([\\d,]{6,})(?:\\.\\d+)?`,
+  'g',
+);
 // Bare "annual" is NOT a pay cue — "annual revenue grew from $200,000 to $900,000" would qualify.
 // Every cue here has to be about paying a person.
 const RE_PAY_CUE = /salary|compensation|base pay|base range|pay range|pay band|pay scale|per year|\/yr\b|\/year|OTE|total cash|earn/i;
@@ -191,7 +200,7 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
     // of the band by ~20% and understating every role at those companies.
     let hi = hiRaw;
     const tail3 = plain.slice(m.index + m[0].length, m.index + m[0].length + 24);
-    const third = tail3.match(/^\s*[-–—]\s*\$?\s?([\d,]{6,})/);
+    const third = tail3.match(new RegExp(`^\\s*[-–—]{1,3}\\s*(?:${CUR_PFX})?\\s?([\\d,]{6,})`));
     if (third) {
       const t = Number(third[1].replace(/,/g, ''));
       if (t >= hi && t <= max) hi = t;
@@ -212,7 +221,9 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
     // A paragraph-wide search sees "CAD" and stamps it on the USD numbers — inflating a Canadian
     // band by ~35%. So look only in the ~28 chars trailing the digits, where the label actually sits.
     const tail = plain.slice(m.index + m[0].length, m.index + m[0].length + 28);
-    const head = plain.slice(Math.max(0, m.index - 12), m.index);
+    // The code can also lead the figure ("CAD 87,000 – 105,000"), in which case it sits INSIDE
+    // the match rather than before it — so include the match's own prefix, not just what precedes.
+    const head = plain.slice(Math.max(0, m.index - 12), m.index) + m[0].slice(0, 4);
     const local = `${head}${tail}`;
     const cur = /\bCAD\b|\bC\$/i.test(local) ? 'CAD' : /\bUSD\b|\bUS\$/i.test(local) ? 'USD' : null;
     found.push({ min: lo, max: hi, currency: cur });
@@ -327,7 +338,7 @@ export function validateBandRow(row, { families = [] } = {}) {
   if (!row?.key) errs.push('missing key (no company-agnostic rows)');
   if (!row?.title_family) errs.push('missing title_family (no role-agnostic rows)');
   else if (families.length && !families.includes(row.title_family)) errs.push(`unknown title_family "${row.title_family}"`);
-  if (row?.ladder_level && !LEVEL_LADDER.includes(row.ladder_level)) errs.push(`unknown ladder_level "${row.ladder_level}"`);
+  if (row?.ladder_level && !LEVEL_VALUES.includes(row.ladder_level)) errs.push(`unknown ladder_level "${row.ladder_level}"`);
   if (!DERIVATIONS.includes(row?.derivation)) errs.push(`derivation must be one of ${DERIVATIONS.join('|')}`);
 
   const spec = SOURCES[p.source];

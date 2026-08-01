@@ -126,7 +126,8 @@ function main() {
     if (!hit) continue;
     withComp++;
     const { title_family, ladder_level } = normalizeTitle(r.title, r.extracted || {});
-    // A band with no level is not usable — comp varies more by level than by anything else.
+    // normalizeTitle now returns LEVEL_UNSPECIFIED rather than null for an unlevelled title, so
+    // this no longer fires. Kept as a guard: a genuinely absent level would still be unusable.
     if (!ladder_level) { noLevel++; continue; }
     const cur = hit.c.currency || 'UNKNOWN';
     const gk = `${r.company_key}|${title_family}|${ladder_level}|${cur}|${geoBucket(r)}`;

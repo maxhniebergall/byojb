@@ -13,6 +13,11 @@
 // score-postings.mjs because that module imports this one — the ladder is the lower-level
 // concept. score-postings re-exports it, so its existing importers are unaffected.
 export const LEVEL_LADDER = ['junior', 'mid', 'mid-senior', 'senior', 'staff', 'principal'];
+// A level the posting never stated. Held OUTSIDE the ladder on purpose: it has no rung, so it
+// takes bandFor()'s "unknown level" path (family match, demoted) rather than sorting between
+// real rungs. Valid to store, never comparable to a stated level.
+export const LEVEL_UNSPECIFIED = 'unspecified';
+export const LEVEL_VALUES = [...LEVEL_LADDER, LEVEL_UNSPECIFIED];
 
 // Coarse enough that most companies have several postings per family (thin samples make
 // useless bands), fine enough that the bands within one are actually comparable.
@@ -146,6 +151,16 @@ export function normalizeTitle(rawTitle, ex = {}) {
     const fromYoe = levelFromYoe(ex?.yoe_min);
     if (fromYoe) { ladder_level = fromYoe; source = 'yoe'; }
   }
+
+  // "Software Engineer" / "Data Engineer" state no level at all — a third of live postings.
+  // Returning null for these meant every write path dropped them: compSlotsByCompany() produced
+  // no slot (so research was never asked to fill one) and ingest/jd-comp.mjs discarded 418
+  // postings that carried a REAL POSTED SALARY, across 212 companies. Meanwhile bandFor() on the
+  // read side already coped with an unknown level, matching within the family at distance 9.
+  // So the null was an asymmetry, not a policy. UNSPECIFIED makes "the company didn't say" a
+  // value we can key on — deliberately NOT a member of LEVEL_LADDER, so the rung-distance
+  // arithmetic in bandFor() is untouched and these bands can never masquerade as a known rung.
+  if (!ladder_level) { ladder_level = LEVEL_UNSPECIFIED; source = 'unlevelled'; }
 
   return { title_family, ladder_level, level_raw: title, source };
 }

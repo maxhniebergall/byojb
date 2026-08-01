@@ -1030,9 +1030,12 @@ try {
     ['SDE II', 'software_general', 'mid'],
     ['Software Engineer III', 'software_general', 'mid-senior'],
     ['Distinguished Engineer', 'other', 'principal'],
-    ['Site Reliability Engineer', 'sre_devops', null],
-    ['Data Scientist', 'data_science', null],
-    ['Engineering Manager, Platform', 'eng_manager', null],
+    // A title that states no level resolves to 'unspecified', not null: bandFor() already matched
+    // these within the family, but every WRITE path used to drop them, discarding 418 postings
+    // that carried a posted salary. 'unspecified' is not a ladder rung and never sorts as one.
+    ['Site Reliability Engineer', 'sre_devops', 'unspecified'],
+    ['Data Scientist', 'data_science', 'unspecified'],
+    ['Engineering Manager, Platform', 'eng_manager', 'unspecified'],
   ];
   let ok = 0;
   for (const [title, fam, lvl] of cases) {
