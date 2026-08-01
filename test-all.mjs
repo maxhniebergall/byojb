@@ -1059,6 +1059,56 @@ try {
   else fail('generic SWE mapped to a specialty family');
 } catch (e) { fail(`title-family tests crashed: ${e.message}`); }
 
+// ── 18b. Work eligibility: the composed remote-AND-hireable-here facet ──────────
+// No single extracted facet answers "could I hold this job?": geo_eligibility names the country
+// the EMPLOYER hires in (true of remote AND of five-days-in-office roles), remote_policy names no
+// country. These guard the composition and, more importantly, the region-allowlist detector, whose
+// early versions wrongly excluded 168 genuinely-remote Canadian postings.
+try {
+  const { workEligible, detectRegionBlock } = await import(pathToFileURL(join(ROOT, 'score-postings.mjs')).href);
+  const prefs = { work_location: {
+    country: 'canada', region: 'british columbia',
+    region_aliases: ['british columbia', 'b.c.', 'bc'],
+    allow_policies: ['remote'], eligible_geo: ['canada', 'global'],
+  } };
+  const elig = [
+    [{ remote_policy: 'remote', geo_eligibility: 'canada' }, 'yes'],
+    [{ remote_policy: 'hybrid', geo_eligibility: 'canada' }, 'no'],   // hires here, but office-bound
+    [{ remote_policy: 'onsite', geo_eligibility: 'canada' }, 'no'],
+    [{ remote_policy: 'remote', geo_eligibility: 'us_only' }, 'no'],
+    [{ remote_policy: 'remote', geo_eligibility: 'unclear' }, 'unclear'], // bare "Remote" is not a country
+    [{}, 'unclear'],                                                     // no facets → never excluded
+    [{ remote_policy: 'remote', geo_eligibility: 'canada', _region_blocked: true }, 'no'],
+  ];
+  let ok = 0;
+  for (const [ex, want] of elig) {
+    const got = workEligible(ex, prefs);
+    if (got === want) ok++; else fail(`workEligible(${JSON.stringify(ex)}) → ${got}, expected ${want}`);
+  }
+  if (ok === elig.length) pass(`workEligible: ${ok}/${elig.length} cases`);
+  if (workEligible({ remote_policy: 'hybrid', geo_eligibility: 'canada' }, {}) === 'unclear') pass('workEligible is inert when work_location is unconfigured');
+  else fail('workEligible must not exclude anything when unconfigured');
+
+  // The detector must fire on real restrictions and stay silent on boilerplate that merely NAMES
+  // jurisdictions. Each false-positive case below was found excluding real postings.
+  const blocks = [
+    ['We are open to applicants based in Canada in the Ontario province.', true],
+    ['We hire in the following: US states: Arizona, California, Colorado.', true],
+    ['Candidates must be located in Canadian time zones (EST + CST only).', true],
+    ['Successful candidates will undergo a background check in compliance to applicable federal, provincial, state and local laws.', null],
+    ['We are an equal opportunity employer and hire based on merit in all states.', null],
+    ['The base salary range for this position, reflected in CAD, is: 92,900 - 116,100', null],
+    ['We hire in the United States and Canada.', null],
+    ['Offers are based on level, experience, and skillset as assessed in the interview process', null],
+  ];
+  let bok = 0;
+  for (const [body, want] of blocks) {
+    const got = detectRegionBlock(body, prefs);
+    if (got === want) bok++; else fail(`detectRegionBlock("${body.slice(0, 40)}…") → ${got}, expected ${want}`);
+  }
+  if (bok === blocks.length) pass(`detectRegionBlock: ${bok}/${blocks.length} cases (incl. 5 boilerplate false-positive guards)`);
+} catch (e) { fail(`work-eligibility tests crashed: ${e.message}`); }
+
 // ── 19. Comp bands: parsing, selection, validation ──────────────
 console.log('\n19. Comp bands (comp-core.mjs)');
 try {

@@ -78,6 +78,21 @@ preferences:
     love:  [Kubernetes, Postgres, AWS, Kafka, Terraform, Docker, gRPC, Spark]
     ok:    [GCP, Azure, Redis, Elasticsearch]
     avoid: []
+  # work_location: where YOU can legally and practically work. Composed into the derived
+  # `work_eligible` facet (yes/no/unclear) by workEligible(), which hard_filters can act on.
+  # No single extracted facet answers "could I hold this job?": geo_eligibility names the country
+  # the EMPLOYER can hire in (equally true of remote and of five-days-in-office roles), while
+  # remote_policy names no country. Only the conjunction is a real constraint.
+  #   region         — home province/state; '' disables region checks
+  #   region_aliases — every spelling that counts as "home" in a JD's region allowlist
+  #   allow_policies — remote_policy values you accept. Add 'hybrid' if you can commute.
+  #   eligible_geo   — geo_eligibility values that include you
+  work_location:
+    country: canada
+    region: british columbia
+    region_aliases: [british columbia, b.c., bc]
+    allow_policies: [remote]
+    eligible_geo: [canada, global]
   yoe_ceiling: 12        # roles demanding more YOE than this get a Level penalty
   usd_to_cad: 1.35       # comp currency normalization before comp_tiers
   comp_tiers:            # total comp (CAD-equiv) → 1-5 (highest matching `min` wins)
@@ -111,6 +126,7 @@ preferences:
 # dashboard, toggleable). Dealbreakers, NOT soft weights. facet = a key in `extracted`.
 hard_filters:
   - { facet: geo_eligibility, in: [us_only, eu_only] }   # only roles open to Canadians in Canada
+  - { facet: work_eligible,   in: [no] }   # remote AND hireable in your region (see work_location)
   - { facet: remote_policy,   in: [onsite] }
   - { facet: employment_type, in: [internship] }
   - { facet: yoe_min,         gt: 14 }

@@ -269,6 +269,95 @@ export const COMPUTERS = {
 };
 
 // ── hard filters (PURE) ─────────────────────────────────────────────
+// ── work eligibility: "could I actually hold this job from where I live?" ──────────────
+//
+// geo_eligibility and remote_policy each answer half the question and neither answers it alone.
+// geo_eligibility: "canada" means the EMPLOYER can hire in this country — it is equally true of a
+// fully-remote role and of one requiring five days a week in a Toronto office. remote_policy says
+// remote/hybrid/onsite but nothing about WHICH country. A hard filter can only test one facet at a
+// time, so the actual constraint — remote AND hireable where I live — was inexpressible, and 436
+// live office-bound postings passed the country filter.
+//
+// This composes the two into one facet the filter can act on. It is deliberately CONFIG-DRIVEN
+// (preferences.work_location) rather than hardcoded to Canada: this is an open-source project and
+// another user's answer is a different country, region and remote tolerance.
+//
+// Returns 'yes' | 'no' | 'unclear'. 'unclear' NEVER excludes — an unknown is a research target,
+// not a dealbreaker, and 85% of live postings currently have no extracted facets at all.
+// A remote role can still be closed to you: "open to applicants based in Canada in the Ontario
+// province" (greenhouse:slice) and "hires remotely in 19 US states" are both fully-remote postings
+// that a BC resident cannot take. Neither shows up in remote_policy or geo_eligibility.
+//
+// This looks for an explicit sub-national ALLOWLIST in the body and asks whether the configured
+// home region is on it. Requires the allowlist to name at least two regions or use enumerating
+// language, so a passing mention of a city is not mistaken for a restriction. Returns true only
+// when a restriction is found AND the home region is absent — never guesses from silence.
+export function detectRegionBlock(body, prefs) {
+  const wl = prefs?.work_location;
+  const home = (wl?.region_aliases || []).map(s => String(s).toLowerCase()).filter(Boolean);
+  if (!wl || !home.length || !body) return null;      // unconfigured or no text → unknown, not blocked
+  // "United States" is a COUNTRY, not a region enumeration — but it contains the literal word
+  // "states", which made "we hire in the United States and Canada" read as a province/state
+  // allowlist omitting the home region. That single collision wrongly excluded 168 genuinely
+  // remote Canadian postings, including ones located "Canada (Remote)". Neutralize it first.
+  const txt = String(body).toLowerCase()
+    .replace(/\bunited states of america\b/g, 'usa')
+    .replace(/\bunited states\b/g, 'usa');
+  // Sentences that scope employment to an enumerated set of regions.
+  const RE_ALLOWLIST = /\b(?:hire|hiring|employ|located|based|reside|residing|eligible|authorized|open to (?:applicants|candidates))\b[^.!?\n]{0,120}?\b(?:in|from|within)\b[^.!?\n]{0,200}/g;
+  // "…open to applicants based in Canada in the Ontario province" (greenhouse:slice) names ONE
+  // region, so it has neither enumerating language nor a comma list — but it is still an allowlist.
+  // An explicit province/state noun tied to a hiring verb is the tell.
+  // A comma count is NOT evidence of a region list: "based on level, experience, and skillset" and
+  // "base salary range for this position, reflected in CAD, is: 92,900 - 116,100" both have three
+  // commas and no geography, and both wrongly excluded genuinely-remote Canadian roles. So require
+  // the sentence to actually be about PLACE — either it names province/state explicitly, or it
+  // restricts ("only"/"must") alongside a geographic noun.
+  const RE_REGION_NOUN = /\b(?:provinces?|states?)\b/;
+  const RE_RESTRICTING = /\b(?:only|exclusively|must)\b/;
+  const RE_GEO_CONTEXT = /\b(?:reside|residing|located|based in|live in|time ?zones?|region|province|state|country)\b/;
+  // Legal boilerplate names jurisdictions without restricting anything: "a background check in
+  // compliance with applicable federal, provincial, state and local laws" appears in a large share
+  // of JDs and matches on "state". It is describing which laws apply, not who may be hired.
+  const RE_LEGAL_BOILERPLATE = /\b(?:background check|compliance|laws?|regulations?|equal opportunity|discriminat|accommodat|applicable)\b/;
+  for (const mm of txt.matchAll(RE_ALLOWLIST)) {
+    const m = mm[0];
+    // The disqualifying phrase often sits BEFORE the fragment we matched ("We are an equal
+    // opportunity employer and hire based on merit in all states"), so judge boilerplate on a
+    // window around the match rather than the match alone.
+    const around = txt.slice(Math.max(0, mm.index - 90), mm.index + m.length + 30);
+    if (RE_LEGAL_BOILERPLATE.test(around)) continue;
+    const isRegionList = RE_REGION_NOUN.test(m) || (RE_RESTRICTING.test(m) && RE_GEO_CONTEXT.test(m));
+    if (!isRegionList) continue;
+    if (home.some(h => m.includes(h))) return false;   // home region explicitly included
+    return true;                                       // an allowlist that omits home
+  }
+  return null;
+}
+
+export function workEligible(ex, prefs) {
+  const wl = prefs?.work_location;
+  if (!wl) return 'unclear';                       // not configured → feature off, nothing excluded
+  const known = (v) => { const s = String(v ?? '').toLowerCase(); return (s && s !== 'unclear' && s !== 'unknown') ? s : ''; };
+  const rp = known(ex._remote_policy) || known(ex.remote_policy);
+  const geo = known(ex.geo_eligibility);
+  const allowPolicies = (wl.allow_policies || ['remote']).map(s => String(s).toLowerCase());
+  const eligibleGeo = (wl.eligible_geo || ['global']).map(s => String(s).toLowerCase());
+
+  // An explicit region block beats everything: "open to applicants in Ontario" is a no for BC even
+  // when the role is fully remote and the employer plainly hires in Canada. Computed by the caller,
+  // which has the JD body; absent on postings whose body we never fetched.
+  if (ex._region_blocked === true) return 'no';
+
+  // A country we know is wrong is decisive regardless of how remote the role is.
+  if (geo && !eligibleGeo.includes(geo)) return 'no';
+  // A policy we know is wrong (onsite/hybrid, by default) is decisive regardless of country.
+  if (rp && !allowPolicies.includes(rp)) return 'no';
+  // Both known and both acceptable — the only affirmative case.
+  if (rp && geo) return 'yes';
+  return 'unclear';
+}
+
 export function evalHardFilters(ex, filters) {
   for (const f of (filters || [])) {
     const v = ex?.[f.facet];
@@ -301,7 +390,12 @@ export function computeScores(extracted, rubric, llm = null, ctx = {}) {
     // The company's band for this posting's (title_family, ladder_level). `_`-prefixed so
     // evalHardFilters cannot see it: a dealbreaker must never fire on a derived number.
     ...(ctx?.comp_band ? { _comp_band: ctx.comp_band } : {}),
+    ...(ctx?.region_blocked != null ? { _region_blocked: ctx.region_blocked } : {}),
   };
+  // Composed from remote_policy + geo_eligibility + an explicit region block, so hard_filters can
+  // express "remote AND hireable where I live" — which no single extracted facet states. Written
+  // WITHOUT a leading underscore precisely because evalHardFilters must be able to see it.
+  ex.work_eligible = workEligible(ex, rubric?.preferences);
   const dims = rubric?.dimensions || [];
   const perDim = (llm && typeof llm === 'object') ? llm : null;
   const legacy = (typeof llm === 'number') ? llm : null;
@@ -389,7 +483,8 @@ function main() {
     let body = '';
     if (r.has_body) { try { body = readFileSync(join(BODY_DIR, sk(r.key) + '.md'), 'utf-8'); } catch { /* unreadable → derive from location alone */ } }
     const { policy: remote_policy } = deriveRemotePolicy({ location: r.location, body, extracted: r.extracted });
-    const { dim_scores, computed_score, hard_excluded, meta } = computeScores(r.extracted, rubric, p.llm_dim_scores ?? p.llm_holistic_fit, { company_fit, scanned_comp: r.comp ?? null, scanned_location: r.location ?? null, remote_policy, comp_band });
+    const region_blocked = detectRegionBlock(body, rubric.preferences);
+    const { dim_scores, computed_score, hard_excluded, meta } = computeScores(r.extracted, rubric, p.llm_dim_scores ?? p.llm_holistic_fit, { company_fit, scanned_comp: r.comp ?? null, scanned_location: r.location ?? null, remote_policy, comp_band, region_blocked });
     p.dim_scores = dim_scores;
     p.computed_score = computed_score;
     p.hard_excluded = hard_excluded;
