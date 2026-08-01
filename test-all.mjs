@@ -1106,6 +1106,20 @@ try {
   if (three?.min === 88200 && three?.max === 132200) pass('a three-point band keeps its real maximum');
   else fail(`three-point band wrong: ${JSON.stringify(three)}`);
 
+  // "and" as a separator, and "base range" as a cue. Helm.ai writes "base range of approximately
+  // $150,000 and $250,000"; missing it let the extractor invent CAD 80-140k for that slot — off
+  // by roughly 2x against a figure printed in the JD.
+  const andSep = C.parseCompFromBody('this position is estimated to fall in the base range of approximately $150,000 and $250,000');
+  if (andSep?.min === 150000 && andSep?.max === 250000) pass('"and" separator with a "base range" cue parses');
+  else fail(`and-separator wrong: ${JSON.stringify(andSep)}`);
+  // "and" is the commonest word in English, so it must still clear the disqualifier.
+  for (const [txt, why] of [
+    ['we raised between $10,000,000 and $50,000,000 in funding', 'funding'],
+    ['annual revenue grew from $200,000 and $900,000', 'revenue'],
+    ['equity grant of $100,000 and $400,000 in RSUs', 'equity'],
+  ]) if (C.parseCompFromBody(txt) !== null) fail(`"and" separator accepted ${why} figures`);
+  pass('"and" separator still rejects funding/revenue/equity');
+
   const bodyOnly = C.parseCompFromBody('salary range for this role is $165,000 to $260,000.');
   if (bodyOnly?.min === 165000 && bodyOnly?.max === 260000) pass('parseCompFromBody reads a plain JD range');
   else fail(`body range wrong: ${JSON.stringify(bodyOnly)}`);
@@ -1368,6 +1382,87 @@ try {
   if (readdirSync(dir).length === 1) pass('writes land on the target path, not a sibling');
   else fail(`unexpected files: ${readdirSync(dir).join()}`);
 } catch (e) { fail(`atomic write tests crashed: ${e.message}`); }
+
+// ── 24. Outreach core (contacts + threads) ───────────────────────
+console.log('\n24. Outreach core (contacts, threads, message log)');
+try {
+  // Redirect the registries at a scratch dir BEFORE importing — the module reads the env var
+  // at load time, and we must never write to the user's real contacts/outreach files.
+  const odir = mkdtempSync(join(tmpdir(), 'outreach-'));
+  process.env.BYOJB_OUTREACH_DIR = odir;
+  const oc = await import(pathToFileURL(join(ROOT, 'outreach-core.mjs')).href);
+
+  // — keys: identity-stable, and immune to tracking params / casing —
+  const k1 = oc.contactKey({ linkedin_url: 'https://www.linkedin.com/in/Jane-Doe/?trk=x' });
+  const k2 = oc.contactKey({ linkedin_url: 'https://linkedin.com/in/jane-doe' });
+  if (k1 === k2 && k1 === 'li:jane-doe') pass('contactKey is stable across tracking params and casing');
+  else fail(`contactKey unstable: ${k1} vs ${k2}`);
+  if (oc.contactKey({ email: 'A@B.com' }) === 'em:a@b.com') pass('contactKey falls back to email');
+  else fail('contactKey email fallback wrong');
+  if (oc.contactKey({ name: 'Jane Doe', company_key: 'greenhouse:acme' }).startsWith('pn:greenhouse:acme:jane-doe-')) pass('contactKey falls back to company+name');
+  else fail('contactKey name fallback wrong');
+  if (oc.contactKey({}) === '') pass('contactKey refuses an empty identity');
+  else fail('contactKey should return "" with no handles');
+
+  // — status vocabulary —
+  if (oc.validateOutreachStatus('follow up') === 'Followed Up' && oc.validateOutreachStatus('ghosted') === 'No Response') pass('validateOutreachStatus normalizes aliases');
+  else fail('outreach status alias normalization failed');
+  if (oc.validateOutreachStatus('garbage') === 'Drafted') pass('validateOutreachStatus defaults unknown → Drafted');
+  else fail('outreach status default failed');
+  if (oc.isOpenOutreach('Sent') && !oc.isOpenOutreach('Closed')) pass('isOpenOutreach splits in-play from closed');
+  else fail('isOpenOutreach wrong');
+  // A strong tie (someone who can vouch from direct working history) is what actually skips
+  // recruiter screens; a cold contact's submission is tagged unverified. Keep them distinct.
+  if (oc.isStrongTie('former_colleague') && !oc.isStrongTie('cold')) pass('isStrongTie separates vouchable ties from cold ones');
+  else fail('isStrongTie wrong');
+
+  // — thread key sequencing —
+  const seqRows = [{ key: 'li:a#1' }, { key: 'li:a#2' }, { key: 'li:b#1' }];
+  if (oc.nextThreadKey('li:a', seqRows) === 'li:a#3' && oc.nextThreadKey('li:c', seqRows) === 'li:c#1') pass('nextThreadKey sequences per contact');
+  else fail('nextThreadKey wrong');
+
+  // — upserts against the scratch registries —
+  const c = oc.upsertContact('li:test', { name: 'Test Person', archetype: 'hiring_manager', notes: 'met at conf' });
+  const c2 = oc.upsertContact('li:test', { title: 'EM' });
+  if (c2.name === 'Test Person' && c2.notes === 'met at conf' && c2.title === 'EM') pass('upsertContact merges without blanking existing fields');
+  else fail(`upsertContact clobbered fields: ${JSON.stringify(c2)}`);
+  if (oc.upsertContact('li:test', { archetype: 'nonsense' }).archetype === 'other') pass('upsertContact validates archetype');
+  else fail('upsertContact archetype validation failed');
+  if (oc.resolveContact({ linkedin_url: 'https://www.linkedin.com/in/test/?x=1' }) === null) pass('resolveContact does not match on an unrelated slug');
+  else fail('resolveContact matched the wrong person');
+
+  // The message log is the whole record — a later patch must never replace it wholesale.
+  const tk = oc.nextThreadKey('li:test');
+  oc.upsertOutreach(tk, { channel: 'linkedin_dm', message: { direction: 'out', body: 'first', sent_at: '2026-07-01T00:00:00Z' } });
+  oc.upsertOutreach(tk, { next_action: 'bump', message: { direction: 'in', body: 'reply', sent_at: '2026-07-03T00:00:00Z' } });
+  const t = oc.upsertOutreach(tk, { messages: [], notes: 'x' });
+  if (t.messages.length === 2 && t.messages[0].body === 'first' && t.messages[1].direction === 'in') pass('upsertOutreach appends to messages[] and ignores a direct messages overwrite');
+  else fail(`message log damaged: ${JSON.stringify(t.messages)}`);
+  if (t.next_action === 'bump' && t.notes === 'x') pass('upsertOutreach merges scalar fields across patches');
+  else fail('upsertOutreach scalar merge failed');
+
+  const timing = oc.threadTiming(t);
+  if (timing.message_count === 2 && timing.last_out === '2026-07-01T00:00:00Z' && timing.last_in === '2026-07-03T00:00:00Z') pass('threadTiming reports last inbound/outbound separately');
+  else fail(`threadTiming wrong: ${JSON.stringify(timing)}`);
+
+  // Converting must mark the thread, not silently leave it looking un-actioned.
+  const linked = oc.linkApplication(tk, 'https://example.com/job/1');
+  if (linked.status === 'Converted' && linked.application_key === 'https://example.com/job/1' && linked.outcome === 'converted_to_application') pass('linkApplication marks the thread converted and back-links the application');
+  else fail(`linkApplication wrong: ${JSON.stringify(linked)}`);
+
+  // A pipe in a name/next-action must not split the generated markdown table.
+  oc.upsertOutreach(tk, { next_action: 'ping re: infra | scale work' });
+  oc.syncOutreachMd();
+  const md = readFileSync(oc.OUTREACH_MD, 'utf-8');
+  const bodyLines = md.split('\n').filter(l => l.startsWith('|') && !l.includes('---') && !l.includes('Archetype'));
+  if (bodyLines.length === 1 && bodyLines[0].split('|').length === 13) pass('syncOutreachMd emits one 11-column row with pipes escaped');
+  else fail(`outreach.md row malformed: ${JSON.stringify(bodyLines)}`);
+
+  rmSync(odir, { recursive: true, force: true });
+  delete process.env.BYOJB_OUTREACH_DIR;
+} catch (e) {
+  fail(`outreach-core tests crashed: ${e.message}`);
+}
 
 // ── SUMMARY ─────────────────────────────────────────────────────
 

@@ -150,10 +150,13 @@ export function parseCompString(s) {
 //   • requires a salary-ish word within 200 chars, so revenue/funding/ARR figures don't qualify
 //   • bounds each end to a plausible annual salary
 //   • rejects the segment outright if equity/option language is closer than the salary cue
-const RE_RANGE = /\$\s?([\d,]{6,})(?:\.\d+)?\s*(?:to|through|-|–|—)\s*\$?\s?([\d,]{6,})(?:\.\d+)?/g;
+// "and" is a real separator in the wild — Helm.ai writes "base range of approximately $150,000
+// and $250,000" — but it is also the most common word in English, so it only survives because
+// every match still has to clear the pay-cue and disqualifier checks below.
+const RE_RANGE = /\$\s?([\d,]{6,})(?:\.\d+)?\s*(?:to|through|and|-|–|—)\s*\$?\s?([\d,]{6,})(?:\.\d+)?/g;
 // Bare "annual" is NOT a pay cue — "annual revenue grew from $200,000 to $900,000" would qualify.
 // Every cue here has to be about paying a person.
-const RE_PAY_CUE = /salary|compensation|base pay|pay range|pay band|pay scale|per year|\/yr\b|\/year|OTE|total cash|earn/i;
+const RE_PAY_CUE = /salary|compensation|base pay|base range|pay range|pay band|pay scale|per year|\/yr\b|\/year|OTE|total cash|earn/i;
 const RE_DISQUALIFY = /equity|option|RSU|shares|401\(?k\)?|revenue|funding|valuation|raised|ARR|budget|contract value/i;
 // A label that unambiguously introduces THIS number as pay for a person. Checked in the 60 chars
 // immediately preceding the figure, so it can only apply to the range it actually precedes.
