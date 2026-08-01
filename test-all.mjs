@@ -1109,6 +1109,35 @@ try {
   if (bok === blocks.length) pass(`detectRegionBlock: ${bok}/${blocks.length} cases (incl. 5 boilerplate false-positive guards)`);
 } catch (e) { fail(`work-eligibility tests crashed: ${e.message}`); }
 
+// ── 18c. effectiveGeo: the ATS location field outranks a hallucinated facet ─────
+// Reddit's "Senior Software Engineer, Storage" is stored location "Remote - United States" with
+// extracted geo_eligibility "canada". Because work_eligible composes remote_policy + geo, that
+// bogus `canada` computed to yes and passed the hard filter -- the exact job the filter exists to
+// remove. 51.3% of extracted rows were labelled canada; 109 named a US location and no Canadian one.
+try {
+  const { effectiveGeo } = await import(pathToFileURL(join(ROOT, 'score-postings.mjs')).href);
+  const prefs = { work_location: { eligible_geo: ['canada', 'global'] } };
+  const cases = [
+    // location names a country, never names home → authoritative, overrides the extractor
+    [{ _scanned_location: 'Remote - United States', geo_eligibility: 'canada' }, 'us_only'],
+    [{ _scanned_location: 'United States (Remote)', geo_eligibility: 'canada' }, 'us_only'],
+    [{ _scanned_location: 'London, United Kingdom', geo_eligibility: 'canada' }, 'eu_only'],
+    // location DOES name home → the extractor's canada stands
+    [{ _scanned_location: 'United States Remote; Canada Remote', geo_eligibility: 'canada' }, 'canada'],
+    [{ _scanned_location: 'Toronto, ON', geo_eligibility: 'canada' }, 'canada'],
+    // no decisive location → defer to the extractor, and silence stays silence
+    [{ _scanned_location: '', geo_eligibility: 'canada' }, 'canada'],
+    [{ _scanned_location: 'Remote', geo_eligibility: 'unclear' }, ''],
+  ];
+  let ok = 0;
+  for (const [ex, want] of cases) {
+    const got = effectiveGeo(ex, prefs);
+    if (got === want) ok++;
+    else fail(`effectiveGeo(${JSON.stringify(ex._scanned_location)}, ${ex.geo_eligibility}) → "${got}", expected "${want}"`);
+  }
+  if (ok === cases.length) pass(`effectiveGeo: ${ok}/${cases.length} location-vs-facet precedence cases`);
+} catch (e) { fail(`effectiveGeo tests crashed: ${e.message}`); }
+
 // ── 19. Comp bands: parsing, selection, validation ──────────────
 console.log('\n19. Comp bands (comp-core.mjs)');
 try {

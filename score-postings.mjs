@@ -244,10 +244,7 @@ export const COMPUTERS = {
     const known = (v) => { const s = String(v ?? '').toLowerCase(); return (s && s !== 'unclear' && s !== 'unknown') ? s : ''; };
     const loc = String(ex._scanned_location || '').toLowerCase();
     const locSays = (re) => re.test(loc);
-    const geo = known(ex.geo_eligibility)
-      || (locSays(/\bremote[ ,-]*(us|usa|united states)\b|\bus[ -]only\b/) ? 'us_only'
-        : locSays(/\bcanada\b|\bcanadian\b/) ? 'canada'
-        : locSays(/\banywhere\b|\bworldwide\b|\bglobal\b/) ? 'global' : '');
+    const geo = effectiveGeo(ex, prefs);
     // Derived by deriveRemotePolicy() from LI tags → negations → extracted → location → body
     // → city-default; injected as _remote_policy so this stays a pure function.
     const rp = known(ex._remote_policy) || known(ex.remote_policy);
@@ -335,12 +332,51 @@ export function detectRegionBlock(body, prefs) {
   return null;
 }
 
+// The ATS location field beats the LLM's geo_eligibility when the two disagree about COUNTRY.
+//
+// Reddit's "Senior Software Engineer, Storage" is stored with location "Remote - United States"
+// and extracted geo_eligibility "canada". The extraction prompt only listed the phrasings
+// "US-only" / "must reside in the US" as us_only signals, so a posting whose restriction lives in
+// the location field rather than the body fell through to `canada` — and 51.3% of all extracted
+// geo values ended up `canada`, with 109 postings naming a US location and no Canadian one.
+//
+// This matters more than a wrong facet: work_eligible composes remote_policy + geo_eligibility,
+// so `remote` + a bogus `canada` computes to `yes` and sails through the hard filter. The whole
+// point of that filter is defeated by one hallucinated enum value.
+//
+// Precedence mirrors what comp already does (ATS structured field > verbatim body > LLM reading):
+// a location string that names a country, and does NOT name the home country, is authoritative.
+// Anything less clear defers to the extractor, and silence stays silence.
+export function effectiveGeo(ex, prefs) {
+  const known = (v) => { const s = String(v ?? '').toLowerCase(); return (s && s !== 'unclear' && s !== 'unknown') ? s : ''; };
+  const loc = String(ex._scanned_location || '').toLowerCase();
+  const homeRe = /canada|canadian|\bontario\b|\bquebec\b|british columbia|alberta|toronto|vancouver|montreal|ottawa|calgary/i;
+  const homeNamed = homeRe.test(loc);
+
+  // A location that names the US (or EU/UK/India) and never names home is a country restriction
+  // the extractor is not entitled to override.
+  if (loc && !homeNamed) {
+    if (/\bremote\b[ ,\-–—]*(us|usa|united states)\b|\bunited states\b|\bus[ -]only\b|\bu\.s\.\b|,\s*(us|usa)\b/.test(loc)) return 'us_only';
+    if (/\b(united kingdom|england|london|ireland|germany|france|spain|poland|portugal|netherlands)\b/.test(loc)) return 'eu_only';
+    if (/\b(india|bengaluru|bangalore|hyderabad|pune|gurgaon|noida)\b/.test(loc)) return 'india';
+  }
+  const ext = known(ex.geo_eligibility);
+  if (ext) return ext;
+  // No extraction: fall back to reading the location, as before.
+  if (/\bremote[ ,-]*(us|usa|united states)\b|\bus[ -]only\b/.test(loc)) return 'us_only';
+  if (homeNamed) return 'canada';
+  if (/\banywhere\b|\bworldwide\b|\bglobal\b/.test(loc)) return 'global';
+  return '';
+}
+
 export function workEligible(ex, prefs) {
   const wl = prefs?.work_location;
   if (!wl) return 'unclear';                       // not configured → feature off, nothing excluded
   const known = (v) => { const s = String(v ?? '').toLowerCase(); return (s && s !== 'unclear' && s !== 'unknown') ? s : ''; };
   const rp = known(ex._remote_policy) || known(ex.remote_policy);
-  const geo = known(ex.geo_eligibility);
+  // effectiveGeo, not the raw facet: a hallucinated `canada` on a "Remote - United States"
+  // posting would otherwise compute to work_eligible=yes and defeat the hard filter entirely.
+  const geo = effectiveGeo(ex, prefs);
   const allowPolicies = (wl.allow_policies || ['remote']).map(s => String(s).toLowerCase());
   const eligibleGeo = (wl.eligible_geo || ['global']).map(s => String(s).toLowerCase());
 

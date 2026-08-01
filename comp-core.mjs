@@ -177,7 +177,14 @@ export function parseCompFromBody(text, { min = 40000, max = 900000 } = {}) {
   // Leaving &mdash; undecoded meant the separator never matched, the range was missed, and
   // jd-comp.mjs fell through to the Stage-3 extractor's guess — manufacturing an `estimated`
   // band for a company that had published a real number in its own JD.
+  // K-notation is extremely common in JD headers — Anara posts "$150K - $200K", Roboflow
+  // "$155K - $180K" — but RE_RANGE requires 6+ digit characters, and "150K" is three. Those
+  // ranges were invisible, so postings that stated their pay plainly registered as needs_comp
+  // and fell through to a model guess. Expand to full figures BEFORE matching so the pay-cue,
+  // disqualifier and currency logic all apply unchanged. $150.5K → 150500.
   const plain = String(text)
+    .replace(/\$\s?(\d{2,3})(?:\.(\d))?\s*[Kk]\b/g, (_, n, tenth) =>
+      '$' + (Number(n) * 1000 + (tenth ? Number(tenth) * 100 : 0)).toString())
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&[mn]dash;|&minus;|&#821[12];|&#x201[34];/gi, '-')
