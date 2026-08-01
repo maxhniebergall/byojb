@@ -553,7 +553,17 @@ function cleanExcerpt(body) {
     // CURRENCY is part of the slot: ingest/jd-comp.mjs deliberately emits separate rows for a
     // company that posts the same role in CAD and USD, and those are different facts about
     // different geos — not duplicates to be collapsed.
-    const slot = (r) => `${r.key}|${r.title_family}|${r.ladder_level}|${r.band?.currency || ''}`;
+    // GEO is part of the slot for exactly the reason CURRENCY is. ingest/jd-comp.mjs groups by
+    // key|family|level|currency|geo, so it legitimately emits one row per geo — a senior band in
+    // Toronto and one offshore are different facts about different markets. Omitting geo here made
+    // every --apply-comp silently collapse those into a single survivor: one run destroyed 326 rows
+    // (118 of them `direct`) while reporting them as "weaker row(s) superseded". Dedup must key on
+    // the same tuple the producer grouped by, or it is deleting data rather than deduplicating.
+    const slot = (r) => [
+      r.key, r.title_family, r.ladder_level,
+      String(r.band?.currency || '').toUpperCase(),
+      String(r.provenance?.geo || '').toLowerCase(),
+    ].join('|');
     const better = (a, b) => {
       if (!b) return true;
       const d = (DERIVATION_RANK[a.derivation] || 0) - (DERIVATION_RANK[b.derivation] || 0);
