@@ -1,0 +1,5 @@
+key	at	outcome	note
+greenhouse:dbtlabsinc	2026-08-02T19:00:58.916Z	relocated	dbt Labs merged with Fivetran; getdbt.com/careers headlines 'dbt Labs + Fivetran'. Verified boards-api.greenhouse.io/v1/boards/fivetran/jobs = HTTP 200 with 200
+greenhouse:affinity	2026-08-02T19:00:58.916Z	relocated	affinity.co/company/careers links Ashby board slug 'affinity.co'. Verified 12 open jobs incl. 'Senior Machine Learning Engineer' (Canada and US), matching known
+greenhouse:paystack	2026-08-02T19:00:58.916Z	relocated	Greenhouse slug 404. Workable account 'paystack' exists and is named 'Paystack' (apply.workable.com/paystack = HTTP 200), but currently lists 0 open roles, so j
+greenhouse:jumo	2026-08-02T19:00:58.916Z	relocated	JUMO (jumo.world, African mobile-money fintech) is alive and hiring: jumo.world/careers lists 10 open roles (Data Engineer, Analytics Engineer, Software Enginee

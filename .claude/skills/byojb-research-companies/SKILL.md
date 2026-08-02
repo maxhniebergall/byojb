@@ -68,4 +68,14 @@ node llm-triage.mjs --emit-research N --needs-comp
 Everything else in the loop is unchanged — still write both notes, still record `llm_fit`, still
 `--record-fail` on a dead page. The only difference is which companies come out.
 
+## When a company's board is broken
+
+If a company in your queue has no live postings because its board 404s or 403s, that is **not** a
+research failure and must not be recorded as one — the company may be hiring perfectly well
+somewhere else. `--record-fail` marks OUR fetch as failed, not the employer as absent.
+
+Note it and hand it to **`/byojb-repair-boards`**, which finds where the jobs moved (or establishes
+that the company genuinely no longer exists). A company research pass that writes `llm_fit` off the
+back of a dead board is scoring the URL, not the employer.
+
 Arguments: {{args}}
