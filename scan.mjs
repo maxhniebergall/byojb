@@ -307,6 +307,26 @@ function appendToScanHistory(offers, date, status = 'added') {
   appendFileSync(SCAN_HISTORY_PATH, lines, 'utf-8');
 }
 
+// Classify a failed fetch into a status worth PERSISTING.
+//
+// The scanner already knows a board is dead — it catches the 404 and prints
+// "✗ Hexagon US Federal: HTTP 404" at the end of the run. But that went only to stdout, and
+// because the ledger recorded successes only, the company then simply vanished from the data.
+// Downstream that is indistinguishable from "this company has no openings", which is how
+// dbt Labs (fit 5) and Affinity.co (rank 5) dropped out of the search unnoticed.
+//
+// So record WHY, not just that it failed:
+//   gone    — 404/410/DNS. The URL is dead; the company is hiring somewhere else, or nowhere.
+//   blocked — 401/403. We were refused. This says nothing about the employer.
+//   error   — transient (timeout, 429, 5xx). Nothing to conclude, retry next run.
+function classifyScanError(message) {
+  const m = String(message || '');
+  if (/\b(404|410)\b/.test(m)) return 'gone';
+  if (/ENOTFOUND|getaddrinfo|ERR_NAME|DNS/i.test(m)) return 'gone';
+  if (/\b(401|403)\b/.test(m)) return 'blocked';
+  return 'error';
+}
+
 // ── Scan ledger (resumability) ──────────────────────────────────────
 
 // name(lowercased) → most-recent scan time (epoch ms). Only successful scans
@@ -317,8 +337,11 @@ function loadScanLedger() {
   const lines = readFileSync(SCAN_LEDGER_PATH, 'utf-8').split('\n');
   for (const line of lines.slice(1)) { // skip header
     if (!line) continue;
-    const [name, ts] = line.split('\t');
+    const [name, ts, , status] = line.split('\t');
     if (!name || !ts) continue;
+    // Only successful scans hold off a retry. Failures are recorded now (see classifyScanError),
+    // but a board that errored must still be retried next run rather than skipped as "seen".
+    if (status && status !== 'ok') continue;
     const t = Date.parse(ts);
     if (!Number.isFinite(t)) continue;
     const key = name.toLowerCase();
@@ -331,9 +354,13 @@ function loadScanLedger() {
 function appendToScanLedger(entries) {
   if (!entries.length) return;
   if (!existsSync(SCAN_LEDGER_PATH)) {
-    writeFileSync(SCAN_LEDGER_PATH, 'company\tscanned_at\tjobs_found\tstatus\n', 'utf-8');
+    writeFileSync(SCAN_LEDGER_PATH, 'company\tscanned_at\tjobs_found\tstatus\tcareers_url\n', 'utf-8');
   }
-  const rows = entries.map(e => `${e.name}\t${e.at}\t${e.found}\t${e.status}`).join('\n') + '\n';
+  // careers_url identifies the board unambiguously; the name does not. Three separate companies
+  // are called "Affinity" in this registry, so a repair tool keying on name cannot tell which one
+  // just 404'd. Appended as a 5th column so every existing row (and every existing reader) stays
+  // valid — the loader treats it as optional.
+  const rows = entries.map(e => `${e.name}\t${e.at}\t${e.found}\t${e.status}\t${e.url || ''}`).join('\n') + '\n';
   appendFileSync(SCAN_LEDGER_PATH, rows, 'utf-8');
 }
 
@@ -635,10 +662,15 @@ async function main() {
   let errCount = 0;
   const isTty = process.stdout.isTTY;
   const quiet = process.env.BYOJB_SCAN_QUIET === '1';
-  const reportProgress = (name, ok, found) => {
+  const reportProgress = (name, ok, found, errMessage, url) => {
     done++;
-    if (ok) { okCount++; pendingLedger.push({ name, at: new Date().toISOString(), found, status: 'ok' }); }
-    else errCount++;
+    if (ok) { okCount++; pendingLedger.push({ name, at: new Date().toISOString(), found, status: 'ok', url }); }
+    else {
+      errCount++;
+      // Persist the failure and its reason. Previously only successes were written, so a board
+      // that 404s left no trace anywhere except a console line that scrolled past.
+      pendingLedger.push({ name, at: new Date().toISOString(), found: 0, status: classifyScanError(errMessage), url });
+    }
     if (CHECKPOINT_EVERY > 0 && done % CHECKPOINT_EVERY === 0) checkpoint();
     if (quiet) return;
     const line = `  [${done}/${total}] ok:${okCount} err:${errCount} new:${newOffers.length} 429:${httpStats.rateLimited} — ${name}`;
@@ -656,6 +688,7 @@ async function main() {
     const ctx = makeHttpCtx();
     let sourceName = provider.id === 'local-parser' ? 'local-parser' : `${provider.id}-api`;
     let taskOk = false;
+    let taskError = null;
     let jobsFound = 0;
     try {
       let jobs;
@@ -724,8 +757,9 @@ async function main() {
       taskOk = true;
     } catch (err) {
       errors.push({ company: company.name, error: err.message });
+      taskError = err.message;
     } finally {
-      reportProgress(company.name, taskOk, jobsFound);
+      reportProgress(company.name, taskOk, jobsFound, taskError, company.careers_url);
     }
   });
 

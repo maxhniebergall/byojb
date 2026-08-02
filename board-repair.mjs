@@ -25,7 +25,7 @@
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { loadProbes, REPAIR_STATES } from './board-health.mjs';
+import { loadProbes, REPAIR_STATES, brokenFromScans } from './board-health.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const C_PERSONAL = join(ROOT, 'data', 'companies-personal.jsonl');
@@ -82,10 +82,21 @@ function emit(n) {
     if (s.size < 6) s.add(r.title);
   }
 
+  // Merge both sources. The SCAN is the primary one — it sees a board break during the run that
+  // would have used it — while an explicit probe is how you check a board on demand. Keyed by
+  // company key, with the scan's careers_url mapped back through the registry.
+  const urlToKey = new Map();
+  for (const c of personal.values()) if (c.careers_url) urlToKey.set(c.careers_url, c.key);
+  const broken = new Map();
+  for (const [key, p] of probes) if (REPAIR_STATES.has(p.state)) broken.set(key, { state: p.state, detail: p.detail, via: 'probe' });
+  for (const [url, b] of brokenFromScans()) {
+    const key = urlToKey.get(url);
+    if (key) broken.set(key, { state: b.state, detail: `scan ${b.at.slice(0, 10)}`, via: 'scan' });
+  }
+
   const now = Date.now();
   const out = [];
-  for (const [key, p] of probes) {
-    if (!REPAIR_STATES.has(p.state)) continue;
+  for (const [key, p] of broken) {
     const prev = ledger.get(key);
     if (prev?.outcome === 'relocated' || prev?.outcome === 'defunct') continue;   // already settled
     if (prev?.outcome === 'unknown' && (now - Date.parse(prev.at)) / 86400000 < RETRY_DAYS) continue;
@@ -96,6 +107,7 @@ function emit(n) {
       name: c.name || r.name || key,
       probe_state: p.state,
       probe_detail: p.detail,
+      found_by: p.via,
       current_url: c.careers_url || r.careers_url || null,
       provider: c.provider || r.provider || null,
       llm_rank: c.llm_rank ?? null,
@@ -151,7 +163,9 @@ function apply(file) {
 function stats() {
   const probes = loadProbes();
   const ledger = loadRepairLedger();
+  const fromScans = brokenFromScans();
   const broken = [...probes].filter(([, p]) => REPAIR_STATES.has(p.state));
+  console.log(`broken boards seen by the scanner: ${fromScans.size}`);
   const settled = broken.filter(([k]) => ['relocated', 'defunct'].includes(ledger.get(k)?.outcome));
   const byState = {};
   for (const [, p] of broken) byState[p.state] = (byState[p.state] || 0) + 1;

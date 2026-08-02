@@ -45,16 +45,19 @@ export function loadScanHistory(path = SCAN_LEDGER) {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line) continue;
-    const [company, at, jobs] = line.split('\t');
+    const [company, at, jobs, status, url] = line.split('\t');
     if (!company || !at) continue;
     const n = Number(jobs) || 0;
     const cur = by.get(company);
-    if (!cur) by.set(company, { scans: 1, firstAt: at, lastAt: at, maxJobs: n });
+    if (!cur) by.set(company, { scans: 1, firstAt: at, lastAt: at, maxJobs: n, lastStatus: status || 'ok', lastUrl: url || null });
     else {
       cur.scans++;
       if (at < cur.firstAt) cur.firstAt = at;
       if (at > cur.lastAt) cur.lastAt = at;
       if (n > cur.maxJobs) cur.maxJobs = n;
+      // Latest verdict wins: a board that 404'd yesterday and answers today is fixed, and a board
+      // that worked last week and 404s now is the case this whole system exists to catch.
+      if (at >= cur.lastAt) { cur.lastStatus = status || 'ok'; cur.lastUrl = url || cur.lastUrl; }
     }
   }
   return by;
@@ -77,6 +80,31 @@ export function loadProbes(path = PROBE_PATH) {
   return by;
 }
 
+// Broken boards as the SCANNER saw them, keyed by careers_url.
+//
+// This is the primary source, not the probe. scan.mjs already discovers a dead board every run —
+// it catches the 404 and prints it — so the information exists at the natural moment and costs
+// nothing extra. probe-boards.mjs is now a way to CHECK a board on demand, not the way we find out.
+// Read the ledger directly rather than going through the name-keyed history. Two companies in this
+// registry are both called "Alma" — one 404s, one serves 12 jobs — and rolling them up by name let
+// the healthy one's status mask the broken one's. The URL is the board's identity; the name is not.
+export function brokenFromScans(path = SCAN_LEDGER) {
+  const latest = new Map();
+  if (!existsSync(path)) return new Map();
+  const lines = readFileSync(path, 'utf-8').split('\n');
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const [name, at, , status, url] = line.split('\t');
+    if (!url || !at) continue;           // rows written before the url column carry no identity
+    const cur = latest.get(url);
+    if (!cur || at > cur.at) latest.set(url, { name, at, status: status || 'ok' });
+  }
+  const out = new Map();
+  for (const [url, r] of latest) if (REPAIR_STATES.has(r.status)) out.set(url, { name: r.name, state: r.status, at: r.at });
+  return out;
+}
+
 function main() {
   const probes = loadProbes();
   const hist = loadScanHistory();
@@ -93,7 +121,10 @@ function main() {
   console.log(`  ${neverYielded} have never yielded a job — these are still scanned every run, by design\n`);
   console.log(`probe verdicts: ${probes.size} board(s) probed`);
   for (const [k, v] of Object.entries(counts).sort((a, b) => b[1] - a[1])) console.log(`  ${String(v).padStart(6)}  ${k}`);
-  console.log(`\n${repair.length} board(s) need repair (gone/blocked) → node board-repair.mjs --emit`);
+  const fromScans = brokenFromScans();
+  console.log(`\nbroken boards seen by the SCANNER: ${fromScans.size}`);
+  for (const [url, b] of [...fromScans].slice(0, 8)) console.log(`  ${b.state.padEnd(8)} ${b.name.slice(0, 34).padEnd(36)} ${url}`);
+  console.log(`\n${repair.length + fromScans.size} board(s) need repair (gone/blocked) → node board-repair.mjs --emit`);
   if (process.argv.includes('--list')) {
     console.log('');
     for (const r of repair) console.log(`  ${r.state.padEnd(8)} ${r.key.padEnd(48)} ${r.detail}`);
