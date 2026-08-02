@@ -404,7 +404,15 @@ export function validateBandRow(row, { families = [] } = {}) {
   if (b.component && !COMPONENTS.includes(b.component)) errs.push(`component must be one of ${COMPONENTS.join('|')}`);
   if (p.confidence && !CONFIDENCE_RANK[p.confidence]) errs.push(`confidence must be high|medium|low`);
   // The prompt states this rule; without enforcement a single data point could claim `high`.
-  if (p.confidence === 'high' && (p.sample_size ?? 0) < 3) errs.push('confidence: high requires provenance.sample_size >= 3');
+  // High confidence normally demands corroboration — but that guard assumed confidence is purely
+  // a function of QUANTITY, which is false for a `direct` row. A range the employer published on
+  // its own JD for this exact slot, with the source URL on file, is not a 1-sample estimate of a
+  // hidden truth; it IS the fact, and no number of additional postings would make it truer.
+  // Corroboration still gates `inferred`/`estimated`, where the band was synthesized and more
+  // evidence genuinely means more confidence.
+  if (p.confidence === 'high' && row?.derivation !== 'direct' && (p.sample_size ?? 0) < 3) {
+    errs.push('confidence: high requires provenance.sample_size >= 3 (or derivation: direct)');
+  }
   if (!p.as_of) errs.push('missing provenance.as_of');
   // Format matters more than it looks: daysBetween() returns null for an unparseable date, so
   // as_of: "today" would silently disable staleness and let the band keep high confidence forever.
