@@ -20,6 +20,7 @@ import yaml from 'js-yaml';
 import { loadJsonl, saveJsonl, sk } from './posting-core.mjs';
 import { LEVEL_LADDER, levelFromYoe, normalizeTitle } from './title-family.mjs';
 import { loadCompBands, bandFor } from './comp-core.mjs';
+import { loadAliases, canonicalKey } from './dedupe-companies.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const RUBRIC = join(ROOT, 'config', 'rubric.yml');
@@ -493,14 +494,17 @@ function compMeta(ex, dim_scores, dims) {
 // variant you could actually take wins. Tailscale's US and UK rows are excluded by work_eligible
 // while the Canada row is not — collapsing to "the first one seen" would have discarded the only
 // reachable version of the job and left an unreachable one standing in its place.
-export function assignDupGroups(personal, researchByKey) {
+export function assignDupGroups(personal, researchByKey, aliases = new Map()) {
   const groups = new Map();
   for (const p of personal) {
     const r = researchByKey.get(p.key);
     if (!r || r.live === false || !r.company_key) continue;
     const title = String(r.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
     if (!title) continue;
-    const gk = `${r.company_key}|${title}`;
+    // Group by the CANONICAL employer, not the registration. A subsidiary listing its parent's
+    // roles on its own ATS (Counterpoint Health under Clover Health) publishes the same opening
+    // under a different company_key, so keying on company_key alone can never collapse it.
+    const gk = `${canonicalKey(r.company_key, aliases)}|${title}`;
     if (!groups.has(gk)) groups.set(gk, []);
     groups.get(gk).push(p);
   }
@@ -589,7 +593,7 @@ function main() {
   }
   // Recomputed on every run, like every other field in this layer.
   for (const p of personal) { p.dup_of = null; p.dup_count = null; }
-  const collapsed = assignDupGroups(personal, research);
+  const collapsed = assignDupGroups(personal, research, loadAliases());
 
   saveJsonl(PERSONAL, personal);
 

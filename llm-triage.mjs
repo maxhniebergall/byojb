@@ -24,6 +24,7 @@ import {
 } from './research-ledger.mjs';
 import { validateBandRow, DERIVATION_RANK, CONFIDENCE_RANK, normalizeComp, bandSlotKey } from './comp-core.mjs';
 import { TITLE_FAMILIES, normalizeTitle } from './title-family.mjs';
+import { loadAliases } from './dedupe-companies.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const RESULTS = join(ROOT, 'data', 'survey', 'results.jsonl');
@@ -142,8 +143,14 @@ export function researchEligible(personal, agg, ledger, opts = {}) {
   // companies-personal.jsonl holds 34k rows but only 29k unique keys (273 keys duplicated,
   // e.g. greenhouse:reddit as both "Reddit" and "Reddit, Inc."). Without dedup the queue emits
   // the same company twice and the LLM burns double the fetches on it.
+  // An alias is the SAME employer under a second registration. Researching it again produces a
+  // duplicate dossier and a second llm_fit for one company, and its postings have already been
+  // folded into the canonical key's aggregates — so it would be researched on someone else's
+  // evidence. HPE held three of these.
+  const aliases = opts.aliases || loadAliases();
   const seen = new Set();
   return personal
+    .filter(p => !aliases.has(p.key))
     .filter(p => { if (seen.has(p.key)) return false; seen.add(p.key); return true; })
     .filter(p => !p.excluded_by_type && p.decision === 'undecided' && p.llm_fit == null)
     // Requiring a quality signal does triple duty: it ranks the queue, filters staffing agencies

@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'fs';
 import yaml from 'js-yaml';
 import { loadJsonl, saveJsonl } from './posting-core.mjs';
 import { normalizeTitle } from './title-family.mjs';
+import { loadAliases, canonicalKey } from './dedupe-companies.mjs';
 import { loadCompBands, bandFor, normalizeComp, CONFIDENCE_RANK } from './comp-core.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -37,8 +38,12 @@ export function computeAggregates({ research, personal, bands, prefs, today }) {
   const pByKey = new Map(personal.map(p => [p.key, p]));
   const byCompany = new Map();
 
+  const aliases = loadAliases();
   for (const r of research) {
     if (!r?.company_key) continue;
+    // Count the employer once. HPE holds three Workday tenants publishing identical requisitions;
+    // without folding, one company reports triple the openings it has.
+    const companyKey = canonicalKey(r.company_key, aliases);
     const p = pByKey.get(r.key) || {};
     // "Relevant" mirrors what the dashboard would actually show: live, not a dealbreaker, and
     // carrying some score. Pinned here so the two consumers (CLI + web) can't drift apart.
@@ -50,8 +55,8 @@ export function computeAggregates({ research, personal, bands, prefs, today }) {
     // give a rollup band three "independent" samples drawn from a single requisition.
     if (p.dup_of) continue;
 
-    if (!byCompany.has(r.company_key)) byCompany.set(r.company_key, { scores: [], ranks: [], n: 0, noComp: 0 });
-    const agg = byCompany.get(r.company_key);
+    if (!byCompany.has(companyKey)) byCompany.set(companyKey, { scores: [], ranks: [], n: 0, noComp: 0 });
+    const agg = byCompany.get(companyKey);
     agg.n++;
     const s = p.manual_score ?? p.computed_score;
     if (s != null) agg.scores.push(Number(s));
@@ -63,7 +68,7 @@ export function computeAggregates({ research, personal, bands, prefs, today }) {
     const listed = normalizeComp(r.extracted?.comp) || normalizeComp(r.comp);
     if (!listed) {
       const { title_family, ladder_level } = normalizeTitle(r.title, r.extracted || {});
-      if (!bandFor(bands.get(r.company_key), title_family, ladder_level, prefs)) agg.noComp++;
+      if (!bandFor(bands.get(companyKey), title_family, ladder_level, prefs)) agg.noComp++;
     }
   }
 

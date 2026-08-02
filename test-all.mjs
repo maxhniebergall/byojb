@@ -1225,6 +1225,34 @@ try {
   }
 } catch (e) { fail(`duplicate-listing tests crashed: ${e.message}`); }
 
+// ── 18f. Company aliases: several registrations, one employer ───────────────────
+// HPE holds three Workday tenants publishing identical requisitions, and a subsidiary can list a
+// parent's roles on its own ATS. Aliases fold those into one employer for counting, for posting
+// dedup, and for the research queue — which must not spend a slot researching the same company
+// twice on evidence already folded into the canonical key.
+try {
+  const { canonicalKey } = await import(pathToFileURL(join(ROOT, 'dedupe-companies.mjs')).href);
+  const { assignDupGroups } = await import(pathToFileURL(join(ROOT, 'score-postings.mjs')).href);
+  const aliases = new Map([['workday:hpe/acjobsite', 'workday:hpe/jobsathpe'],
+                           ['bamboohr:counterpoint', 'greenhouse:cloverhealth']]);
+  if (canonicalKey('workday:hpe/acjobsite', aliases) === 'workday:hpe/jobsathpe'
+      && canonicalKey('greenhouse:unrelated', aliases) === 'greenhouse:unrelated') pass('alias: resolves to the canonical employer, leaves others alone');
+  else fail('alias: canonicalKey wrong');
+
+  // The subsidiary case: same role, two company keys. Without aliases these never group.
+  const research = new Map([
+    ['a', { key: 'a', company_key: 'greenhouse:cloverhealth', title: 'Senior Software Engineer', live: true }],
+    ['b', { key: 'b', company_key: 'bamboohr:counterpoint', title: 'Senior Software Engineer', live: true }],
+  ]);
+  const personal = [{ key: 'a', hard_excluded: false, computed_score: 4.2 }, { key: 'b', hard_excluded: false, computed_score: 4.0 }];
+  const withAlias = assignDupGroups(personal.map(p => ({ ...p })), research, aliases);
+  const without = assignDupGroups(personal.map(p => ({ ...p })), research, new Map());
+  if (withAlias === 1) pass('alias: a subsidiary listing the parent\'s role collapses');
+  else fail(`alias: collapsed ${withAlias} across companies, expected 1`);
+  if (without === 0) pass('alias: without an alias the two keys stay separate (no false merging)');
+  else fail(`alias: collapsed ${without} without an alias — must not merge unrelated companies`);
+} catch (e) { fail(`company-alias tests crashed: ${e.message}`); }
+
 // ── 19. Comp bands: parsing, selection, validation ──────────────
 console.log('\n19. Comp bands (comp-core.mjs)');
 try {
