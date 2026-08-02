@@ -319,8 +319,16 @@ function appendToScanHistory(offers, date, status = 'added') {
 //   gone    — 404/410/DNS. The URL is dead; the company is hiring somewhere else, or nowhere.
 //   blocked — 401/403. We were refused. This says nothing about the employer.
 //   error   — transient (timeout, 429, 5xx). Nothing to conclude, retry next run.
-function classifyScanError(message) {
+function classifyScanError(message, url) {
   const m = String(message || '');
+  const u = String(url || '');
+  // An ATS that answers with its own login or expired-account page is not a transient failure, and
+  // it does not return a 4xx — it serves HTML, so the JSON parse fails and it looks like noise.
+  // BambooHR is explicit about which: /login.php means the board is private (blocked), while
+  // settings/account/expired.php means the customer's account lapsed (gone). Hundreds of boards
+  // sat in `error` on that technicality, retried every run and never entering the repair queue.
+  if (/expired\.php|account.*expired/i.test(u)) return 'gone';
+  if (/login\.php|\/signin|\/login\b/i.test(u)) return 'blocked';
   if (/\b(404|410)\b/.test(m)) return 'gone';
   if (/ENOTFOUND|getaddrinfo|ERR_NAME|DNS/i.test(m)) return 'gone';
   if (/\b(401|403)\b/.test(m)) return 'blocked';
@@ -669,7 +677,7 @@ async function main() {
       errCount++;
       // Persist the failure and its reason. Previously only successes were written, so a board
       // that 404s left no trace anywhere except a console line that scrolled past.
-      pendingLedger.push({ name, at: new Date().toISOString(), found: 0, status: classifyScanError(errMessage), url });
+      pendingLedger.push({ name, at: new Date().toISOString(), found: 0, status: classifyScanError(errMessage, url), url });
     }
     if (CHECKPOINT_EVERY > 0 && done % CHECKPOINT_EVERY === 0) checkpoint();
     if (quiet) return;
