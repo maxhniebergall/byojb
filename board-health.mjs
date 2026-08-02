@@ -88,7 +88,8 @@ export function loadProbes(path = PROBE_PATH) {
 // Read the ledger directly rather than going through the name-keyed history. Two companies in this
 // registry are both called "Alma" — one 404s, one serves 12 jobs — and rolling them up by name let
 // the healthy one's status mask the broken one's. The URL is the board's identity; the name is not.
-export function brokenFromScans(path = SCAN_LEDGER) {
+export function brokenFromScans(opts = {}) {
+  const { path = SCAN_LEDGER, includeErrors = false } = typeof opts === 'string' ? { path: opts } : opts;
   const latest = new Map();
   if (!existsSync(path)) return new Map();
   const lines = readFileSync(path, 'utf-8').split('\n');
@@ -101,7 +102,13 @@ export function brokenFromScans(path = SCAN_LEDGER) {
     if (!cur || at > cur.at) latest.set(url, { name, at, status: status || 'ok' });
   }
   const out = new Map();
-  for (const [url, r] of latest) if (REPAIR_STATES.has(r.status)) out.set(url, { name: r.name, state: r.status, at: r.at });
+  // includeErrors is for the redirect auto-repair only: a renamed board typically lands in `error`,
+  // not `gone`. It must NOT widen the agent queue, where a transient timeout would waste research.
+  for (const [url, r] of latest) {
+    if (REPAIR_STATES.has(r.status) || (includeErrors && r.status === 'error')) {
+      out.set(url, { name: r.name, state: r.status, at: r.at });
+    }
+  }
   return out;
 }
 

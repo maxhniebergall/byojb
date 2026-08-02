@@ -40,7 +40,7 @@ function loadJsonl(p) {
 // board URL for several providers — so 148 of 200 probes read HTML and classified as "unknown".
 // Driving the real fetch() removes that whole class of error: whatever the scanner would see, the
 // probe sees, and it cannot drift when a provider changes its endpoints.
-async function providerFor(entry) {
+export async function providerFor(entry) {
   const id = String(entry.provider || '').toLowerCase();
   if (!id || id === 'local-parser') return null;
   try { return (await import(join(ROOT, 'providers', `${id}.mjs`))).default || null; } catch { return null; }

@@ -171,6 +171,11 @@ function backoffMs(attempt, retryAfterMs) {
 }
 
 async function doFetch(url, { timeoutMs, headers, method, body, redirect }) {
+  // Derive the host HERE. `host` lives in fetchWithTimeout's scope, and referencing it from this
+  // function threw a ReferenceError on the 429 path — replacing the retryable error with a
+  // programming error, which short-circuited the entire retry loop. A whole scan reported
+  // "2223 rate-limited, 0 retries, 0 gave up": the zero was the tell.
+  const host = hostOf(url);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {

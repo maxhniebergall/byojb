@@ -26,6 +26,7 @@ import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { loadProbes, REPAIR_STATES, brokenFromScans } from './board-health.mjs';
+import { probeCompany, providerFor } from './probe-boards.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const C_PERSONAL = join(ROOT, 'data', 'companies-personal.jsonl');
@@ -121,6 +122,71 @@ function emit(n) {
   console.error(`emitted ${out.length} broken board(s) for repair`);
 }
 
+// Some "gone" boards announce their own replacement. nrb.recruitee.com 302s to
+// keyes.recruitee.com, which serves 58 live jobs — the ATS is telling us the company renamed its
+// slug. Following that redirect resolves the relocation outright, so it never needs an agent.
+//
+// Only a redirect to a DIFFERENT slug on the same ATS counts. A redirect to a marketing page or a
+// generic "careers_not_hosted" lander is not a relocation, and recording one would replace a dead
+// URL with a URL that merely looks alive — worse than leaving it broken, because nothing would
+// flag it again.
+async function auto(limit) {
+  const personal = loadJsonl(C_PERSONAL);
+  const byKey = new Map();
+  for (const c of personal) if (!byKey.has(c.key)) byKey.set(c.key, c);
+  const ledger = loadRepairLedger();
+
+  const probes = loadProbes();
+  const urlToKey = new Map();
+  for (const c of byKey.values()) if (c.careers_url) urlToKey.set(c.careers_url, c.key);
+  // Widen beyond gone/blocked: a board that RENAMED usually shows up as `error`, because the
+  // provider follows the redirect and then fails parsing the wrong tenant's response rather than
+  // getting a clean 404. nrb.recruitee.com is exactly that — it 302s to keyes.recruitee.com, which
+  // serves 58 jobs. Checking `error` too is safe because this step is self-validating: it only
+  // records a relocation when the redirect target actually returns jobs.
+  const queue = [];
+  for (const [key, p] of probes) if (REPAIR_STATES.has(p.state) || p.state === 'error') queue.push(key);
+  for (const [url, b] of brokenFromScans({ includeErrors: true })) { const k = urlToKey.get(url); if (k) queue.push(k); }
+
+  const seen = new Set();
+  const fixes = [];
+  let checked = 0;
+  for (const key of queue) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const prev = ledger.get(key);
+    if (prev?.outcome === 'relocated' || prev?.outcome === 'defunct') continue;
+    const c = byKey.get(key);
+    if (!c?.careers_url) continue;
+    if (checked++ >= limit) break;
+    try {
+      // Follow the API url, not the careers page. A renamed tenant redirects its API path to the
+      // new tenant (nrb.recruitee.com/api/offers → keyes.recruitee.com), while the careers page
+      // redirects to the company's own marketing domain (keyescareers.eu) — which reveals nothing
+      // about the ATS slug we need.
+      const provider = await providerFor(c);
+      const apiUrl = provider?.detect?.(c)?.url || c.careers_url;
+      const res = await fetch(apiUrl, { redirect: 'follow', signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'byojb/1.0' } });
+      const finalUrl = res.url || '';
+      if (!finalUrl || finalUrl === apiUrl) continue;
+      const a = new URL(apiUrl), b = new URL(finalUrl);
+      // Same ATS, different tenant → a rename. Anything else is not evidence of relocation.
+      const sameAts = a.hostname.split('.').slice(-2).join('.') === b.hostname.split('.').slice(-2).join('.');
+      if (!sameAts || a.hostname === b.hostname) continue;
+      const candidate = `${b.protocol}//${b.hostname}`;
+      const probe = await probeCompany({ ...c, careers_url: candidate }, { countJobs: true });
+      if (probe.state !== 'alive') continue;
+      fixes.push({ key, outcome: 'relocated', careers_url: candidate, provider: c.provider,
+        note: `board redirected ${a.hostname} → ${b.hostname}; ${probe.detail}` });
+    } catch { /* unreachable → leave it for the agent */ }
+  }
+  console.error(`checked ${checked} broken board(s), ${fixes.length} resolved by following redirects`);
+  if (!fixes.length) return;
+  const tmp = join(ROOT, 'data', '.auto-repair.json');
+  writeFileSync(tmp, JSON.stringify(fixes, null, 2), 'utf-8');
+  apply(tmp);
+}
+
 function apply(file) {
   const fixes = JSON.parse(readFileSync(file, 'utf-8'));
   if (!Array.isArray(fixes)) throw new Error('expected an array');
@@ -180,6 +246,8 @@ function main() {
   if (i !== -1) return emit(Number(args[i + 1]) || 20);
   const j = args.indexOf('--apply');
   if (j !== -1) return apply(args[j + 1]);
+  const k = args.indexOf('--auto');
+  if (k !== -1) return auto(Number(args[k + 1]) || 200);
   return stats();
 }
 
