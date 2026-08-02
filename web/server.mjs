@@ -21,6 +21,11 @@ import {
   loadApplications, saveApplications, upsertApplication, syncTrackerMd, validateStatus,
   CANONICAL_STATES, today, APPLICATIONS_JSONL, OPEN_STATUSES, isOpen,
 } from '../application-core.mjs';
+import {
+  loadContacts, loadOutreach, upsertContact, upsertOutreach, resolveContact, contactKey,
+  nextThreadKey, linkApplication, threadTiming, syncOutreachMdWithPostings, validateOutreachStatus,
+  isOpenOutreach, isStrongTie, OUTREACH_STATES, ARCHETYPES, RELATIONSHIPS, CHANNELS, INTENTS, OUTCOMES,
+} from '../outreach-core.mjs';
 import { classifyForm, classifyField, normLabel, PROFILE_KEYS } from '../autofill-fields.mjs';
 import { validateBandRow } from '../comp-core.mjs';
 import { TITLE_FAMILIES, LEVEL_LADDER } from '../title-family.mjs';
@@ -228,6 +233,9 @@ function postingsQueue() {
       manual_score: p.manual_score ?? null, llm_rank: p.llm_rank ?? null,
       llm_holistic_fit: p.llm_holistic_fit ?? null, relevance_score: p.relevance_score ?? 0,
       display_score: display, hard_excluded: !!p.hard_excluded,
+      // One opening published per-city is one opening. dup_of names the row that represents the
+      // group; dup_count tells the canonical row how many listings it stands for.
+      dup_of: p.dup_of || null, dup_count: p.dup_count || null,
       decision: hasApplied ? 'applied' : (p.decision || 'undecided'),
       reason: p.llm_reason || '',
       status: life.get(p.key)?.status || null, report: life.get(p.key)?.report || null,
@@ -322,6 +330,73 @@ function applicationDetail(key) {
     report_file: reportFileOf(a),
     has_posting: !!r.key,
   };
+}
+
+// ── OUTREACH ────────────────────────────────────────────────────────
+// contacts.jsonl × outreach.jsonl × posting-research.jsonl → the Outreach-tab queue.
+// Joins are denormalized here (not stored) so a renamed company or re-scanned posting is
+// picked up on the next request — same approach as applicationsQueue().
+function outreachQueue() {
+  const contacts = new Map(loadContacts().map(c => [c.key, c]));
+  const rows = loadOutreach();
+  const wanted = new Set(rows.map(r => r.posting_key).filter(Boolean));
+  const postings = new Map();
+  if (wanted.size) for (const p of loadJsonl(POST_RESEARCH_PATH)) if (wanted.has(p.key)) postings.set(p.key, p);
+  return rows.map(r => {
+    const c = contacts.get(r.contact_key) || {};
+    const p = postings.get(r.posting_key) || {};
+    return {
+      ...r, ...threadTiming(r),
+      contact_name: c.name || '', contact_title: c.title || '', linkedin_url: c.linkedin_url || '',
+      archetype: c.archetype || 'other', relationship: c.relationship || 'cold', strong_tie: isStrongTie(c.relationship),
+      // Prefer a real display name; the raw "provider:slug" key is a last resort, not a label.
+      company: c.company || p.company || r.company_key || '', company_key: r.company_key || c.company_key || '',
+      posting_title: p.title || '', posting_url: p.url || '',
+      open: isOpenOutreach(r.status),
+    };
+  }).sort((a, b) => String(b.last_updated || '').localeCompare(String(a.last_updated || '')));
+}
+
+function outreachDetail(key) {
+  const r = loadOutreach().find(x => x.key === key);
+  if (!r) return null;
+  const contact = loadContacts().find(c => c.key === r.contact_key) || {};
+  const p = r.posting_key ? (loadJsonl(POST_RESEARCH_PATH).find(x => x.key === r.posting_key) || {}) : {};
+  const app = r.application_key ? (loadApplications().find(a => a.key === r.application_key) || null) : null;
+  return {
+    ...r, ...threadTiming(r), contact, strong_tie: isStrongTie(contact.relationship),
+    posting: { key: p.key || '', title: p.title || '', url: p.url || '', apply_url: p.apply_url || '', company: p.company || '', location: p.location || '' },
+    application: app ? { key: app.key, status: app.status, tracker_num: app.tracker_num } : null,
+    vocab: { states: OUTREACH_STATES, archetypes: ARCHETYPES, relationships: RELATIONSHIPS, channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES },
+  };
+}
+
+// Contacts list with a per-person thread rollup, so the Contacts tab can show "3 threads,
+// last touched X" without a second round trip.
+function contactsQueue() {
+  const threads = loadOutreach();
+  return loadContacts().map(c => {
+    const mine = threads.filter(t => t.contact_key === c.key);
+    return {
+      ...c, strong_tie: isStrongTie(c.relationship),
+      thread_count: mine.length,
+      open_threads: mine.filter(t => isOpenOutreach(t.status)).length,
+      last_touched: mine.reduce((m, t) => String(t.last_updated || '') > m ? String(t.last_updated) : m, ''),
+    };
+  }).sort((a, b) => String(b.last_touched || b.last_updated || '').localeCompare(String(a.last_touched || a.last_updated || '')));
+}
+
+// Upsert a person from a loose payload (dashboard form or extension capture), reusing an
+// existing row whenever any identity handle matches so re-capturing a profile never forks it.
+function upsertContactFromPayload(c = {}) {
+  const existing = resolveContact(c);
+  const key = existing ? existing.key : contactKey(c);
+  if (!key) return null;
+  const patch = {};
+  for (const f of ['name', 'company_key', 'company', 'title', 'archetype', 'relationship', 'linkedin_url', 'email', 'phone', 'source', 'notes']) {
+    if (c[f] !== undefined && c[f] !== '') patch[f] = c[f];
+  }
+  return upsertContact(key, patch);
 }
 
 function loadAppProfile() {
@@ -609,6 +684,117 @@ const server = createServer(async (req, res) => {
   }
   if (path === '/api/autofill/profile') return json(res, { profile: loadAppProfile(), profile_keys: PROFILE_KEYS });
 
+  // ----- CONTACTS -----
+  if (path === '/api/contacts') {
+    const ck = url.searchParams.get('company_key') || '';
+    const q = (url.searchParams.get('q') || '').toLowerCase();
+    let rows = contactsQueue();
+    if (ck) rows = rows.filter(c => c.company_key === ck);
+    if (q) rows = rows.filter(c => [c.name, c.company, c.title, c.notes, c.email].filter(Boolean).join(' ').toLowerCase().includes(q));
+    return json(res, { rows, vocab: { archetypes: ARCHETYPES, relationships: RELATIONSHIPS } });
+  }
+  if (req.method === 'POST' && path === '/api/contact') {
+    const b = await body(req);
+    const row = upsertContactFromPayload(b);
+    if (!row) return json(res, { error: 'need a linkedin_url, email, or name' }, 400);
+    return json(res, { ok: true, key: row.key, contact: row });
+  }
+
+  // ----- OUTREACH -----
+  if (path === '/api/outreach') {
+    let rows = outreachQueue();
+    const st = url.searchParams.get('status'), ck = url.searchParams.get('company_key'), pk = url.searchParams.get('posting_key');
+    if (st) rows = rows.filter(r => r.status === st);
+    if (ck) rows = rows.filter(r => r.company_key === ck);
+    if (pk) rows = rows.filter(r => r.posting_key === canonicalUrl(pk));
+    return json(res, { rows, vocab: { states: OUTREACH_STATES, archetypes: ARCHETYPES, relationships: RELATIONSHIPS, channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES } });
+  }
+  if (path === '/api/outreach/thread') {
+    const d = outreachDetail(url.searchParams.get('key') || '');
+    if (!d) return json(res, { error: 'not found' }, 404);
+    return json(res, d);
+  }
+  // Create a thread. Accepts either an existing contact_key or an inline `contact` object
+  // (the extension always sends the latter — it has a LinkedIn profile, not a BYOJB key).
+  if (req.method === 'POST' && path === '/api/outreach/create') {
+    const b = await body(req);
+    let ckey = b.contact_key || '';
+    let contact = null;
+    if (!ckey) {
+      contact = upsertContactFromPayload(b.contact || {});
+      if (!contact) return json(res, { error: 'contact_key or contact{} required' }, 400);
+      ckey = contact.key;
+    } else {
+      contact = loadContacts().find(c => c.key === ckey) || null;
+      if (!contact) return json(res, { error: 'unknown contact_key' }, 404);
+    }
+    // Fall back to the posting's company so a thread started from a posting is always grouped.
+    let companyKey = b.company_key || contact.company_key || '';
+    const pk = b.posting_key ? canonicalUrl(b.posting_key) : '';
+    if (pk && !companyKey) {
+      const p = loadJsonl(POST_RESEARCH_PATH).find(x => x.key === pk);
+      if (p) companyKey = p.company_key || '';
+    }
+    const key = nextThreadKey(ckey);
+    const row = upsertOutreach(key, {
+      contact_key: ckey, company_key: companyKey, posting_key: pk,
+      channel: b.channel, intent: b.intent, notes: b.notes,
+      status: b.status || 'Drafted',
+      ...(b.body ? { message: { direction: 'out', body: b.body, sent_at: b.sent_at } } : {}),
+    });
+    syncOutreachMdWithPostings();
+    return json(res, { ok: true, key: row.key, contact_key: ckey });
+  }
+  if (req.method === 'POST' && path === '/api/outreach/message') {
+    const b = await body(req);
+    if (!loadOutreach().some(r => r.key === b.key)) return json(res, { error: 'not found' }, 404);
+    // Logging an outbound message on a thread that's already been sent is a follow-up; the
+    // status shouldn't silently regress, so only advance it.
+    const cur = loadOutreach().find(r => r.key === b.key);
+    let status = b.status;
+    if (!status && b.direction !== 'in') status = cur.status === 'Drafted' ? 'Sent' : (cur.status === 'Sent' ? 'Followed Up' : cur.status);
+    if (!status && b.direction === 'in') status = 'Responded';
+    const row = upsertOutreach(b.key, { message: { direction: b.direction, body: b.body, sent_at: b.sent_at, note: b.note }, status });
+    syncOutreachMdWithPostings();
+    return json(res, { ok: true, status: row.status, message_count: (row.messages || []).length });
+  }
+  if (req.method === 'POST' && path === '/api/outreach/status') {
+    const b = await body(req);
+    if (!loadOutreach().some(r => r.key === b.key)) return json(res, { error: 'not found' }, 404);
+    const row = upsertOutreach(b.key, { status: validateOutreachStatus(b.status), ...(b.outcome !== undefined ? { outcome: b.outcome } : {}) });
+    syncOutreachMdWithPostings();
+    return json(res, { ok: true, status: row.status, outcome: row.outcome });
+  }
+  if (req.method === 'POST' && path === '/api/outreach/meta') {
+    const b = await body(req);
+    if (!loadOutreach().some(r => r.key === b.key)) return json(res, { error: 'not found' }, 404);
+    const patch = {};
+    for (const k of ['next_action', 'next_action_date', 'notes', 'channel', 'intent', 'outcome', 'posting_key', 'company_key']) if (k in b) patch[k] = b[k];
+    upsertOutreach(b.key, patch);
+    syncOutreachMdWithPostings();
+    return json(res, { ok: true });
+  }
+  // Turn a converted thread into a tracked application, reusing the existing create path so
+  // applications.jsonl stays the single source of truth for anything actually submitted.
+  if (req.method === 'POST' && path === '/api/outreach/convert') {
+    const b = await body(req);
+    const t = loadOutreach().find(r => r.key === b.key);
+    if (!t) return json(res, { error: 'not found' }, 404);
+    const rk = b.posting_key ? canonicalUrl(b.posting_key) : t.posting_key;
+    if (!rk) return json(res, { error: 'thread has no posting_key — set one first' }, 400);
+    const r = loadJsonl(POST_RESEARCH_PATH).find(x => x.key === rk) || {};
+    const au = r.apply_url || r.url || rk;
+    upsertApplication(rk, {
+      status: 'Applied', company: r.company, title: r.title, apply_url: au,
+      company_key: r.company_key || deriveCompanyKey('', au),
+      notes: `Came in via outreach (${t.channel}) — thread ${t.key}`,
+    });
+    syncTrackerMd();
+    linkApplication(t.key, rk);
+    syncOutreachMdWithPostings();
+    return json(res, { ok: true, application_key: rk });
+  }
+
   // ----- report viewer -----
   if (path === '/report') {
     const f = url.searchParams.get('f') || '';
@@ -622,6 +808,8 @@ const server = createServer(async (req, res) => {
   if (path === '/postings') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'postings.html'), 'utf8')); }
   if (path === '/companies') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'companies.html'), 'utf8')); }
   if (path === '/applications') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'applications.html'), 'utf8')); }
+  if (path === '/outreach') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'outreach.html'), 'utf8')); }
+  if (path === '/contacts') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'contacts.html'), 'utf8')); }
   if (path === '/posting') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'posting.html'), 'utf8')); }
   if (path === '/compare') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'posting-comparison.html'), 'utf8')); }
   if (path === '/') { res.writeHead(302, { 'location': '/postings' }); return res.end(); }

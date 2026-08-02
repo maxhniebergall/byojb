@@ -67,6 +67,7 @@
     <label class="chk"><input type="checkbox" id="resOnly"> researched only</label>
     <label class="chk"><input type="checkbox" id="hideCapped" checked> hide capped companies</label>
     <label class="chk"><input type="checkbox" id="hideApplied" checked> hide applied</label>
+    <label class="chk"><input type="checkbox" id="hideDupes" checked> hide duplicate listings</label>
     <div style="margin-top:.5rem"><small style="color:var(--mut)">comp evidence</small>
       <select id="compEv" style="width:100%;font-size:.8rem;margin-top:.15rem">
         <option value="any">any (incl. estimates)</option>
@@ -196,7 +197,7 @@ function saveState(){
     f:{ q:$('#q').value, fLang:$('#fLang').value, fSen:$('#fSen').value, fRemote:$('#fRemote').value,
         fGeo:$('#fGeo').value, fDec:$('#fDec').value, liveOnly:$('#liveOnly').checked,
         showExcl:$('#showExcl').checked, resOnly:$('#resOnly').checked, minScore:$('#minScore').value,
-        hideCapped:$('#hideCapped').checked, hideApplied:$('#hideApplied').checked,
+        hideCapped:$('#hideCapped').checked, hideApplied:$('#hideApplied').checked, hideDupes:$('#hideDupes').checked,
         maxAge:$('#maxAge').value, agePenalty:$('#agePenalty').value, hideOlder:$('#hideOlder').checked,
         compEv:$('#compEv').value },
   })); }catch{}
@@ -211,6 +212,7 @@ function restoreFilters(f){
   if(f.resOnly!=null)$('#resOnly').checked=f.resOnly;
   if(f.hideCapped!=null)$('#hideCapped').checked=f.hideCapped;
   if(f.hideApplied!=null)$('#hideApplied').checked=f.hideApplied;
+  if(f.hideDupes!=null)$('#hideDupes').checked=f.hideDupes;
   if(f.minScore!=null){ $('#minScore').value=f.minScore; $('#minLbl').textContent=f.minScore; }
   if(f.maxAge!=null){ $('#maxAge').value=f.maxAge; $('#ageLbl').textContent=f.maxAge === '31' ? 'any' : f.maxAge; }
   if(f.agePenalty!=null){ $('#agePenalty').value=f.agePenalty; $('#penaltyLbl').textContent=Number(f.agePenalty).toFixed(2); }
@@ -280,7 +282,7 @@ function renderCounts(){
 function pfiltered(){
   const q=$('#q').value.trim().toLowerCase(),lang=$('#fLang').value,sen=$('#fSen').value,rem=$('#fRemote').value,geo=$('#fGeo').value,dec=$('#fDec').value;
   const minS=+$('#minScore').value,liveOnly=$('#liveOnly').checked,showExcl=$('#showExcl').checked,resOnly=$('#resOnly').checked;
-  const hideCapped=$('#hideCapped').checked,hideApplied=$('#hideApplied').checked;
+  const hideCapped=$('#hideCapped').checked,hideApplied=$('#hideApplied').checked,hideDupes=$('#hideDupes').checked;
   const compEv=$('#compEv').value;
   const maxAge=+$('#maxAge').value;
   const agePenalty=+$('#agePenalty').value;
@@ -305,6 +307,9 @@ function pfiltered(){
   if(!showExcl) list=list.filter(r=>!r.hard_excluded);
   if(resOnly) list=list.filter(r=>r.researched);
   if(hideCapped) list=list.filter(r=>!r.capped);
+  // A per-city republication of one requisition is not a second opportunity. Hidden by default;
+  // the canonical row shows how many listings it stands for.
+  if(hideDupes) list=list.filter(r=>!r.dup_of);
   if(hideApplied) list=list.filter(r=>!r.applied);
   // Comp evidence floor. Only filters rows that HAVE a comp figure of the excluded kind — a
   // posting with no comp information at all is unaffected (that's the `min score` filter's job).
@@ -419,7 +424,7 @@ function renderPostings(){
     h+=`<tr class="${r.hard_excluded||r.capped?'hx':''}" data-k="${esc(r.key)}">
       <td class="selcol"><input type="checkbox" class="rsel" data-k="${esc(r.key)}"${SELECTED.has(r.key)?' checked':''}></td>
       <td ${scoreTooltip}><span class="badge ${bcls(r._s)}">${r._s!=null?r._s.toFixed(1):'·'}</span>${r.hard_excluded?' <span class="row-excl">⛔</span>':''}${penaltyIndicator}</td>
-      <td>${companyLink(r)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}</td>
+      <td>${companyLink(r)}${companyBadge(r)}${!r.live?' <span class="pill">expired</span>':''}${r.capped?` <span class="row-excl" title="${r.company_open_count} open applications">⛔ ${r.company_open_count} open</span>`:''}${r.applied?' <span class="st">applied</span>':''}${r.dup_count>1?` <span class="pill" title="this opening is listed ${r.dup_count} times, once per location">×${r.dup_count} listings</span>`:''}${r.dup_of?' <span class="pill" title="duplicate of another listing of the same role">dup</span>':''}</td>
       <td>${esc(r.title)}${ageBadge}${datePill}</td><td>${esc(r.seniority||'·')}</td><td>${r.yoe_min!=null?esc(r.yoe_min+(r.yoe_max?'-'+r.yoe_max:'+')):'·'}</td>
       <td>${stack||'·'}</td><td>${compCell(r)}</td>
       <td>${esc(r.location||r.remote_policy||'·')}${r.geo_eligibility&&r.geo_eligibility!=='unclear'?` <span class="chip">${esc(r.geo_eligibility)}</span>`:''}</td>

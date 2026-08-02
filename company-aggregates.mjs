@@ -45,6 +45,10 @@ export function computeAggregates({ research, personal, bands, prefs, today }) {
     const live = r.live !== false;
     const scored = (p.computed_score ?? p.llm_rank) != null;
     if (!live || p.hard_excluded || !scored) continue;
+    // One opening published per-city is still one opening. Tailscale's Infrastructure Engineer
+    // appears three times (CA/US/UK) and would otherwise treble this company's live_relevant and
+    // give a rollup band three "independent" samples drawn from a single requisition.
+    if (p.dup_of) continue;
 
     if (!byCompany.has(r.company_key)) byCompany.set(r.company_key, { scores: [], ranks: [], n: 0, noComp: 0 });
     const agg = byCompany.get(r.company_key);

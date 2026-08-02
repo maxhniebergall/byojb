@@ -477,6 +477,53 @@ function compMeta(ex, dim_scores, dims) {
   };
 }
 
+// Collapse postings that are ONE opening published several times.
+//
+// An ATS treats "same role, different city" as separate requisitions, so Tailscale's single
+// Infrastructure Engineer opening appears three times — Canada, US and UK — each with its own
+// Greenhouse job id. Agency boards take it further: one "Work From Home - Enrollment Specialist"
+// is listed 229 times. Across the corpus this is 2,540 rows, 15.5% of everything live, and it
+// inflates live_relevant, repeats the same job down the dashboard, and lets a rollup band count
+// one requisition as three independent data points.
+//
+// Nothing is deleted. Each group elects a canonical row and the rest carry `dup_of`, so the data
+// stays intact, the choice is recomputable, and a consumer decides whether to show duplicates.
+//
+// Electing the canonical is the part that matters: prefer a row that is NOT hard-excluded, so the
+// variant you could actually take wins. Tailscale's US and UK rows are excluded by work_eligible
+// while the Canada row is not — collapsing to "the first one seen" would have discarded the only
+// reachable version of the job and left an unreachable one standing in its place.
+export function assignDupGroups(personal, researchByKey) {
+  const groups = new Map();
+  for (const p of personal) {
+    const r = researchByKey.get(p.key);
+    if (!r || r.live === false || !r.company_key) continue;
+    const title = String(r.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!title) continue;
+    const gk = `${r.company_key}|${title}`;
+    if (!groups.has(gk)) groups.set(gk, []);
+    groups.get(gk).push(p);
+  }
+  let collapsed = 0;
+  for (const rows of groups.values()) {
+    if (rows.length < 2) continue;
+    const rank = (p) => [
+      p.hard_excluded ? 1 : 0,                       // reachable beats unreachable
+      -(p.computed_score ?? -1),                     // then the better-scoring row
+      String(p.key),                                 // deterministic final tiebreak
+    ];
+    const sorted = rows.slice().sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      return (ra[0] - rb[0]) || (ra[1] - rb[1]) || ra[2].localeCompare(rb[2]);
+    });
+    const canonical = sorted[0];
+    canonical.dup_of = null;
+    canonical.dup_count = rows.length;
+    for (const p of sorted.slice(1)) { p.dup_of = canonical.key; p.dup_count = null; collapsed++; }
+  }
+  return collapsed;
+}
+
 export function loadRubric() {
   return yaml.load(readFileSync(RUBRIC, 'utf-8')) || { dimensions: [] };
 }
@@ -540,6 +587,10 @@ function main() {
     scored++;
     if (hard_excluded) excluded++;
   }
+  // Recomputed on every run, like every other field in this layer.
+  for (const p of personal) { p.dup_of = null; p.dup_count = null; }
+  const collapsed = assignDupGroups(personal, research);
+
   saveJsonl(PERSONAL, personal);
 
   if (process.argv.includes('--stats')) {
@@ -549,7 +600,7 @@ function main() {
     for (const p of personal) if (p.comp_source) by[p.comp_source] = (by[p.comp_source] || 0) + 1;
     console.log(`comp evidence: ${Object.entries(by).map(([k, v]) => `${k}=${v}`).join(' ') || '(none)'}`);
   }
-  console.log(`✓ scored ${scored} postings (${excluded} hard-excluded, ${imputed} comp from company bands) → ${PERSONAL}`);
+  console.log(`✓ scored ${scored} postings (${excluded} hard-excluded, ${imputed} comp from company bands, ${collapsed} duplicate listings collapsed) → ${PERSONAL}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

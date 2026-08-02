@@ -1163,6 +1163,40 @@ try {
   else fail('dual-level: `at` leaked into the parsed comp');
 } catch (e) { fail(`dual-level comp tests crashed: ${e.message}`); }
 
+// ── 18e. Duplicate listings: one opening published per-city ─────────────────────
+// Tailscale's single Infrastructure Engineer opening appears three times (CA/US/UK), each with its
+// own Greenhouse job id; agency boards list one role 229 times. 2,540 rows, 15.5% of everything
+// live. The canonical row must be the REACHABLE one -- keeping "first seen" would have retained an
+// excluded US listing and hidden the Canada one that actually qualifies.
+try {
+  const { assignDupGroups } = await import(pathToFileURL(join(ROOT, 'score-postings.mjs')).href);
+  if (typeof assignDupGroups !== 'function') { warn('assignDupGroups not exported — skipping dup tests'); }
+  else {
+    const research = new Map([
+      ['us', { key: 'us', company_key: 'gh:tailscale', title: 'Infrastructure Engineer', live: true }],
+      ['uk', { key: 'uk', company_key: 'gh:tailscale', title: 'Infrastructure Engineer', live: true }],
+      ['ca', { key: 'ca', company_key: 'gh:tailscale', title: 'Infrastructure Engineer', live: true }],
+      ['other', { key: 'other', company_key: 'gh:tailscale', title: 'Security Engineer', live: true }],
+    ]);
+    const personal = [
+      { key: 'us', hard_excluded: true, computed_score: 3.48 },
+      { key: 'uk', hard_excluded: true, computed_score: 3.35 },
+      { key: 'ca', hard_excluded: false, computed_score: 4.78 },
+      { key: 'other', hard_excluded: false, computed_score: 4.0 },
+    ];
+    const collapsed = assignDupGroups(personal, research);
+    const byKey = Object.fromEntries(personal.map(p => [p.key, p]));
+    if (collapsed === 2) pass('dup: collapses the two redundant listings');
+    else fail(`dup: collapsed ${collapsed}, expected 2`);
+    if (!byKey.ca.dup_of && byKey.us.dup_of === 'ca' && byKey.uk.dup_of === 'ca') pass('dup: the reachable (non-excluded) listing is canonical');
+    else fail(`dup: wrong canonical — ca.dup_of=${byKey.ca.dup_of} us.dup_of=${byKey.us.dup_of}`);
+    if (byKey.ca.dup_count === 3) pass('dup: canonical records how many listings it stands for');
+    else fail(`dup: dup_count ${byKey.ca.dup_count}, expected 3`);
+    if (!byKey.other.dup_of) pass('dup: a distinct title is left alone');
+    else fail('dup: collapsed an unrelated title');
+  }
+} catch (e) { fail(`duplicate-listing tests crashed: ${e.message}`); }
+
 // ── 19. Comp bands: parsing, selection, validation ──────────────
 console.log('\n19. Comp bands (comp-core.mjs)');
 try {
