@@ -830,6 +830,17 @@ async function main() {
   console.log(`Filtered by location:  ${totalFilteredLocation} removed`);
   console.log(`Duplicates:            ${totalDupes} skipped`);
   console.log(`HTTP 429s (retried):   ${httpStats.rateLimited} rate-limited, ${httpStats.retries} retries, ${httpStats.failures} gave up`);
+  // Name the hosts doing the throttling. A bare total cannot distinguish one strict host from a
+  // global concurrency problem, and those need opposite fixes.
+  if (httpStats.rateLimited > 0) {
+    const worst = [...httpStats.byHost]
+      .filter(([, h]) => h.rateLimited > 0)
+      .sort((a, b) => b[1].rateLimited - a[1].rateLimited)
+      .slice(0, 5);
+    for (const [host, h] of worst) {
+      console.log(`    ${host.padEnd(34)} ${h.rateLimited} of ${h.requests} throttled (${Math.round(100 * h.rateLimited / h.requests)}%)`);
+    }
+  }
   if (verify) {
     console.log(`Expired (verified):    ${expiredOffers.length} dropped`);
     console.log(`No apply control:      ${droppedOffers.length} dropped`);
