@@ -179,8 +179,17 @@ export function parseCompString(s) {
 // to the Stage-3 extractor and was recorded as an `estimated` / `llm_prior` guess instead —
 // the same defect as the undecoded &mdash;, just wearing different punctuation.
 const CUR_PFX = String.raw`(?:CAD|USD|AUD|EUR|GBP|CA\$|US\$|C\$|£|€|\$)`;
+// The code can also TRAIL the figure with no marker in front of it at all. Clover Health posts
+//   "A reasonable estimate of the base salary range for this role is 115,000 CAD to 145,000 CAD"
+// — no "$", no leading code. Requiring a leading marker meant this matched nothing, the whole
+// posting registered as needs_comp, and a first-party stated range fell through to a model guess.
+// A bare "115,000 to 145,000" is still refused: the alternative is a LOOKAHEAD that demands a
+// currency code immediately after the first figure, so an unmarked pair of numbers (headcount,
+// revenue, "10,000 to 50,000 requests") can never enter. Lookahead rather than a second capture
+// branch so the group numbering (m[1], m[2]) stays exactly as the rest of this function expects.
+const CUR_SFX = String.raw`(?:CAD|USD|AUD|EUR|GBP)`;
 const RE_RANGE = new RegExp(
-  `${CUR_PFX}\\s?([\\d,]{6,})(?:\\.\\d+)?\\s*(?:to|through|and|[-–—]{1,3})\\s*(?:${CUR_PFX})?\\s?([\\d,]{6,})(?:\\.\\d+)?`,
+  `(?:${CUR_PFX}\\s?|(?=[\\d,]{6,}(?:\\.\\d+)?\\s*${CUR_SFX}\\b))([\\d,]{6,})(?:\\.\\d+)?\\s*(?:${CUR_SFX}\\b\\s*)?(?:to|through|and|[-–—]{1,3})\\s*(?:${CUR_PFX})?\\s?([\\d,]{6,})(?:\\.\\d+)?`,
   'g',
 );
 // Bare "annual" is NOT a pay cue — "annual revenue grew from $200,000 to $900,000" would qualify.
@@ -250,7 +259,11 @@ export function parseCompFromBody(text, { min = 40000, max = 900000, level = nul
     const tail = plain.slice(m.index + m[0].length, m.index + m[0].length + 28);
     // The code can also lead the figure ("CAD 87,000 – 105,000"), in which case it sits INSIDE
     // the match rather than before it — so include the match's own prefix, not just what precedes.
-    const head = plain.slice(Math.max(0, m.index - 12), m.index) + m[0].slice(0, 4);
+    // …and with a trailing code ("115,000 CAD to 145,000 CAD") the only marker on the LOW end sits
+    // in the middle of the match, so the match text itself has to be scanned too. That is still
+    // range-local, not paragraph-wide: m[0] never spans more than the two figures and their
+    // separator, so the dual-currency case above cannot bleed one range's code onto the other.
+    const head = plain.slice(Math.max(0, m.index - 12), m.index) + m[0];
     const local = `${head}${tail}`;
     const cur = /\bCAD\b|\bC\$/i.test(local) ? 'CAD' : /\bUSD\b|\bUS\$/i.test(local) ? 'USD' : null;
     found.push({ min: lo, max: hi, currency: cur, at: m.index });

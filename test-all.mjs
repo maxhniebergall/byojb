@@ -1163,6 +1163,34 @@ try {
   else fail('dual-level: `at` leaked into the parsed comp');
 } catch (e) { fail(`dual-level comp tests crashed: ${e.message}`); }
 
+// ── 18d-2. Trailing currency code with NO leading marker ────────────────────────
+// Clover Health (greenhouse:cloverhealth/8099637) posts
+//   "A reasonable estimate of the base salary range for this role is 115,000 CAD to 145,000 CAD"
+// — no "$" and no leading currency code, so the range matched nothing and a first-party posted
+// band fell through to a model guess. 157 stored JD bodies used this shape. The guard is that the
+// code must FOLLOW the first figure: unmarked number pairs must still be refused.
+try {
+  const { parseCompFromBody } = await import(pathToFileURL(join(ROOT, 'comp-core.mjs')).href);
+  const clover = parseCompFromBody('A reasonable estimate of the base salary range for this '
+    + 'role is 115,000 CAD to 145,000 CAD. Final pay is based on several factors.');
+  if (clover?.min === 115000 && clover?.max === 145000 && clover.currency === 'CAD')
+    pass('trailing-code: "115,000 CAD to 145,000 CAD" parses with currency');
+  else fail(`trailing-code: clover → ${JSON.stringify(clover)}, expected 115000-145000 CAD`);
+  const usd = parseCompFromBody('The base salary range for this role is 150,000 USD - 200,000 USD per year.');
+  if (usd?.min === 150000 && usd?.max === 200000 && usd.currency === 'USD')
+    pass('trailing-code: USD suffix form parses');
+  else fail(`trailing-code: usd → ${JSON.stringify(usd)}`);
+  // No currency marker anywhere → still refused, whatever pay words sit nearby.
+  const bare = parseCompFromBody('Our salary survey covers companies processing 100,000 to 500,000 claims per year.');
+  if (bare === null) pass('trailing-code: unmarked number pair is still refused');
+  else fail(`trailing-code: bare pair parsed as ${JSON.stringify(bare)}`);
+  // The dual-currency case must not regress: scanning the match text must not let CAD bleed onto USD.
+  const dual = parseCompFromBody('base salary of $180,000 to $240,000 USD ($175,000 to $245,000 CAD) per year');
+  if (dual?.min === 175000 && dual?.max === 245000 && dual.currency === 'CAD')
+    pass('trailing-code: dual-currency posting still binds CAD to the CAD figures');
+  else fail(`trailing-code: dual → ${JSON.stringify(dual)}`);
+} catch (e) { fail(`trailing-code comp tests crashed: ${e.message}`); }
+
 // ── 18e. Duplicate listings: one opening published per-city ─────────────────────
 // Tailscale's single Infrastructure Engineer opening appears three times (CA/US/UK), each with its
 // own Greenhouse job id; agency boards list one role 229 times. 2,540 rows, 15.5% of everything
@@ -1590,6 +1618,30 @@ try {
   const linked = oc.linkApplication(tk, 'https://example.com/job/1');
   if (linked.status === 'Converted' && linked.application_key === 'https://example.com/job/1' && linked.outcome === 'converted_to_application') pass('linkApplication marks the thread converted and back-links the application');
   else fail(`linkApplication wrong: ${JSON.stringify(linked)}`);
+
+  // — relevance / activity / LinkedIn-degree relationships —
+  if (oc.validateRelevance('4.5') === 4.5 && oc.validateRelevance(9) === 5 && oc.validateRelevance(-2) === 0) pass('validateRelevance clamps to the 0–5 rubric scale');
+  else fail('validateRelevance clamping wrong');
+  // null (unrated) must stay distinct from 0 (rated, not worth pursuing) — collapsing them would
+  // make every untouched contact look actively rejected.
+  if (oc.validateRelevance('') === null && oc.validateRelevance(null) === null && oc.validateRelevance('abc') === null && oc.validateRelevance(0) === 0) pass('validateRelevance keeps unrated (null) distinct from 0');
+  else fail('validateRelevance null/0 handling wrong');
+  if (oc.validateActivity('dormant') === 'dormant' && oc.validateActivity('bogus') === 'unknown') pass('validateActivity falls back to unknown');
+  else fail('validateActivity wrong');
+  if (oc.RELATIONSHIPS.includes('connected_1') && oc.RELATIONSHIPS.includes('connected_2')) pass('LinkedIn 1st/2nd-degree relationships available');
+  else fail('connected_1/connected_2 missing from RELATIONSHIPS');
+  // Degree is network DISTANCE, not a vouch: you can be 1st-degree with a total stranger.
+  if (!oc.isStrongTie('connected_1') && !oc.isStrongTie('connected_2') && oc.isStrongTie('former_colleague')) pass('LinkedIn degree is not treated as a strong tie');
+  else fail('connected_* must not count as a strong tie');
+
+  const c3 = oc.upsertContact('li:rated', { name: 'Rated', relevance: '4.5', activity: 'active' });
+  if (c3.relevance === 4.5 && c3.activity === 'active') pass('upsertContact stores relevance + activity');
+  else fail(`upsertContact new fields wrong: ${JSON.stringify(c3)}`);
+  const c4 = oc.upsertContact('li:rated', { title: 'EM' });
+  if (c4.relevance === 4.5 && c4.activity === 'active') pass('an unrelated patch preserves relevance + activity');
+  else fail('relevance/activity lost on partial patch');
+  if (oc.upsertContact('li:rated', { relevance: '' }).relevance === null) pass('clearing relevance un-rates rather than zeroing');
+  else fail('clearing relevance should yield null');
 
   // A pipe in a name/next-action must not split the generated markdown table.
   oc.upsertOutreach(tk, { next_action: 'ping re: infra | scale work' });
