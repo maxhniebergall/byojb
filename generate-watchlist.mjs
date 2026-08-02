@@ -25,16 +25,22 @@ const RUBRIC = join(ROOT, 'config', 'rubric.yml');
 function scanCfg() {
   try {
     const s = ((yaml.load(readFileSync(RUBRIC, 'utf-8')) || {}).workflow || {}).scan || {};
+    const rawMax = s.max_undecided_companies;
+    const max_undecided_companies = (rawMax === -1 || rawMax === 'unlimited' || rawMax === null) ? -1 : (Number(rawMax) ?? -1);
     return {
       include_undecided: s.include_undecided === true,
       min_relevant_openings: Number(s.min_relevant_openings) || 0,
-      max_undecided_companies: Number(s.max_undecided_companies) || 0,
+      max_undecided_companies,
     };
-  } catch { return { include_undecided: false, min_relevant_openings: 0, max_undecided_companies: 0 }; }
+  } catch { return { include_undecided: true, min_relevant_openings: 0, max_undecided_companies: -1 }; }
 }
 
 // ATSs the scanner (scan.mjs + providers/) can actually re-check.
-const SCANNABLE = new Set(['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee', 'workday', 'workable', 'bamboohr', 'breezy', 'rippling', 'gem']);
+// Must list every provider in providers/. A provider missing from here is silently dropped from
+// portals.yml as "unscannable" and never runs, however well it works — which is what happened to
+// hibob: the provider existed and returned JUMO's 10 jobs, but the watchlist filtered the company
+// out before the scanner ever saw it.
+const SCANNABLE = new Set(['greenhouse', 'ashby', 'lever', 'smartrecruiters', 'recruitee', 'workday', 'workable', 'bamboohr', 'breezy', 'rippling', 'gem', 'hibob']);
 const WORKDAY_SEARCH = ['backend engineer', 'platform engineer', 'infrastructure engineer', 'mlops', 'data engineer', 'cloud engineer', 'devops engineer'];
 
 function loadJsonl(path) {
