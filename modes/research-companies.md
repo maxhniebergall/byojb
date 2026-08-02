@@ -190,6 +190,16 @@ chars), get the exact name from `node -e "import('./posting-core.mjs').then(m=>c
    ```json
    [{"key":"ashby:redis","llm_fit":4,"fit_brief":"data/company-fit/ashby-redis.md",
      "llm_reason":"<=12 words","company_type":"product"}]
+
+   **If the company turns out to BE another company already in the registry** — a subsidiary
+   posting its parent's roles, a rebrand, a second board — add `"alias_of": "<canonical key>"`
+   and a short `"alias_note"`. You will often notice this while reading their careers page:
+   Counterpart Health's own copy says it is a Clover Health subsidiary, and its board carries five
+   of Clover's seven live roles. Recording it folds the two into one employer, so the openings stop
+   appearing twice and the queue stops spending a second research slot on the same company.
+
+   Only use it when the company says so, or the boards plainly carry the same requisitions. Two
+   firms in one industry are not aliases; a wrong alias hides a real employer behind another.
    ```
    then:
    ```bash

@@ -166,9 +166,26 @@ function main() {
   // O(n^2) over 4k companies and would surface coincidences rather than duplicates.
   const buckets = new Map();
   const add = (k, c) => { if (!buckets.has(k)) buckets.set(k, new Set()); buckets.get(k).add(c); };
+  // Bucket by shared ROLE as well, or two companies that share only their postings are never even
+  // compared — which is exactly the subsidiary case (Clover Health and Counterpart Health share no
+  // slug and no requisition ids, only 5 identical openings).
+  //
+  // Skip roles that many companies post: "software engineer|remote" would bucket hundreds of
+  // unrelated companies together and make this O(n^2) for no signal.
+  const roleCompanies = new Map();
+  for (const c of byCompany.values()) {
+    for (const v of c.roles) {
+      if (!roleCompanies.has(v)) roleCompanies.set(v, []);
+      roleCompanies.get(v).push(c);
+    }
+  }
+  const GENERIC_ROLE_COMPANIES = 8;
   for (const c of byCompany.values()) {
     add(`slug:${slugCore(c.key)}`, c);
     for (const id of c.reqs) add(`req:${id}`, c);
+    for (const v of c.roles) {
+      if ((roleCompanies.get(v) || []).length <= GENERIC_ROLE_COMPANIES) add(`role:${v}`, c);
+    }
   }
 
   const pairs = new Map();
@@ -198,6 +215,7 @@ function main() {
         // so RELX and LexisNexis, Maersk and APM Terminals, Bullish and CoinDesk all share ids
         // while being separate employers. Only agreeing names, or a role list that is essentially
         // the same list, distinguish a duplicated board from a sibling business unit.
+        const shared = [...a.roles].filter(v => b.roles.has(v)).length;
         const corroborated = namesAgree(a.name, b.name) || roleJ >= 0.7;
         // An EMPTY board can't overlap with anything, so it needs its own rule: same slug core and
         // agreeing names, with one side holding no live postings at all. That is a dead
@@ -206,7 +224,17 @@ function main() {
         // the registry has no live postings, and pairing them by slug alone produced 2,575 bogus
         // groups. The informative case is a LIVE board beside a dead twin.
         const deadBoard = sameSlug && namesAgree(a.name, b.name) && ((a.n === 0) !== (b.n === 0));
-        if ((sameSlug && (reqJ > 0 || roleJ > 0) && corroborated) || (reqJ >= 0.5 && roleJ >= 0.5) || deadBoard) {
+        // Three or more IDENTICAL postings, at high overlap, is the same employer on two boards --
+        // and it is the only thing that catches a differently-named subsidiary. Counterpart Health
+        // carries 5 of Clover Health's 7 live roles, title and location identical, but shares no
+        // slug with its parent and no requisition ids (Greenhouse ids are numeric, so reqJ is 0).
+        //
+        // The count matters more than the ratio. Two companies with two generic openings each --
+        // heycar and Happl both list "Backend Engineer" and "Senior Backend Engineer" -- score a
+        // perfect 1.00 by coincidence. Requiring THREE shared postings rejects every such pair
+        // here while keeping Clover/Counterpart, HPE, Abbott, Williams, Aveva and Wynd Labs.
+        const sharedPostings = shared >= 3 && roleJ >= 0.7;
+        if ((sameSlug && (reqJ > 0 || roleJ > 0) && corroborated) || (reqJ >= 0.5 && roleJ >= 0.5) || sharedPostings || deadBoard) {
           pairs.set(pk, { a, b, reqJ, roleJ, sameSlug, deadBoard });
         }
       }

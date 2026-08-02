@@ -176,6 +176,7 @@ export function researchEligible(personal, agg, ledger, opts = {}) {
 // Merge score objects into the personal layer and persist. Shared by --apply, --apply-append's
 // checkpoint, --flush-pending, and the startup auto-fold, so every path writes identically.
 function applyScores(scoreList, personal, research, { verbose = false } = {}) {
+  const aliasRows = [];
   const scores = new Map(scoreList.map(s => [s.key, s]));
   let rows = 0, typeChanged = false, reclassified = 0;
   const matched = new Set();
@@ -195,13 +196,28 @@ function applyScores(scoreList, personal, research, { verbose = false } = {}) {
       p.excluded_by_type = EXCLUDED_TYPES.has(s.company_type);
       if (EXCLUDED_TYPES.has(s.company_type)) reclassified++;
     }
+    // alias_of: this company is the SAME EMPLOYER as another key, under a second board.
+    //
+    // Research already discovers this and had nowhere to put it — the Counterpart Health dossier
+    // stated outright that it is a Clover Health subsidiary sharing its roles, and that knowledge
+    // went into prose and was lost. Detection can only INFER the link from coinciding postings,
+    // which is circumstantial and fails whenever the two boards happen not to overlap. An agent
+    // reading the company's own words is the better source, so give it somewhere to say so.
+    if (s.alias_of && s.alias_of !== p.key) {
+      aliasRows.push({ alias: p.key, canonical: s.alias_of, note: s.alias_note || s.llm_reason || 'declared during company research', at: new Date().toISOString() });
+    }
     rows++; matched.add(p.key);
+  }
+  if (aliasRows.length) {
+    // Append-only, the same file dedupe-companies writes; latest line wins on read.
+    appendFileSync(join(ROOT, 'data', 'company-aliases.jsonl'), aliasRows.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf-8');
   }
   saveJsonl(PERSONAL, personal);
   if (typeChanged) saveJsonl(RESEARCH, [...research.values()]);
 
   if (verbose) {
     // rows != companies for the 273 duplicated keys — report both so that isn't confusing.
+    if (aliasRows.length) console.error(`✓ ${aliasRows.length} alias(es) declared → data/company-aliases.jsonl (re-run score-postings + company-aggregates)`);
     console.error(`✓ applied ${matched.size} companies (${rows} rows)${reclassified ? ` — ${reclassified} reclassified as consulting/outsourcing/staffing → landscape-only` : ''}`);
     // Previously these were dropped in silence, so a typo'd key looked like a success.
     const unknown = [...scores.keys()].filter(k => !matched.has(k));

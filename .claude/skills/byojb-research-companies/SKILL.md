@@ -68,6 +68,13 @@ node llm-triage.mjs --emit-research N --needs-comp
 Everything else in the loop is unchanged — still write both notes, still record `llm_fit`, still
 `--record-fail` on a dead page. The only difference is which companies come out.
 
+## If it turns out to be another company you already have
+
+A subsidiary posting its parent's roles, a rebrand, or a second board is the SAME employer. Add
+`"alias_of": "<canonical key>"` to that company's result. Counterpart Health's own site says it is a
+Clover Health subsidiary and its board carries five of Clover's seven roles — research notices this
+routinely, and without somewhere to record it the observation is written into prose and lost.
+
 ## When a company's board is broken
 
 If a company in your queue has no live postings because its board 404s or 403s, that is **not** a
