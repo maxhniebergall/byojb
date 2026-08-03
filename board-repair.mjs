@@ -148,6 +148,7 @@ function emit(n, { signalOnly = false } = {}) {
 // URL with a URL that merely looks alive — worse than leaving it broken, because nothing would
 // flag it again.
 async function auto(limit) {
+  const companiesWithPostings = new Set(loadJsonl(RESEARCH).map(r => r?.company_key).filter(Boolean));
   const personal = loadJsonl(C_PERSONAL);
   const byKey = new Map();
   for (const c of personal) if (!byKey.has(c.key)) byKey.set(c.key, c);
@@ -175,6 +176,12 @@ async function auto(limit) {
     if (prev?.outcome === 'relocated' || prev?.outcome === 'defunct') continue;
     const c = byKey.get(key);
     if (!c?.careers_url) continue;
+    // Only follow a redirect for a company we have ACTUALLY SEEN POSTINGS FROM. A Recruitee
+    // subdomain that now serves a different tenant is ambiguous: formo → formofoodsgmbh is a
+    // rename, but alex → nikon and oil → normecsuuk are recycled subdomains, and without prior
+    // postings there is nothing to tell them apart. Registering the wrong one attributes Nikon's
+    // jobs to a company called "Alex" — worse than leaving a dead board, because it looks healthy.
+    if (!companiesWithPostings.has(key)) continue;
     if (checked++ >= limit) break;
     try {
       // Follow the API url, not the careers page. A renamed tenant redirects its API path to the
