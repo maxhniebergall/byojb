@@ -1685,6 +1685,66 @@ try {
   fail(`outreach-core tests crashed: ${e.message}`);
 }
 
+// ── 25. Vocabulary review queue (Stage 2) ────────────────────────
+// The queue exists to make the vocabulary backlog FINITE and ORDERED, so the two things that can
+// silently break it are (a) matching semantics drifting away from the rubric's exact, case-
+// insensitive equality — the drift that mis-scored Stripe's ML Infrastructure posting — and (b)
+// the impact weighting counting postings you could never take.
+try {
+  const { computeVocab, knownTerms } = await import(pathToFileURL(join(ROOT, 'vocab-report.mjs')).href);
+  const rubric = { preferences: { languages: { love: ['Python'] }, technologies: { love: ['ML'], avoid: ['C'] } } };
+
+  const research = [
+    // "Kafka" on two strong, reachable postings; "Airflow" on one.
+    { key: 'a', company: 'Alpha', title: 'Senior Platform Eng', live: true, extracted: { languages: ['python'], technologies: ['Kafka', 'Airflow'] } },
+    { key: 'b', company: 'Beta', title: 'Staff Infra Eng', live: true, extracted: { technologies: ['Kafka'] } },
+    // "Struts" only on postings that cost nothing: hard-excluded, a duplicate, and a dead listing.
+    { key: 'c', company: 'Gamma', title: 'US-only Eng', live: true, extracted: { technologies: ['Struts'] } },
+    { key: 'd', company: 'Delta', title: 'Dup of something', live: true, extracted: { technologies: ['Struts'] } },
+    { key: 'e', company: 'Eps', title: 'Expired', live: false, extracted: { technologies: ['Struts'] } },
+    // Cloud/CI-CD must NOT be swallowed by the avoid-list entry "C" — substring matching here
+    // would file real terms as recognised and, worse, imply an avoid where none was stated.
+    { key: 'f', company: 'Zeta', title: 'Cloud Eng', live: true, extracted: { technologies: ['Cloud', 'CI/CD', 'ML'] } },
+  ];
+  const personal = [
+    { key: 'a', computed_score: 5, hard_excluded: false, dup_of: null },
+    { key: 'b', computed_score: 5, hard_excluded: false, dup_of: null },
+    { key: 'c', computed_score: 4.8, hard_excluded: true, dup_of: null },
+    { key: 'd', computed_score: 4.8, hard_excluded: false, dup_of: 'c' },
+    { key: 'e', computed_score: 4.8, hard_excluded: false, dup_of: null },
+    { key: 'f', computed_score: 2.5, hard_excluded: false, dup_of: null },
+  ];
+  const out = computeVocab({ research, personal, rubric });
+  const by = Object.fromEntries(out.rows.map(r => [r.term, r]));
+
+  if (out.postings_considered === 3) pass('vocab: excluded / duplicate / dead postings are not considered');
+  else fail(`vocab: considered ${out.postings_considered} postings, expected 3`);
+
+  if (!by.Struts) pass('vocab: a term seen only on unreachable postings is not in the queue');
+  else fail(`vocab: Struts ranked at impact ${by.Struts.impact} despite no reachable posting`);
+
+  // Two 5.0 postings → 5/5 + 5/5 = 2.0; one 5.0 posting → 1.0.
+  if (by.Kafka?.impact === 2 && by.Kafka?.count === 2) pass('vocab: impact sums score-weighted reachable postings');
+  else fail(`vocab: Kafka → ${JSON.stringify(by.Kafka)}, expected impact 2 / count 2`);
+  if (out.rows[0]?.term === 'Kafka' && by.Airflow?.impact === 1) pass('vocab: the higher-impact term ranks first');
+  else fail(`vocab: ranking is ${out.rows.map(r => r.term).join(',')}`);
+
+  // "python" (lowercased in the JD) is on the love list; "ML" is on it exactly. Neither is a gap.
+  if (!by.python && !by.ML) pass('vocab: known terms match case-insensitively and are excluded');
+  else fail('vocab: a term already in the rubric leaked into the queue');
+  // The substring trap, stated concretely: "C" is on avoid, "Cloud" and "CI/CD" are not.
+  if (by.Cloud && by['CI/CD']) pass('vocab: no substring matching — "C" on avoid does not swallow Cloud / CI/CD');
+  else fail('vocab: substring matching hid a genuinely unrecognised term');
+
+  if (knownTerms(rubric.preferences).size === 3) pass('vocab: knownTerms unions every list of both preference groups');
+  else fail(`vocab: knownTerms → ${knownTerms(rubric.preferences).size}, expected 3`);
+
+  if ((by.Kafka.examples || []).length === 2 && by.Kafka.examples[0].company === 'Alpha') pass('vocab: examples carry company + title, capped at 3');
+  else fail(`vocab: Kafka examples → ${JSON.stringify(by.Kafka.examples)}`);
+} catch (e) {
+  fail(`vocab-report tests crashed: ${e.message}`);
+}
+
 // ── SUMMARY ─────────────────────────────────────────────────────
 
 console.log('\n' + '='.repeat(50));

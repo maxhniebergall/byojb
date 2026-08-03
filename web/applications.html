@@ -36,7 +36,7 @@
 <body>
 <header>
   <h1>BYOJB</h1>
-  <div class="seg"><a href="/postings">Postings</a><a href="/companies">Companies</a><a href="/applications" class="active">Applications</a></div>
+  <div class="seg"><a href="/postings">Postings</a><a href="/companies">Companies</a><a href="/outreach">Outreach</a><a href="/contacts">Contacts</a><a href="/applications" class="active">Applications</a><a href="/vocabulary">Vocabulary</a></div>
 </header>
 
 <div class="wrap">
@@ -145,7 +145,10 @@ async function openApplication(key){
   $('#adetail').querySelectorAll('[data-st]').forEach(el=>el.onclick=async()=>{await post('/api/application/status',{key,status:el.dataset.st});toast('status → '+el.dataset.st);await loadApplications();openApplication(key);});
   $('#aSaveMeta').onclick=async()=>{await post('/api/application/meta',{key,company:$('#aCompany').value,title:$('#aTitle').value,recruiter:{name:$('#aRname').value,email:$('#aRemail').value,phone:$('#aRphone').value,notes:$('#aRnotes').value},notes:$('#aNotes').value});toast('saved');await loadApplications();openApplication(key);};
 }
-['aq','aStatus'].forEach(id=>{const e=$('#'+id);e.oninput=renderApplications;e.onchange=renderApplications;});
+// One event per control: rendering on both `input` and `change` rebuilds the table on blur,
+// so the first click on a row after typing lands on a replaced element and does nothing.
+$('#aq').oninput=renderApplications;
+$('#aStatus').onchange=renderApplications;
 
 loadApplications();
 </script>

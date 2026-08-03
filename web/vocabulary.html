@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vocabulary — BYOJB</title>
+<style>
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  header h1{font-size:1.05rem;margin:0;}
+  .seg{display:flex;gap:.3rem;}
+  .seg a{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;text-decoration:none;}
+  .seg a.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
+  .counts{color:var(--mut);font-size:.82rem;margin-left:auto;}
+  .wrap{padding:1rem 1.25rem;max-width:1100px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  .pad{padding:.9rem 1rem;} h2.lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 .7rem;}
+  input,select{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
+  .ctrls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.7rem;border-bottom:1px solid var(--line);}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;} th,td{text-align:left;padding:.5rem .55rem;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:600;white-space:nowrap;}
+  .badge{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .35rem;font-size:.82rem;}
+  .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
+  .term{font-weight:600;font-size:.95rem;}
+  .ex{color:var(--mut);font-size:.76rem;} .ex a{color:var(--mut);text-decoration:none;} .ex a:hover{color:var(--accent);}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
+  .btn:hover{border-color:var(--accent);} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  /* Same colour language as the posting-row chips, so love/ok/avoid mean one thing everywhere. */
+  .btn-love{border-color:rgba(62,201,138,.4)!important;color:var(--good)!important;} .btn-love:hover{background:rgba(62,201,138,.15)!important;}
+  .btn-ok{border-color:rgba(124,140,255,.4)!important;color:var(--accent)!important;} .btn-ok:hover{background:rgba(124,140,255,.15)!important;}
+  .btn-avoid{border-color:rgba(224,85,110,.4)!important;color:var(--bad)!important;} .btn-avoid:hover{background:rgba(224,85,110,.15)!important;}
+  .btn-neutral{color:var(--mut)!important;}
+  .acts{display:flex;gap:.3rem;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+  .note{color:var(--mut);font-size:.82rem;margin:.2rem 0 0;}
+  tr.gone{opacity:0;transition:opacity .18s;}
+  .empty{padding:1.2rem;color:var(--mut);}
+</style>
+</head>
+<body>
+<header>
+  <h1>BYOJB</h1>
+  <div class="seg"><a href="/postings">Postings</a><a href="/companies">Companies</a><a href="/outreach">Outreach</a><a href="/contacts">Contacts</a><a href="/applications">Applications</a><a href="/vocabulary" class="active">Vocabulary</a></div>
+  <span class="counts" id="counts">loading…</span>
+</header>
+
+<div class="wrap">
+  <div class="panel pad" style="margin-bottom:1rem">
+    <h2 class="lbl">Vocabulary review queue</h2>
+    <p class="note">Terms real postings use that your rubric has no opinion on. Ranked by <b>impact</b>
+      — a count of the live, reachable, non-duplicate postings naming the term, each weighted by its
+      score, so one perfect posting counts 1.0. A term on 40 strong postings matters; one on a single
+      hard-excluded role does not.</p>
+    <p class="note">Classifying writes the term to <code>config/rubric.yml</code> verbatim (matching is
+      exact and case-insensitive). Re-run <code>node score-postings.mjs</code> afterwards to re-rank.
+      Nothing here is decided for you.</p>
+  </div>
+  <div class="panel">
+    <div class="ctrls">
+      <input type="search" id="q" placeholder="search term / example company…" style="flex:1;min-width:180px">
+      <select id="grp" title="which preference list to file into"><option value="technologies">technologies</option><option value="languages">languages</option></select>
+      <select id="limit"><option value="50">top 50</option><option value="100">top 100</option><option value="250">top 250</option><option value="0">all</option></select>
+      <span id="tcount" style="color:var(--mut);font-size:.8rem"></span>
+    </div>
+    <div id="vtable"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+const bcls=v=>v>=20?'b-hi':v>=5?'b-mid':'b-lo';
+
+let ROWS=[], META={};
+
+async function load(){
+  const lim=$('#limit').value;
+  const d=await (await fetch('/api/vocab/terms'+(lim&&lim!=='0'?('?limit='+lim):''))).json();
+  ROWS=d.rows||[]; META=d;
+  $('#counts').textContent=`${d.total_terms} unrecognised terms · ${d.postings_considered} reachable postings · rubric knows ${d.known_terms}`;
+  render();
+}
+function filtered(){
+  const q=$('#q').value.trim().toLowerCase();
+  if(!q) return ROWS;
+  return ROWS.filter(t=>(t.term+' '+(t.examples||[]).map(e=>e.company+' '+e.title).join(' ')).toLowerCase().includes(q));
+}
+function render(){
+  const list=filtered();
+  $('#tcount').textContent=`${list.length} shown`;
+  if(!list.length){ $('#vtable').innerHTML='<div class="empty">nothing left in the queue 🎉</div>'; return; }
+  let h='<table><thead><tr><th>Impact</th><th>Postings</th><th>Term</th><th>Seen on</th><th>Classify</th></tr></thead><tbody>';
+  for(const t of list){
+    const ex=(t.examples||[]).map(e=>`<div><a href="/posting?key=${encodeURIComponent(e.key)}" target="_blank">${esc(e.company)} — ${esc(e.title)}</a>${e.score!=null?` <span style="opacity:.7">(${e.score})</span>`:''}</div>`).join('');
+    h+=`<tr data-term="${esc(t.term)}">
+      <td><span class="badge ${bcls(t.impact)}">${t.impact.toFixed(1)}</span></td>
+      <td>${t.count}</td>
+      <td class="term">${esc(t.term)}</td>
+      <td class="ex">${ex||'·'}</td>
+      <td><div class="acts">
+        <button class="btn sm btn-love" data-list="love" title="actively want this work">love</button>
+        <button class="btn sm btn-ok" data-list="ok" title="fine">ok</button>
+        <button class="btn sm btn-avoid" data-list="avoid" title="dealbreaker — caps the stack score at 1.5">avoid</button>
+        <button class="btn sm btn-neutral" data-list="neutral" title="recognised, but carries no preference">neutral</button>
+      </div></td></tr>`;
+  }
+  h+='</tbody></table>';
+  $('#vtable').innerHTML=h;
+  $('#vtable').querySelectorAll('.acts button').forEach(b=>b.onclick=()=>classify(b));
+}
+// One POST to the SAME endpoint the posting-row chips use (/api/rubric/technology) — a second
+// writer to rubric.yml would be a second place for the two to disagree about how terms are stored.
+async function classify(btn){
+  const tr=btn.closest('tr'); const term=tr.dataset.term; const list=btn.dataset.list;
+  tr.querySelectorAll('button').forEach(b=>b.disabled=true);
+  const res=await post('/api/rubric/technology',{term,list,group:$('#grp').value});
+  const j=await res.json().catch(()=>({error:'bad response'}));
+  if(!res.ok||j.error){ tr.querySelectorAll('button').forEach(b=>b.disabled=false); return toast('failed: '+(j.error||res.status)); }
+  toast(j.already?`"${term}" already in ${list}`:`"${term}" → ${list} · re-run score-postings.mjs`);
+  // Drop the row locally rather than refetching: the queue is the point of the page and a full
+  // reload would lose your scroll position mid-backlog. The server is the source of truth on the
+  // next load; ROWS is pruned too so a search re-render doesn't resurrect the row.
+  ROWS=ROWS.filter(t=>t.term!==term);
+  tr.classList.add('gone');
+  setTimeout(()=>{ tr.remove(); $('#tcount').textContent=`${filtered().length} shown`; },180);
+}
+$('#q').oninput=render;
+$('#limit').onchange=load;
+load();
+</script>
+</body>
+</html>

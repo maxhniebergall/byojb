@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contacts — BYOJB</title>
+<style>
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  header h1{font-size:1.05rem;margin:0;}
+  .seg{display:flex;gap:.3rem;}
+  .seg a{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;text-decoration:none;}
+  .seg a.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
+  .wrap{padding:1rem 1.25rem;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  input,select,textarea{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
+  .ctrls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.7rem;border-bottom:1px solid var(--line);}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;} th,td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:600;white-space:nowrap;} tr.crow:hover td{background:#191b30;cursor:pointer;}
+  td a{color:var(--accent);text-decoration:none;}
+  .tie{font-size:.64rem;padding:.06rem .4rem;border-radius:99px;border:1px solid var(--line);color:var(--mut);white-space:nowrap;}
+  .tie.strong{color:var(--good);border-color:var(--good);}
+  .rel{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .4rem;font-size:.8rem;}
+  .rel.hi{background:var(--good);color:#0b0c18;} .rel.mid{background:var(--warn);color:#0b0c18;}
+  .rel.lo{background:#23264a;color:var(--mut);} .rel.none{background:none;color:var(--line);}
+  .act{font-size:.64rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);}
+  .act.active{background:rgba(62,201,138,.18);color:var(--good);}
+  .act.occasional{background:rgba(224,179,65,.18);color:var(--warn);}
+  .act.dormant{background:rgba(224,85,110,.16);color:var(--bad);}
+  /* Notes are the reason you remember who this person is — show a readable slice inline,
+     with the rest on hover, rather than hiding them behind a click. */
+  td.notes{color:var(--mut);font-size:.8rem;max-width:22rem;overflow:hidden;text-overflow:ellipsis;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;}
+  .detail{padding:1rem 1.1rem;} .detail.empty{color:var(--mut);text-align:center;padding:3rem;}
+  .field{margin:.7rem 0;} .field label{display:block;font-size:.72rem;text-transform:uppercase;color:var(--mut);margin-bottom:.3rem;}
+  .field input,.field select{width:100%;} textarea{width:100%;min-height:70px;font:12px/1.5 ui-monospace,monospace;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<header>
+  <h1>BYOJB</h1>
+  <div class="seg"><a href="/postings">Postings</a><a href="/companies">Companies</a><a href="/outreach">Outreach</a><a href="/contacts" class="active">Contacts</a><a href="/applications">Applications</a><a href="/vocabulary">Vocabulary</a></div>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="ctrls">
+      <input type="search" id="cq" placeholder="search name / company / title / notes…" style="flex:1;min-width:180px">
+      <select id="cArch"><option value="">any archetype</option></select>
+      <select id="cRel"><option value="">any relationship</option></select>
+      <select id="cAct"><option value="">any activity</option></select>
+      <select id="cMinRel">
+        <option value="">any relevance</option>
+        <option value="4">relevance ≥ 4</option>
+        <option value="3">relevance ≥ 3</option>
+        <option value="2">relevance ≥ 2</option>
+        <option value="unrated">unrated only</option>
+      </select>
+      <button class="btn sm good" id="cNew">+ New contact</button>
+    </div>
+    <div id="ccount" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem;border-bottom:1px solid var(--line);background:rgba(124,140,255,0.02)"></div>
+    <div id="ctable"></div>
+  </div>
+  <div class="panel" style="margin-top:1rem"><div class="detail empty" id="cdetail">Select a contact, or add one →</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+const opt=(list,cur)=>list.map(v=>`<option value="${esc(v)}"${v===cur?' selected':''}>${esc(v)}</option>`).join('');
+// Same 0–5 scale and colour thresholds the postings queue uses, so a "4" reads the same everywhere.
+function relBadge(v){
+  if(v==null) return '<span class="rel none" title="not yet rated">–</span>';
+  const cls=v>=4?'hi':v>=3?'mid':'lo';
+  return `<span class="rel ${cls}">${(+v).toFixed(1).replace(/\.0$/,'')}</span>`;
+}
+
+let ROWS=[], VOCAB={archetypes:[],relationships:[],activity_levels:[]}, csort={key:'relevance',dir:-1};
+
+async function load(){
+  const d=await (await fetch('/api/contacts')).json();
+  ROWS=d.rows; VOCAB=d.vocab;
+  const fill=(id,label,list)=>$('#'+id).innerHTML=`<option value="">${label}</option>`+list.map(a=>`<option>${esc(a)}</option>`).join('');
+  fill('cArch','any archetype',VOCAB.archetypes);
+  fill('cRel','any relationship',VOCAB.relationships);
+  fill('cAct','any activity',VOCAB.activity_levels||[]);
+  render();
+}
+function filtered(){
+  const q=$('#cq').value.trim().toLowerCase(), ar=$('#cArch').value, rel=$('#cRel').value,
+        act=$('#cAct').value, minRel=$('#cMinRel').value;
+  let list=ROWS.slice();
+  if(ar) list=list.filter(c=>c.archetype===ar);
+  if(rel) list=list.filter(c=>c.relationship===rel);
+  if(act) list=list.filter(c=>(c.activity||'unknown')===act);
+  // "unrated" is its own filter: null means never rated, which is NOT the same as a 0.
+  if(minRel==='unrated') list=list.filter(c=>c.relevance==null);
+  else if(minRel) list=list.filter(c=>c.relevance!=null&&c.relevance>=Number(minRel));
+  if(q) list=list.filter(c=>[c.name,c.company,c.title,c.notes,c.email].filter(Boolean).join(' ').toLowerCase().includes(q));
+  const k=csort.key,dir=csort.dir;
+  list.sort((a,b)=>{
+    if(k==='relevance'){
+      // Unrated sorts last in both directions — an unscored contact is unknown, not bad.
+      const av=a.relevance,bv=b.relevance;
+      if(av==null&&bv==null) return 0;
+      if(av==null) return 1;
+      if(bv==null) return -1;
+      return (av-bv)*dir;
+    }
+    return String(a[k]??'').localeCompare(String(b[k]??''))*dir;
+  });
+  return list;
+}
+function cth(k,l){const ar=csort.key===k?(csort.dir<0?' ▼':' ▲'):'';return `<th data-ck="${k}">${esc(l)}${ar}</th>`;}
+function render(){
+  const list=filtered();
+  const rated=ROWS.filter(c=>c.relevance!=null);
+  $('#ccount').textContent=`${list.length} contact${list.length===1?'':'s'} shown · ${ROWS.filter(c=>c.strong_tie).length} strong-tie`
+    + ` · ${ROWS.filter(c=>c.open_threads>0).length} with an open thread · ${rated.length}/${ROWS.length} rated`
+    + ` · ${ROWS.filter(c=>c.activity==='dormant').length} dormant`;
+  let h='<table><thead><tr>'+cth('name','Name')+cth('title','Title')+cth('company','Company')
+    +cth('archetype','Archetype')+cth('relationship','Relationship')+cth('relevance','Rel')
+    +cth('activity','Activity')+'<th>Notes</th><th>Threads</th><th>Links</th></tr></thead><tbody>';
+  for(const c of list){
+    h+=`<tr class="crow" data-k="${esc(c.key)}">
+      <td>${esc(c.name||c.key)}</td><td>${esc(c.title||'·')}</td><td>${esc(c.company||'·')}</td>
+      <td>${esc(c.archetype)}</td>
+      <td><span class="tie ${c.strong_tie?'strong':''}">${esc(c.relationship||'cold')}</span></td>
+      <td>${relBadge(c.relevance)}</td>
+      <td><span class="act ${esc(c.activity||'unknown')}">${esc(c.activity||'unknown')}</span></td>
+      <td class="notes" title="${esc(c.notes||'')}">${esc(c.notes||'·')}</td>
+      <td>${c.thread_count}${c.open_threads?` (${c.open_threads} open)`:''}</td>
+      <td>${[c.linkedin_url?`<a href="${esc(c.linkedin_url)}" target="_blank">in ↗</a>`:'',
+            c.thread_count?`<a href="/outreach?q=${encodeURIComponent(c.name||'')}" target="_blank">threads ↗</a>`:''].filter(Boolean).join(' · ')||'·'}</td></tr>`;
+  }
+  h+='</tbody></table>';
+  $('#ctable').innerHTML=list.length?h:'<div class="detail empty">no contacts yet — add one here, or capture a LinkedIn profile with the extension</div>';
+  $('#ctable').querySelectorAll('th[data-ck]').forEach(el=>el.onclick=()=>{
+    const k=el.dataset.ck;
+    if(csort.key===k) csort.dir*=-1; else csort={key:k,dir:k==='relevance'?-1:1};
+    render();
+  });
+  $('#ctable').querySelectorAll('tr.crow').forEach(el=>el.onclick=()=>openContact(el.dataset.k));
+  $('#ctable').querySelectorAll('tr.crow a[href]').forEach(el=>el.onclick=e=>e.stopPropagation());
+}
+
+function form(c={}){
+  return `<div class="grid">
+      <div class="field"><label>Name</label><input id="fName" value="${esc(c.name||'')}"></div>
+      <div class="field"><label>Title</label><input id="fTitle" value="${esc(c.title||'')}" placeholder="Engineering Manager, Platform"></div>
+      <div class="field"><label>Company</label><input id="fCompany" value="${esc(c.company||'')}"></div>
+      <div class="field"><label>Company key</label><input id="fCompanyKey" value="${esc(c.company_key||'')}" placeholder="greenhouse:acme"></div>
+      <div class="field"><label>Archetype</label><select id="fArch">${opt(VOCAB.archetypes,c.archetype||'other')}</select></div>
+      <div class="field"><label>Relationship</label><select id="fRel">${opt(VOCAB.relationships,c.relationship||'cold')}</select></div>
+      <div class="field"><label>Relevance (0–5, blank = unrated)</label>
+        <input id="fRelevance" type="number" min="0" max="5" step="0.5" value="${c.relevance==null?'':esc(c.relevance)}" placeholder="—"></div>
+      <div class="field"><label>LinkedIn activity</label><select id="fAct">${opt(VOCAB.activity_levels||[],c.activity||'unknown')}</select></div>
+      <div class="field"><label>LinkedIn URL</label><input id="fLi" value="${esc(c.linkedin_url||'')}"></div>
+      <div class="field"><label>Email</label><input id="fEmail" value="${esc(c.email||'')}"></div>
+      <div class="field"><label>Phone</label><input id="fPhone" value="${esc(c.phone||'')}"></div>
+      <div class="field"><label>Source</label><input id="fSource" value="${esc(c.source||'manual')}"></div>
+    </div>
+    <div class="field"><label>Notes — shared context, what to reference</label><textarea id="fNotes">${esc(c.notes||'')}</textarea></div>
+    <button class="btn good" id="fSave">Save contact</button>`;
+}
+function readForm(){
+  return {name:$('#fName').value.trim(),title:$('#fTitle').value.trim(),company:$('#fCompany').value.trim(),
+    company_key:$('#fCompanyKey').value.trim(),archetype:$('#fArch').value,relationship:$('#fRel').value,
+    relevance:$('#fRelevance').value.trim(),activity:$('#fAct').value,
+    linkedin_url:$('#fLi').value.trim(),email:$('#fEmail').value.trim(),phone:$('#fPhone').value.trim(),
+    source:$('#fSource').value.trim(),notes:$('#fNotes').value};
+}
+
+function openContact(key){
+  const c=ROWS.find(x=>x.key===key)||{};
+  $('#cdetail').className='detail';
+  $('#cdetail').innerHTML=`<h3 style="margin:.1rem 0 .6rem">${esc(c.name||key)}</h3>`+form(c);
+  // The key is derived from identity handles, so re-submitting the same person updates in place.
+  $('#fSave').onclick=async()=>{await post('/api/contact',{key,...readForm()});toast('saved');await load();openContact(key);};
+}
+$('#cNew').onclick=()=>{
+  $('#cdetail').className='detail';
+  $('#cdetail').innerHTML='<h3 style="margin:.1rem 0 .6rem">New contact</h3>'+form({});
+  $('#fSave').onclick=async()=>{
+    const r=await post('/api/contact',readForm());
+    if(r.error){toast(r.error);return;}
+    toast('added'); await load(); openContact(r.key);
+  };
+};
+
+// Bind ONE event per control. A text input firing render() on both `input` and `change` rebuilds
+// the table on blur — so the first click on a row after typing lands on an element that's replaced
+// mid-click, and appears to do nothing.
+$('#cq').oninput=render;
+['cArch','cRel','cAct','cMinRel'].forEach(id=>{ $('#'+id).onchange=render; });
+load();
+</script>
+</body>
+</html>

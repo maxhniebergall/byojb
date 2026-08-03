@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outreach — BYOJB</title>
+<style>
+  :root{--bg:#0f1020;--card:#1a1c33;--ink:#e8e9f3;--mut:#9aa0c0;--line:#2a2d4a;--accent:#7c8cff;--good:#3ec98a;--bad:#e0556e;--warn:#e0b341;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:.8rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  header h1{font-size:1.05rem;margin:0;}
+  .seg{display:flex;gap:.3rem;}
+  .seg a{background:none;border:1px solid var(--line);color:var(--ink);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.85rem;text-decoration:none;}
+  .seg a.active{background:var(--accent);border-color:var(--accent);color:#0b0c18;font-weight:600;}
+  .wrap{padding:1rem 1.25rem;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  .pad{padding:.9rem 1rem;}
+  input,select,textarea{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
+  .ctrls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.7rem;border-bottom:1px solid var(--line);}
+  .ctrls select{font-size:.8rem;}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;} th,td{text-align:left;padding:.45rem .55rem;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:600;white-space:nowrap;} tr.orow:hover td{background:#191b30;cursor:pointer;}
+  .st{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:rgba(124,140,255,.18);color:var(--accent);white-space:nowrap;}
+  .tie{font-size:.64rem;padding:.06rem .4rem;border-radius:99px;border:1px solid var(--line);color:var(--mut);}
+  .tie.strong{color:var(--good);border-color:var(--good);}
+  .stale{color:var(--warn);}
+  .detail{padding:1rem 1.1rem;} .detail.empty{color:var(--mut);text-align:center;padding:3rem;}
+  .detail h3{margin:.1rem 0;font-size:1.2rem;} .meta{color:var(--mut);font-size:.83rem;margin:.2rem 0 .8rem;} .meta a,td a{color:var(--accent);text-decoration:none;}
+  .field{margin:.8rem 0;} .field label{display:block;font-size:.72rem;text-transform:uppercase;color:var(--mut);margin-bottom:.3rem;}
+  textarea{width:100%;min-height:110px;font:12px/1.5 ui-monospace,monospace;}
+  .actrow{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.7rem 0;}
+  .btn{border:1px solid var(--line);background:#23264a;color:var(--ink);padding:.4rem .75rem;border-radius:8px;cursor:pointer;font-size:.83rem;}
+  .btn:hover{border-color:var(--accent);} .btn.good{background:var(--good);color:#0b0c18;border-color:var(--good);font-weight:600;} .btn.sm{padding:.25rem .55rem;font-size:.78rem;}
+  .toast{position:fixed;bottom:1rem;right:1rem;background:var(--good);color:#0b0c18;padding:.5rem .9rem;border-radius:8px;font-weight:600;opacity:0;transition:.2s;} .toast.show{opacity:1;}
+  .row-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+  .msg{border-left:2px solid var(--line);padding:.35rem .7rem;margin:.45rem 0;white-space:pre-wrap;font:12px/1.55 ui-monospace,monospace;background:#0c0d1c;border-radius:0 8px 8px 0;}
+  .msg.out{border-left-color:var(--accent);} .msg.in{border-left-color:var(--good);}
+  .msg .mh{font:11px/1.4 -apple-system,system-ui,sans-serif;color:var(--mut);margin-bottom:.2rem;}
+</style>
+</head>
+<body>
+<header>
+  <h1>BYOJB</h1>
+  <div class="seg"><a href="/postings">Postings</a><a href="/companies">Companies</a><a href="/outreach" class="active">Outreach</a><a href="/contacts">Contacts</a><a href="/applications">Applications</a><a href="/vocabulary">Vocabulary</a></div>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="ctrls">
+      <button class="btn sm" data-of="open">Open</button><button class="btn sm" data-of="closed">Closed</button><button class="btn sm" data-of="all">All</button>
+      <input type="search" id="oq" placeholder="search contact / company / role / notes…" style="flex:1;min-width:200px">
+      <select id="oStatus"><option value="">any status</option></select>
+      <select id="oArch"><option value="">any archetype</option></select>
+    </div>
+    <div id="ocount" class="pad" style="padding:.4rem 1rem;color:var(--mut);font-size:.8rem;border-bottom:1px solid var(--line);background:rgba(124,140,255,0.02)"></div>
+    <div id="otable"></div>
+  </div>
+  <div class="panel" style="margin-top:1rem"><div class="detail empty" id="odetail">Select a thread →</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1300);}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+const opt=(list,cur)=>list.map(v=>`<option value="${esc(v)}"${v===cur?' selected':''}>${esc(v||'—')}</option>`).join('');
+
+let QUEUE=[], VOCAB={}, ofilter='open', osel=null;
+
+async function load(){
+  const d=await (await fetch('/api/outreach')).json();
+  QUEUE=d.rows; VOCAB=d.vocab;
+  $('#oStatus').innerHTML='<option value="">any status</option>'+VOCAB.states.map(s=>`<option>${esc(s)}</option>`).join('');
+  $('#oArch').innerHTML='<option value="">any archetype</option>'+VOCAB.archetypes.map(s=>`<option>${esc(s)}</option>`).join('');
+  render();
+}
+document.querySelectorAll('[data-of]').forEach(b=>b.onclick=()=>{ofilter=b.dataset.of;render();});
+
+function filtered(){
+  const q=$('#oq').value.trim().toLowerCase(), st=$('#oStatus').value, ar=$('#oArch').value;
+  let list=QUEUE.slice();
+  if(ofilter==='open') list=list.filter(r=>r.open); else if(ofilter==='closed') list=list.filter(r=>!r.open);
+  if(st) list=list.filter(r=>r.status===st);
+  if(ar) list=list.filter(r=>r.archetype===ar);
+  if(q) list=list.filter(r=>[r.contact_name,r.contact_title,r.company,r.posting_title,r.notes,r.next_action,r.channel,r.intent].filter(Boolean).join(' ').toLowerCase().includes(q));
+  return list;
+}
+
+function render(){
+  const list=filtered();
+  const strong=QUEUE.filter(r=>r.strong_tie).length;
+  $('#ocount').innerHTML=`<span>${list.length} thread${list.length===1?'':'s'} shown</span> &middot; <span>${QUEUE.filter(r=>r.open).length} open</span> &middot; <span>${strong} strong-tie</span>`;
+  let h='<table><thead><tr><th>Contact</th><th>Company</th><th>Posting</th><th>Archetype</th><th>Tie</th><th>Channel</th><th>Status</th><th>Msgs</th><th>Since sent</th><th>Next action</th></tr></thead><tbody>';
+  for(const r of list){
+    // days_since_out is display-only context, not a queue: nothing here schedules or nags.
+    const since=r.days_since_out==null?'·':`<span class="${r.days_since_out>=7&&r.open?'stale':''}">${r.days_since_out}d</span>`;
+    h+=`<tr class="orow" data-k="${esc(r.key)}">
+      <td>${esc(r.contact_name||r.contact_key)}<div style="color:var(--mut);font-size:.76rem">${esc(r.contact_title||'')}</div></td>
+      <td>${esc(r.company||'·')}</td>
+      <td>${r.posting_key?`<a href="/posting?key=${encodeURIComponent(r.posting_key)}" target="_blank">${esc(r.posting_title||'posting ↗')}</a>`:'·'}</td>
+      <td>${esc(r.archetype)}</td><td><span class="tie ${r.strong_tie?'strong':''}">${r.strong_tie?'strong':'weak'}</span></td>
+      <td>${esc(r.channel)}</td><td><span class="st">${esc(r.status)}</span></td>
+      <td>${r.message_count}</td><td>${since}</td><td>${esc(r.next_action||'·')}</td></tr>`;
+  }
+  h+='</tbody></table>';
+  $('#otable').innerHTML=list.length?h:'<div class="detail empty">no threads here — start one from a posting page, or capture a contact with the extension on LinkedIn</div>';
+  $('#otable').querySelectorAll('tr.orow').forEach(el=>el.onclick=()=>openThread(el.dataset.k));
+  $('#otable').querySelectorAll('tr.orow a[href]').forEach(el=>el.onclick=e=>e.stopPropagation());
+}
+
+async function openThread(key){
+  osel=key;
+  const t=await (await fetch('/api/outreach/thread?key='+encodeURIComponent(key))).json();
+  if(t.error){ $('#odetail').className='detail empty'; $('#odetail').textContent='not found'; return; }
+  const c=t.contact||{}, v=t.vocab;
+  const msgs=(t.messages||[]).map(m=>`<div class="msg ${m.direction}"><div class="mh">${m.direction==='out'?'→ you':'← them'} · ${esc((m.sent_at||'').slice(0,16).replace('T',' '))}${m.note?' · '+esc(m.note):''}</div>${esc(m.body)}</div>`).join('')
+    ||'<small style="color:var(--mut)">nothing logged yet</small>';
+  const statusBtns=v.states.map(s=>`<button class="btn sm" data-st="${esc(s)}"${s===t.status?' style="border-color:var(--accent);color:var(--accent)"':''}>${esc(s)}</button>`).join('');
+  $('#odetail').className='detail';
+  $('#odetail').innerHTML=`
+    <h3>${esc(c.name||t.contact_key)} <span class="st">${esc(t.status)}</span> <span class="tie ${t.strong_tie?'strong':''}">${t.strong_tie?'strong tie':'weak / cold'}</span></h3>
+    <div class="meta">${esc(c.title||'')} ${c.company?'· '+esc(c.company):''} ${c.archetype?'· '+esc(c.archetype):''} ${c.relationship?'· '+esc(c.relationship):''}
+      ${c.linkedin_url?`· <a href="${esc(c.linkedin_url)}" target="_blank">LinkedIn ↗</a>`:''}
+      ${c.email?'· '+esc(c.email):''}
+      ${t.company_key?`· <a href="/companies?q=${encodeURIComponent(c.company||t.company_key)}" target="_blank">company ↗</a>`:''}
+      ${t.posting.key?`· <a href="/posting?key=${encodeURIComponent(t.posting.key)}" target="_blank">${esc(t.posting.title||'posting')} ↗</a>`:''}
+      ${t.application?`· <a href="/applications" target="_blank">application #${t.application.tracker_num} (${esc(t.application.status)}) ↗</a>`:''}</div>
+
+    <div class="field"><label>Status</label><div class="actrow">${statusBtns}</div></div>
+
+    <div class="field"><label>Thread (${(t.messages||[]).length})</label>${msgs}</div>
+
+    <div class="field"><label>Log a message</label>
+      <div class="actrow"><select id="mDir"><option value="out">→ I sent this</option><option value="in">← they replied</option></select>
+        <input id="mDate" type="date" value="${esc(new Date().toISOString().slice(0,10))}"></div>
+      <textarea id="mBody" placeholder="paste the message you actually sent — review every word before sending; templated blasts are what recruiters filter out"></textarea>
+      <button class="btn good sm" id="mAdd" style="margin-top:.35rem">Log message</button></div>
+
+    <div class="row-grid">
+      <div class="field"><label>Channel</label><select id="oChannel">${opt(v.channels,t.channel)}</select></div>
+      <div class="field"><label>Intent</label><select id="oIntent">${opt(v.intents,t.intent)}</select></div>
+      <div class="field"><label>Outcome</label><select id="oOutcome">${opt(v.outcomes,t.outcome)}</select></div>
+      <div class="field"><label>Next action date</label><input id="oNad" type="date" value="${esc(t.next_action_date||'')}"></div>
+    </div>
+    <div class="field"><label>Next action</label><input id="oNa" style="width:100%" value="${esc(t.next_action||'')}" placeholder="e.g. bump with the latency-migration detail"></div>
+    <div class="field"><label>Notes</label><textarea id="oNotes" style="min-height:60px">${esc(t.notes||'')}</textarea>
+      <button class="btn sm" id="oSave" style="margin-top:.35rem">Save details</button>
+      ${t.posting.key&&!t.application?`<button class="btn sm" id="oConvert" style="margin-top:.35rem">Convert to application</button>`:''}</div>`;
+
+  $('#odetail').querySelectorAll('[data-st]').forEach(el=>el.onclick=async()=>{await post('/api/outreach/status',{key,status:el.dataset.st});toast('status → '+el.dataset.st);await load();openThread(key);});
+  $('#mAdd').onclick=async()=>{
+    const b=$('#mBody').value.trim(); if(!b){toast('nothing to log');return;}
+    await post('/api/outreach/message',{key,direction:$('#mDir').value,body:b,sent_at:$('#mDate').value});
+    toast('logged'); await load(); openThread(key);
+  };
+  $('#oSave').onclick=async()=>{
+    await post('/api/outreach/meta',{key,channel:$('#oChannel').value,intent:$('#oIntent').value,outcome:$('#oOutcome').value,
+      next_action:$('#oNa').value,next_action_date:$('#oNad').value,notes:$('#oNotes').value});
+    toast('saved'); await load(); openThread(key);
+  };
+  const cv=$('#oConvert');
+  if(cv) cv.onclick=async()=>{const r=await post('/api/outreach/convert',{key});toast(r.ok?'application created':(r.error||'failed'));await load();openThread(key);};
+}
+
+// One event per control — see contacts.html: an input that renders on both `input` and `change`
+// rebuilds the table on blur, swallowing the first click on a row.
+$('#oq').oninput=render;
+['oStatus','oArch'].forEach(id=>{ $('#'+id).onchange=render; });
+load();
+</script>
+</body>
+</html>

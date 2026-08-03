@@ -30,6 +30,7 @@ import {
 import { classifyForm, classifyField, normLabel, PROFILE_KEYS } from '../autofill-fields.mjs';
 import { validateBandRow } from '../comp-core.mjs';
 import { TITLE_FAMILIES, LEVEL_LADDER } from '../title-family.mjs';
+import { vocabQueue } from '../vocab-report.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PORT = Number(process.env.DASHBOARD_PORT || process.env.DECISIONS_PORT || 4173);
@@ -749,6 +750,19 @@ const server = createServer(async (req, res) => {
   }
   if (path === '/api/autofill/profile') return json(res, { profile: loadAppProfile(), profile_keys: PROFILE_KEYS });
 
+  // The vocabulary review queue: technology/language terms live postings use that the rubric has
+  // no opinion on, ranked by what they cost. The computation lives in vocab-report.mjs and is
+  // IMPORTED, not reimplemented — the CLI and this panel must never disagree about what
+  // "unrecognised" means, since that definition (exact, case-insensitive equality) is the whole
+  // reason the Stripe ML Infrastructure posting mis-scored in the first place.
+  //
+  // Named /api/vocab/terms because /api/vocab below is already the extension's controlled-vocabulary
+  // endpoint (archetypes, channels, …) — a different thing that happens to share the word.
+  if (path === '/api/vocab/terms') {
+    const n = Number(url.searchParams.get('limit'));
+    return json(res, vocabQueue(Number.isFinite(n) && n > 0 ? n : null));
+  }
+
   // Controlled vocabularies, so the Chrome extension renders the SAME options the registry
   // validates against instead of keeping its own copy that silently drifts out of date.
   if (path === '/api/vocab') {
@@ -907,6 +921,7 @@ const server = createServer(async (req, res) => {
   if (path === '/companies') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'companies.html'), 'utf8')); }
   if (path === '/applications') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'applications.html'), 'utf8')); }
   if (path === '/outreach') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'outreach.html'), 'utf8')); }
+  if (path === '/vocabulary') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'vocabulary.html'), 'utf8')); }
   if (path === '/contacts') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'contacts.html'), 'utf8')); }
   if (path === '/posting') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'posting.html'), 'utf8')); }
   if (path === '/compare') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'posting-comparison.html'), 'utf8')); }
