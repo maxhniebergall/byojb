@@ -20,7 +20,23 @@ export default {
   async fetch(entry, ctx) {
     const slug = slugFrom(entry);
     if (!slug) throw new Error(`bamboohr: cannot parse careers_url for ${entry.name}`);
-    const json = await ctx.fetchJson(`https://${slug}.bamboohr.com/careers/list`);
+    // /careers/list is the right endpoint when the tenant's public portal is ON. When it is OFF the
+    // request 302s to login.php and returns HTML, which reads as a broken board — 127 boards were
+    // classified `blocked` on that basis and queued for repair they did not need.
+    //
+    // /jobs/embed2.php answers for those tenants, and its BODY (not its status, which is always 200
+    // after redirects) tells the two apart: real board markup means the tenant exists, an empty body
+    // means it does not. So fall back to it before concluding anything is wrong.
+    let json;
+    try {
+      json = await ctx.fetchJson(`https://${slug}.bamboohr.com/careers/list`);
+    } catch (err) {
+      const embed = await ctx.fetchText(`https://${slug}.bamboohr.com/jobs/embed2.php`).catch(() => '');
+      if (!embed.trim()) throw err;                       // no tenant at all — genuinely gone
+      // Tenant exists with the portal disabled. It publishes nothing we can read, but it is not
+      // broken and must not enter the repair queue.
+      return [];
+    }
     const jobs = Array.isArray(json?.result) ? json.result : [];
     return jobs.filter(j => j.id && j.jobOpeningName).map(j => {
       // BambooHR populates EITHER `location` OR `atsLocation`, per job, never both — and only
