@@ -208,30 +208,41 @@ function apply(file) {
   const fixes = JSON.parse(readFileSync(file, 'utf-8'));
   if (!Array.isArray(fixes)) throw new Error('expected an array');
   const personal = loadJsonl(C_PERSONAL);
+  // EVERY row for a key, not just the first. companies-personal.jsonl holds duplicate rows for
+  // 273 keys (bamboohr:koko appears three times), and updating only the first left the others
+  // pointing at the dead board — so whichever row a reader happened to pick decided whether the
+  // repair had taken effect. The verification probe read a stale row and reported the fix as broken.
   const byKey = new Map();
-  for (const c of personal) if (!byKey.has(c.key)) byKey.set(c.key, c);
+  for (const c of personal) {
+    if (!byKey.has(c.key)) byKey.set(c.key, []);
+    byKey.get(c.key).push(c);
+  }
 
   if (!existsSync(REPAIR_LEDGER)) writeFileSync(REPAIR_LEDGER, 'key\tat\toutcome\tnote\n', 'utf-8');
   const stamp = new Date().toISOString();
   let relocated = 0, defunct = 0, unknown = 0, missing = 0;
 
   for (const f of fixes) {
-    const c = byKey.get(f?.key);
-    if (!c) { missing++; continue; }
+    const rows_ = byKey.get(f?.key);
+    if (!rows_?.length) { missing++; continue; }
     const outcome = String(f.outcome || '').toLowerCase();
     if (outcome === 'relocated') {
       if (!f.careers_url) { missing++; continue; }
-      c.careers_url = f.careers_url;
-      if (f.provider) c.provider = f.provider;
+      for (const c of rows_) {
+        c.careers_url = f.careers_url;
+        if (f.provider) c.provider = f.provider;
+      }
       // Clearing the probe is not needed: probe-boards writes a fresh row and the latest wins.
       relocated++;
     } else if (outcome === 'defunct') {
       // The ONLY outcome that stops us scanning a company. Recorded as a typed exclusion with a
       // reason so it is auditable and reversible, never a silent delete.
-      c.excluded_by_type = true;
-      c.company_type = 'defunct';
-      c.decision = 'skip';
-      c.llm_reason = f.note || 'company no longer exists';
+      for (const c of rows_) {
+        c.excluded_by_type = true;
+        c.company_type = 'defunct';
+        c.decision = 'skip';
+        c.llm_reason = f.note || 'company no longer exists';
+      }
       defunct++;
     } else {
       unknown++;
