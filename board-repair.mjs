@@ -65,7 +65,7 @@ export function loadRepairLedger(path = REPAIR_LEDGER) {
   return by;
 }
 
-function emit(n) {
+function emit(n, { signalOnly = false } = {}) {
   const probes = loadProbes();
   const ledger = loadRepairLedger();
   const personal = new Map();
@@ -75,11 +75,11 @@ function emit(n) {
 
   // The titles this company USED to post are the strongest clue to which employer it is — the
   // registry name is often just an ATS slug ("upboundext", "gtp-software-inc").
-  const titles = new Map();
+  const titlesByKey = new Map();
   for (const r of loadJsonl(RESEARCH)) {
     if (!r?.company_key || !r.title) continue;
-    if (!titles.has(r.company_key)) titles.set(r.company_key, new Set());
-    const s = titles.get(r.company_key);
+    if (!titlesByKey.has(r.company_key)) titlesByKey.set(r.company_key, new Set());
+    const s = titlesByKey.get(r.company_key);
     if (s.size < 6) s.add(r.title);
   }
 
@@ -95,14 +95,31 @@ function emit(n) {
     if (key) broken.set(key, { state: b.state, detail: `scan ${b.at.slice(0, 10)}`, via: 'scan' });
   }
 
+  // Repair the boards that cost us most first. A broken board hides a whole employer, so one
+  // belonging to a company already rated 5 is worth more than one nobody has looked at — and a
+  // truncated run should have covered those. dbt Labs sat at fit 5, 404, and invisible.
+  const value = (key) => {
+    const c = personal.get(key) || {};
+    return (c.llm_fit ?? 0) * 10 + (c.llm_rank ?? 0);
+  };
+  const ordered = [...broken].sort((a, b) => value(b[0]) - value(a[0]) || String(a[0]).localeCompare(String(b[0])));
+
   const now = Date.now();
   const out = [];
-  for (const [key, p] of broken) {
+  for (const [key, p] of ordered) {
     const prev = ledger.get(key);
     if (prev?.outcome === 'relocated' || prev?.outcome === 'defunct') continue;   // already settled
     if (prev?.outcome === 'unknown' && (now - Date.parse(prev.at)) / 86400000 < RETRY_DAYS) continue;
     const c = personal.get(key) || {};
     const r = research.get(key) || {};
+    // A broken board is only worth an agent if there is evidence a real employer is behind it.
+    // 395 of 431 in this queue have no titles, no postings ever seen and no rank: they are
+    // slug-enumeration artifacts (bamboohr:efea, :els, :epts...), not companies we lost. An agent
+    // cannot identify a bare slug with nothing to search on, and the mode rightly forbids guessing,
+    // so every one of them costs a research slot to return "unknown".
+    const titles = [...(titlesByKey.get(key) || [])];
+    const hasSignal = titles.length > 0 || (r.total ?? 0) > 0 || c.llm_fit != null || c.llm_rank != null;
+    if (signalOnly && !hasSignal) continue;
     out.push({
       key,
       name: c.name || r.name || key,
@@ -113,7 +130,7 @@ function emit(n) {
       provider: c.provider || r.provider || null,
       llm_rank: c.llm_rank ?? null,
       llm_fit: c.llm_fit ?? null,
-      known_titles: [...(titles.get(key) || [])],
+      known_titles: titles,
       previously_seen_postings: r.total ?? null,
     });
     if (out.length >= n) break;
@@ -243,7 +260,7 @@ function stats() {
 function main() {
   const args = process.argv.slice(2);
   const i = args.indexOf('--emit');
-  if (i !== -1) return emit(Number(args[i + 1]) || 20);
+  if (i !== -1) return emit(Number(args[i + 1]) || 20, { signalOnly: args.includes('--with-signal') });
   const j = args.indexOf('--apply');
   if (j !== -1) return apply(args[j + 1]);
   const k = args.indexOf('--auto');
