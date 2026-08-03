@@ -15,6 +15,9 @@
   .wrap{padding:1rem 1.25rem;max-width:1100px;}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;}
   .pad{padding:.9rem 1rem;} h2.lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 .7rem;}
+  /* Small toggle showing which preference list a term will land in. */
+  .grp-tag{font-size:.6rem;padding:.04rem .3rem;border-radius:4px;background:#23264a;color:var(--mut);cursor:pointer;margin-left:.35rem;vertical-align:middle;}
+  .grp-tag:hover{color:var(--accent);}
   input,select{background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:7px;font:inherit;padding:.4rem .5rem;}
   .ctrls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.7rem;border-bottom:1px solid var(--line);}
   table{width:100%;border-collapse:collapse;font-size:.84rem;} th,td{text-align:left;padding:.5rem .55rem;border-bottom:1px solid var(--line);vertical-align:top;}
@@ -58,7 +61,7 @@
   <div class="panel">
     <div class="ctrls">
       <input type="search" id="q" placeholder="search term / example company…" style="flex:1;min-width:180px">
-      <select id="grp" title="which preference list to file into"><option value="technologies">technologies</option><option value="languages">languages</option></select>
+
       <select id="limit"><option value="50">top 50</option><option value="100">top 100</option><option value="250">top 250</option><option value="0">all</option></select>
       <span id="tcount" style="color:var(--mut);font-size:.8rem"></span>
     </div>
@@ -95,10 +98,13 @@ function render(){
   let h='<table><thead><tr><th>Impact</th><th>Postings</th><th>Term</th><th>Seen on</th><th>Classify</th></tr></thead><tbody>';
   for(const t of list){
     const ex=(t.examples||[]).map(e=>`<div><a href="/posting?key=${encodeURIComponent(e.key)}" target="_blank">${esc(e.company)} — ${esc(e.title)}</a>${e.score!=null?` <span style="opacity:.7">(${e.score})</span>`:''}</div>`).join('');
-    h+=`<tr data-term="${esc(t.term)}">
+    // The group travels WITH the row. It is shown, not hidden, because it decides which list the
+    // term lands in and the extractor is occasionally wrong — seeing "languages" next to "Protobuf"
+    // is the cue to override before clicking, rather than discovering it in the YAML later.
+    h+=`<tr data-term="${esc(t.term)}" data-group="${esc(t.group||'technologies')}">
       <td><span class="badge ${bcls(t.impact)}">${t.impact.toFixed(1)}</span></td>
       <td>${t.count}</td>
-      <td class="term">${esc(t.term)}</td>
+      <td class="term">${esc(t.term)} <span class="grp-tag" title="filed into preferences.${esc(t.group||'technologies')} — click to switch">${(t.group||'technologies')==='languages'?'lang':'tech'}</span></td>
       <td class="ex">${ex||'·'}</td>
       <td><div class="acts">
         <button class="btn sm btn-love" data-list="love" title="actively want this work">love</button>
@@ -110,13 +116,26 @@ function render(){
   h+='</tbody></table>';
   $('#vtable').innerHTML=h;
   $('#vtable').querySelectorAll('.acts button').forEach(b=>b.onclick=()=>classify(b));
+  // Per-row override for the cases the extractor mis-grouped.
+  $('#vtable').querySelectorAll('.grp-tag').forEach(el=>el.onclick=(e)=>{
+    e.stopPropagation();
+    const tr=el.closest('tr');
+    const next=tr.dataset.group==='languages'?'technologies':'languages';
+    tr.dataset.group=next; el.textContent=next==='languages'?'lang':'tech';
+    el.title=`filed into preferences.${next} — click to switch`;
+  });
 }
 // One POST to the SAME endpoint the posting-row chips use (/api/rubric/technology) — a second
 // writer to rubric.yml would be a second place for the two to disagree about how terms are stored.
 async function classify(btn){
   const tr=btn.closest('tr'); const term=tr.dataset.term; const list=btn.dataset.list;
   tr.querySelectorAll('button').forEach(b=>b.disabled=true);
-  const res=await post('/api/rubric/technology',{term,list,group:$('#grp').value});
+  // File into the list the EXTRACTOR put this term in, not a global mode. The mode selector was set
+  // once and then applied to every later click, which is how 20+ technologies (SDKs, Protobuf,
+  // AWS Lambda, service mesh, agent orchestration) ended up in preferences.languages. The override
+  // below exists for the cases the extractor got wrong, and defaults to the term's own group.
+  const group=tr.dataset.group||'technologies';
+  const res=await post('/api/rubric/technology',{term,list,group});
   const j=await res.json().catch(()=>({error:'bad response'}));
   if(!res.ok||j.error){ tr.querySelectorAll('button').forEach(b=>b.disabled=false); return toast('failed: '+(j.error||res.status)); }
   toast(j.already?`"${term}" already in ${list}`:`"${term}" → ${list} · re-run score-postings.mjs`);

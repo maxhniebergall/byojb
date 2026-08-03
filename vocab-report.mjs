@@ -97,7 +97,15 @@ export function computeVocab({ research = [], personal = [], rubric = {}, limit 
     // Dedupe WITHIN a posting: a JD naming "Kubernetes" twice across languages and technologies is
     // one piece of evidence, not two.
     const seen = new Set();
-    for (const item of [...(ex.languages || []), ...(ex.technologies || [])]) {
+    // Track WHICH extracted field each term came from. The extractor already made this call —
+    // "Python" lands in languages, "Kubernetes" in technologies — so the queue can file a term into
+    // the matching preference list instead of asking the user to remember a global mode. A global
+    // selector silently sent 20+ technologies (SDKs, Protobuf, AWS Lambda, service mesh) into
+    // preferences.languages, because it is set once and then applies to every later click.
+    for (const [item, srcGroup] of [
+      ...(ex.languages || []).map(x => [x, 'languages']),
+      ...(ex.technologies || []).map(x => [x, 'technologies']),
+    ]) {
       const raw = String(item || '').trim();
       const k = raw.toLowerCase();
       if (!raw || known.has(k) || seen.has(k)) continue;
@@ -105,13 +113,18 @@ export function computeVocab({ research = [], personal = [], rubric = {}, limit 
       let t = terms.get(k);
       // Keep the FIRST spelling seen as the display form: it is a real posting's own casing, which
       // is what should be pasted into the rubric if the user classifies it.
-      if (!t) { t = { term: raw, count: 0, impact: 0, examples: [] }; terms.set(k, t); }
+      if (!t) { t = { term: raw, count: 0, impact: 0, examples: [], group_votes: { languages: 0, technologies: 0 } }; terms.set(k, t); }
+      t.group_votes[srcGroup]++;
       t.count++;
       t.impact += weight;
       if (t.examples.length < 3) t.examples.push({ company: r.company || '', title: r.title || '', key: r.key, score: p?.computed_score ?? null });
     }
   }
 
+  // Majority vote across postings: a term the extractor mostly listed as a language is a language.
+  for (const t of terms.values()) {
+    t.group = (t.group_votes.languages > t.group_votes.technologies) ? 'languages' : 'technologies';
+  }
   const rows = [...terms.values()]
     .map(t => ({ ...t, impact: Number(t.impact.toFixed(2)) }))
     // Deterministic: impact desc, then count desc, then term — so two runs on unchanged data
