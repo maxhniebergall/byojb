@@ -76,21 +76,20 @@ function stackScore(items, group, prefs) {
   if (hasLove) s += 1.5;
   else if (hasOk) s += 0.5;
 
-  // Calculate mismatch penalty for unlisted items (neither loved, ok, avoided, nor neutral)
-  const unlistedItems = items.filter(item => {
-    return !itemMatchesList(item, love) &&
-           !itemMatchesList(item, ok) &&
-           !itemMatchesList(item, avoid) &&
-           !itemMatchesList(item, neutral);
-  });
+  // NO penalty for unrecognized items. Only an explicit `avoid` match costs anything, and that is
+  // handled above by returning 1.5 outright.
+  //
+  // The old rule docked 0.3 per item matching none of love/ok/avoid/neutral, capped at 1.5. That is
+  // a whitelist model, and a whitelist of technologies can never be complete — so it punished a
+  // posting for describing itself precisely. Stripe's ML Infrastructure role lists "MLOps",
+  // "AI agents" and "model training" while the preference list said "ML", "agent", "model serving";
+  // exact matching read all three as unknown, took the full 1.5, and cut a 4.5 to 3.0 — for using
+  // MORE specific words about exactly the work this rubric exists to find.
+  //
+  // The bias was systematic and pointed the wrong way: precise, senior infrastructure JDs name more
+  // technologies, so they accrued more penalty than vague ones. An unrecognized term is a gap in the
+  // preference list, never evidence against the job.
 
-  if (unlistedItems.length > 0) {
-    const penaltyPerItem = prefs?.mismatch_penalty ?? 0.3;
-    const maxPenalty = prefs?.max_mismatch_penalty ?? 1.5;
-    const totalPenalty = Math.min(unlistedItems.length * penaltyPerItem, maxPenalty);
-    s -= totalPenalty;
-  }
-  
   return clamp(s);
 }
 

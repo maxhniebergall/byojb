@@ -25,6 +25,13 @@
   .badge{font-weight:700;font-variant-numeric:tabular-nums;border-radius:6px;padding:.1rem .35rem;font-size:.82rem;}
   .b-hi{color:#0b0c18;background:var(--good);} .b-mid{color:#0b0c18;background:var(--warn);} .b-lo{background:#23264a;color:var(--mut);}
   .chip{font-size:.66rem;padding:.06rem .4rem;border-radius:99px;background:#23264a;color:var(--mut);margin:0 .15rem .15rem 0;display:inline-block;}
+  /* Technology chips coloured by rubric classification, so a stack score is self-explaining. */
+  .chip.tk-love{background:rgba(62,201,138,.18);color:var(--good);}
+  .chip.tk-ok{background:rgba(124,140,255,.16);color:var(--accent);}
+  .chip.tk-avoid{background:rgba(224,85,110,.2);color:var(--bad);font-weight:600;}
+  .chip.tk-unk{background:transparent;color:var(--mut);border:1px dashed var(--line);cursor:pointer;}
+  .chip.tk-unk:hover{border-color:var(--accent);color:var(--accent);}
+  .chip.tk-unk b{margin-left:.25rem;opacity:.6;}
   .pill{font-size:.68rem;padding:.08rem .45rem;border-radius:99px;background:#23264a;color:var(--mut);}
   .dec{font-size:.68rem;padding:.08rem .4rem;border-radius:6px;} .dec.shortlist,.dec.keep{background:rgba(62,201,138,.18);color:var(--good);} .dec.skip{background:rgba(224,85,110,.18);color:var(--bad);} .dec.applied{background:rgba(124,140,255,.18);color:var(--accent);}
   .cvet{font-size:.66rem;padding:.08rem .4rem;border-radius:6px;cursor:pointer;background:rgba(124,141,181,.16);color:var(--accent);border:1px dashed var(--accent);} .cvet:hover{background:rgba(124,141,181,.3);}
@@ -385,7 +392,19 @@ function renderPostings(){
   $('#pcount').textContent=`${list.length} shown`;
   let h='<table><thead><tr><th class="selcol"><input type="checkbox" id="selAll" title="select all shown"></th>'+th('display','Score')+th('company','Company')+th('title','Title')+th('seniority','Lvl')+th('yoe_min','YOE')+'<th>Stack</th><th>Comp</th><th>Remote/Geo</th>'+th('culture','Culture')+th('status','Pipeline')+'<th>Actions</th></tr></thead><tbody>';
   for(const r of list){
-    const stack=[...(r.languages||[]),...(r.technologies||[])].slice(0,4).map(x=>`<span class="chip">${esc(x)}</span>`).join('');
+    // Colour each technology by how the RUBRIC classified it, not just by name. An avoid match is
+    // why a stack scored 1.5; an unrecognised term is a gap in the preference list that silently
+    // contributes nothing. Both were previously invisible — the Stripe ML Infrastructure case was
+    // only found by reading one row's facets by hand.
+    const sm=r.stack_match||{love:[],ok:[],avoid:[],neutral:[],unrecognized:[]};
+    const chip=(x,cls,title)=>`<span class="chip ${cls}" title="${esc(title)}">${esc(x)}</span>`;
+    const unknownChip=(x)=>`<span class="chip tk-unk" data-term="${esc(x)}" title="not in your rubric — click to classify">${esc(x)}<b>+</b></span>`;
+    const stack=[
+      ...sm.avoid.map(x=>chip(x,'tk-avoid','on your avoid list — caps this stack at 1.5')),
+      ...sm.love.map(x=>chip(x,'tk-love','on your love list')),
+      ...sm.ok.map(x=>chip(x,'tk-ok','on your ok list')),
+      ...sm.unrecognized.slice(0,4).map(unknownChip),
+    ].slice(0,7).join('');
     let actButtons = '';
     if (r.decision === 'shortlist') {
       actButtons = `<div class="act-btns">
@@ -441,6 +460,21 @@ function renderPostings(){
   const selAll=$('#selAll'); if(selAll){selAll.onclick=(e)=>e.stopPropagation();selAll.onchange=()=>{const on=selAll.checked;for(const r of list){if(on)SELECTED.add(r.key);else SELECTED.delete(r.key);}renderPostings();saveState();};}
   $('#ptable').querySelectorAll('td:nth-child(3) a').forEach(el=>el.onclick=(e)=>e.stopPropagation());
   $('#ptable').querySelectorAll('.cvet,.cres').forEach(el=>el.onclick=(e)=>{e.stopPropagation();vetCompany(el.dataset.vet);});
+  // Classify an unrecognised technology without leaving the queue. The preference lists are the
+  // most under-maintained part of the rubric precisely because editing them means opening a file
+  // away from the evidence; every chip here is a word a real posting used.
+  $('#ptable').querySelectorAll('.chip.tk-unk').forEach(el=>el.onclick=async(e)=>{
+    e.stopPropagation();
+    const term=el.dataset.term;
+    const list=prompt(`Classify "${term}" in your rubric:\n\n  love   — actively want this\n  ok     — fine\n  avoid  — dealbreaker (caps the stack at 1.5)\n  neutral— ignore it\n\nEnter one:`,'love');
+    if(!list) return;
+    if(!['love','ok','avoid','neutral'].includes(list)) return toast('unknown list: '+list);
+    const res=await fetch('/api/rubric/technology',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({term,list,group:'technologies'})});
+    const j=await res.json();
+    if(j.error) return toast('failed: '+j.error);
+    toast(j.already?`"${term}" already in ${list}`:`added "${term}" → ${list}. Re-run score-postings.mjs`);
+  });
   $('#ptable').querySelectorAll('.act-btn').forEach(el=>el.onclick=(e)=>{e.stopPropagation();setDecision(el.dataset.k, el.dataset.dec);});
   renderSelBar(list);
 }

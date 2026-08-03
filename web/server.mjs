@@ -25,6 +25,7 @@ import {
   loadContacts, loadOutreach, upsertContact, upsertOutreach, resolveContact, contactKey,
   nextThreadKey, linkApplication, threadTiming, syncOutreachMdWithPostings, validateOutreachStatus,
   isOpenOutreach, isStrongTie, OUTREACH_STATES, ARCHETYPES, RELATIONSHIPS, CHANNELS, INTENTS, OUTCOMES,
+  ACTIVITY_LEVELS,
 } from '../outreach-core.mjs';
 import { classifyForm, classifyField, normLabel, PROFILE_KEYS } from '../autofill-fields.mjs';
 import { validateBandRow } from '../comp-core.mjs';
@@ -79,6 +80,30 @@ function companyKeyForApp(a, researchMap) {
 }
 
 // { company_key: # of OPEN applications } — drives the per-company cap.
+// Classify a posting's named technologies against the rubric's preference lists.
+//
+// Exact matching means a JD that says "MLOps" does not match a list entry of "ML" — that gap used
+// to cost the posting score silently, and was only ever found by reading one row by hand. Surfacing
+// the classification makes the gap visible at the point it matters, on the posting itself.
+function classifyStack(ex, prefs) {
+  const L = prefs?.languages || {}, T = prefs?.technologies || {};
+  const bucket = (names) => new Set((names || []).map(x => String(x).toLowerCase()));
+  const love = bucket([...(L.love || []), ...(T.love || [])]);
+  const ok = bucket([...(L.ok || []), ...(T.ok || [])]);
+  const avoid = bucket([...(L.avoid || []), ...(T.avoid || [])]);
+  const neutral = bucket([...(L.neutral || []), ...(T.neutral || [])]);
+  const out = { love: [], ok: [], avoid: [], neutral: [], unrecognized: [] };
+  for (const item of [...(ex.languages || []), ...(ex.technologies || [])]) {
+    const k = String(item).toLowerCase();
+    if (avoid.has(k)) out.avoid.push(item);
+    else if (love.has(k)) out.love.push(item);
+    else if (ok.has(k)) out.ok.push(item);
+    else if (neutral.has(k)) out.neutral.push(item);
+    else out.unrecognized.push(item);
+  }
+  return out;
+}
+
 function openCountByCompany(researchMap = new Map(loadJsonl(POST_RESEARCH).map(r => [r.key, r]))) {
   const counts = {};
   for (const a of loadApplications()) {
@@ -200,6 +225,8 @@ function postingsQueue() {
   const { max_open_per_company } = workflowCfg();
   // company_key → vetting state (Lever C badge + Lever B transparency on each posting row).
   const companyByKey = new Map(loadJsonl(C_PERSONAL).map(c => [c.key, c]));
+  // Read once, not per row: classifyStack runs for every posting.
+  const prefs = loadRubric().preferences || {};
   return personal.map(p => {
     const r = research.get(p.key) || {};
     const ex = r.extracted || {};
@@ -220,6 +247,10 @@ function postingsQueue() {
       // facets surfaced for filtering/columns
       seniority: ex.seniority || null, yoe_min: ex.yoe_min ?? null, yoe_max: ex.yoe_max ?? null,
       languages: ex.languages || [], technologies: ex.technologies || [],
+      // How each named technology was CLASSIFIED against the rubric. Shipped so the postings page
+      // can show WHY a stack scored what it did, and so unrecognised terms are visible as
+      // candidates to add — the preference list can only improve if its gaps are legible.
+      stack_match: classifyStack(ex, prefs),
       remote_policy: ex.remote_policy || null, geo_eligibility: ex.geo_eligibility || null,
       employment_type: ex.employment_type || null, comp: ex.comp || r.comp || null,
       // Comp PROVENANCE. `comp_imputed` is deliberately a SEPARATE field from `comp` so the UI
@@ -349,6 +380,7 @@ function outreachQueue() {
       ...r, ...threadTiming(r),
       contact_name: c.name || '', contact_title: c.title || '', linkedin_url: c.linkedin_url || '',
       archetype: c.archetype || 'other', relationship: c.relationship || 'cold', strong_tie: isStrongTie(c.relationship),
+      relevance: c.relevance ?? null, activity: c.activity || 'unknown', contact_notes: c.notes || '',
       // Prefer a real display name; the raw "provider:slug" key is a last resort, not a label.
       company: c.company || p.company || r.company_key || '', company_key: r.company_key || c.company_key || '',
       posting_title: p.title || '', posting_url: p.url || '',
@@ -367,7 +399,7 @@ function outreachDetail(key) {
     ...r, ...threadTiming(r), contact, strong_tie: isStrongTie(contact.relationship),
     posting: { key: p.key || '', title: p.title || '', url: p.url || '', apply_url: p.apply_url || '', company: p.company || '', location: p.location || '' },
     application: app ? { key: app.key, status: app.status, tracker_num: app.tracker_num } : null,
-    vocab: { states: OUTREACH_STATES, archetypes: ARCHETYPES, relationships: RELATIONSHIPS, channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES },
+    vocab: { states: OUTREACH_STATES, archetypes: ARCHETYPES, relationships: RELATIONSHIPS, channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES, activity_levels: ACTIVITY_LEVELS },
   };
 }
 
@@ -379,6 +411,13 @@ function contactsQueue() {
     const mine = threads.filter(t => t.contact_key === c.key);
     return {
       ...c, strong_tie: isStrongTie(c.relationship),
+      // Default at READ time rather than migrating the file: contacts captured before these
+      // fields existed simply have no key, and the UI must not tell them apart from a contact
+      // you deliberately left unrated.
+      relevance: c.relevance ?? null,
+      activity: c.activity || 'unknown',
+      relationship: c.relationship || 'cold',
+      archetype: c.archetype || 'other',
       thread_count: mine.length,
       open_threads: mine.filter(t => isOpenOutreach(t.status)).length,
       last_touched: mine.reduce((m, t) => String(t.last_updated || '') > m ? String(t.last_updated) : m, ''),
@@ -393,9 +432,12 @@ function upsertContactFromPayload(c = {}) {
   const key = existing ? existing.key : contactKey(c);
   if (!key) return null;
   const patch = {};
-  for (const f of ['name', 'company_key', 'company', 'title', 'archetype', 'relationship', 'linkedin_url', 'email', 'phone', 'source', 'notes']) {
+  for (const f of ['name', 'company_key', 'company', 'title', 'archetype', 'relationship', 'activity', 'linkedin_url', 'email', 'phone', 'source', 'notes']) {
     if (c[f] !== undefined && c[f] !== '') patch[f] = c[f];
   }
+  // relevance is passed through even when blank, so clearing the box un-rates the contact.
+  // (The loop above skips '' precisely so a partial capture can't blank a field you filled in.)
+  if (c.relevance !== undefined) patch.relevance = c.relevance;
   return upsertContact(key, patch);
 }
 
@@ -458,6 +500,29 @@ const server = createServer(async (req, res) => {
     if (!d.title && !d.company) return json(res, { error: 'not found' }, 404);
     return json(res, { ...d, rubric: loadRubric() });
   }
+  // Add a technology to a rubric preference list, from the postings page.
+  //
+  // The lists are the single most under-maintained part of the rubric: they are edited by hand, in
+  // a file, away from the evidence. Every unrecognised term the UI shows is a term some real
+  // posting used, so classifying it should be one click at the moment you see it — otherwise the
+  // gap persists and silently mis-scores every future posting that uses the same word.
+  if (req.method === 'POST' && path === '/api/rubric/technology') {
+    const { term, list, group } = await body(req);
+    if (!term || !['love', 'ok', 'avoid', 'neutral'].includes(list)) return json(res, { error: 'bad list' }, 400);
+    const grp = group === 'languages' ? 'languages' : 'technologies';
+    const cfg = loadRubric() || {};
+    cfg.preferences = cfg.preferences || {};
+    cfg.preferences[grp] = cfg.preferences[grp] || {};
+    const cur = cfg.preferences[grp][list] || [];
+    const already = cur.some(x => String(x).toLowerCase() === String(term).toLowerCase());
+    if (already) return json(res, { ok: true, already: true });
+    // Rewrite via YAML rather than string-splicing so the file stays valid; comments in the
+    // preferences block are lost, which is why the block documents itself in rubric.example.yml.
+    cfg.preferences[grp][list] = [...cur, term];
+    writeFileSync(RUBRIC, yaml.dump(cfg, { lineWidth: 120 }), 'utf-8');
+    return json(res, { ok: true, added: term, list, group: grp, rescore_needed: true });
+  }
+
   if (req.method === 'POST' && path === '/api/posting/decision') {
     const { key, decision } = await body(req);
     if (!['shortlist', 'skip', 'applied', 'undecided'].includes(decision)) return json(res, { error: 'bad decision' }, 400);
@@ -684,6 +749,15 @@ const server = createServer(async (req, res) => {
   }
   if (path === '/api/autofill/profile') return json(res, { profile: loadAppProfile(), profile_keys: PROFILE_KEYS });
 
+  // Controlled vocabularies, so the Chrome extension renders the SAME options the registry
+  // validates against instead of keeping its own copy that silently drifts out of date.
+  if (path === '/api/vocab') {
+    return json(res, {
+      archetypes: ARCHETYPES, relationships: RELATIONSHIPS, activity_levels: ACTIVITY_LEVELS,
+      channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES, outreach_states: OUTREACH_STATES,
+    });
+  }
+
   // ----- CONTACTS -----
   if (path === '/api/contacts') {
     const ck = url.searchParams.get('company_key') || '';
@@ -691,7 +765,31 @@ const server = createServer(async (req, res) => {
     let rows = contactsQueue();
     if (ck) rows = rows.filter(c => c.company_key === ck);
     if (q) rows = rows.filter(c => [c.name, c.company, c.title, c.notes, c.email].filter(Boolean).join(' ').toLowerCase().includes(q));
-    return json(res, { rows, vocab: { archetypes: ARCHETYPES, relationships: RELATIONSHIPS } });
+    return json(res, { rows, vocab: { archetypes: ARCHETYPES, relationships: RELATIONSHIPS, activity_levels: ACTIVITY_LEVELS } });
+  }
+  // Does this person already exist? The extension asks before rendering its capture panel so it
+  // can prefill and EDIT rather than blindly re-create — otherwise every re-capture overwrites the
+  // ratings and notes you'd already set.
+  if (path === '/api/contact/lookup') {
+    const c = resolveContact({
+      key: url.searchParams.get('key') || '',
+      linkedin_url: url.searchParams.get('linkedin_url') || '',
+      email: url.searchParams.get('email') || '',
+      name: url.searchParams.get('name') || '',
+      company_key: url.searchParams.get('company_key') || '',
+    });
+    if (!c) return json(res, { found: false });
+    const mine = loadOutreach().filter(t => t.contact_key === c.key);
+    return json(res, {
+      found: true,
+      contact: {
+        ...c,
+        relevance: c.relevance ?? null, activity: c.activity || 'unknown',
+        relationship: c.relationship || 'cold', archetype: c.archetype || 'other',
+      },
+      thread_count: mine.length,
+      open_threads: mine.filter(t => isOpenOutreach(t.status)).length,
+    });
   }
   if (req.method === 'POST' && path === '/api/contact') {
     const b = await body(req);
@@ -707,7 +805,7 @@ const server = createServer(async (req, res) => {
     if (st) rows = rows.filter(r => r.status === st);
     if (ck) rows = rows.filter(r => r.company_key === ck);
     if (pk) rows = rows.filter(r => r.posting_key === canonicalUrl(pk));
-    return json(res, { rows, vocab: { states: OUTREACH_STATES, archetypes: ARCHETYPES, relationships: RELATIONSHIPS, channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES } });
+    return json(res, { rows, vocab: { states: OUTREACH_STATES, archetypes: ARCHETYPES, relationships: RELATIONSHIPS, channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES, activity_levels: ACTIVITY_LEVELS } });
   }
   if (path === '/api/outreach/thread') {
     const d = outreachDetail(url.searchParams.get('key') || '');
