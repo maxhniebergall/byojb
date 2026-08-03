@@ -61,7 +61,14 @@
   <div class="panel">
     <div class="ctrls">
       <input type="search" id="q" placeholder="search term / example company…" style="flex:1;min-width:180px">
-
+      <!-- Languages are outnumbered ~100:1 by technologies (22 vs 2,218), so a single
+           impact-ranked list never surfaces one: every row of the top 50 is a technology.
+           Filtering by group is the only way to review the language vocabulary at all. -->
+      <select id="fGroup" title="which preference list these terms would file into">
+        <option value="">all groups</option>
+        <option value="technologies">technologies</option>
+        <option value="languages">languages</option>
+      </select>
       <select id="limit"><option value="50">top 50</option><option value="100">top 100</option><option value="250">top 250</option><option value="0">all</option></select>
       <span id="tcount" style="color:var(--mut);font-size:.8rem"></span>
     </div>
@@ -88,8 +95,11 @@ async function load(){
 }
 function filtered(){
   const q=$('#q').value.trim().toLowerCase();
-  if(!q) return ROWS;
-  return ROWS.filter(t=>(t.term+' '+(t.examples||[]).map(e=>e.company+' '+e.title).join(' ')).toLowerCase().includes(q));
+  const grp=$('#fGroup').value;
+  let list=ROWS;
+  if(grp) list=list.filter(t=>(t.group||'technologies')===grp);
+  if(q) list=list.filter(t=>(t.term+' '+(t.examples||[]).map(e=>e.company+' '+e.title).join(' ')).toLowerCase().includes(q));
+  return list;
 }
 function render(){
   const list=filtered();
@@ -147,6 +157,9 @@ async function classify(btn){
   setTimeout(()=>{ tr.remove(); $('#tcount').textContent=`${filtered().length} shown`; },180);
 }
 $('#q').oninput=render;
+// Group filtering is client-side over the already-loaded rows, so it re-renders rather than
+// refetching — switching to `languages` should be instant, not a round trip.
+$('#fGroup').onchange=render;
 $('#limit').onchange=load;
 load();
 </script>
