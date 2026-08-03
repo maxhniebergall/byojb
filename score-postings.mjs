@@ -374,7 +374,16 @@ export function workEligible(ex, prefs) {
   const wl = prefs?.work_location;
   if (!wl) return 'unclear';                       // not configured → feature off, nothing excluded
   const known = (v) => { const s = String(v ?? '').toLowerCase(); return (s && s !== 'unclear' && s !== 'unknown') ? s : ''; };
-  const rp = known(ex._remote_policy) || known(ex.remote_policy);
+  // A DEFAULTED policy is not evidence. deriveRemotePolicy's final rule reads a bare city with no
+  // remote signal as onsite, which is right for ranking and wrong for exclusion: Stripe's
+  // "Software Engineer, Machine Learning Infrastructure" is remote-in-Canada, but the Greenhouse
+  // record Stripe publishes contains the word "remote" zero times — the policy lives only on
+  // stripe.com. The default turned that silence into a confident "onsite" and hard-excluded a role
+  // that qualifies. Absence of evidence must never exclude; it can only fail to promote.
+  const DEFAULTED = new Set(['city-default', 'none']);
+  const rpSource = String(ex._remote_policy_source || '');
+  const rpRaw = known(ex._remote_policy) || known(ex.remote_policy);
+  const rp = DEFAULTED.has(rpSource) && !known(ex.remote_policy) ? '' : rpRaw;
   // effectiveGeo, not the raw facet: a hallucinated `canada` on a "Remote - United States"
   // posting would otherwise compute to work_eligible=yes and defeat the hard filter entirely.
   const geo = effectiveGeo(ex, prefs);
@@ -424,6 +433,10 @@ export function computeScores(extracted, rubric, llm = null, ctx = {}) {
     ...(ctx?.scanned_comp != null ? { _scanned_comp: ctx.scanned_comp } : {}),
     ...(ctx?.scanned_location ? { _scanned_location: ctx.scanned_location } : {}),
     ...(ctx?.remote_policy ? { _remote_policy: ctx.remote_policy } : {}),
+    // WHERE the policy came from, not just what it is. deriveRemotePolicy's last rule assumes a
+    // bare city means onsite — a reasonable default for ranking, but it is an assumption, and a
+    // hard filter must never act on one. See workEligible.
+    ...(ctx?.remote_policy_source ? { _remote_policy_source: ctx.remote_policy_source } : {}),
     // The company's band for this posting's (title_family, ladder_level). `_`-prefixed so
     // evalHardFilters cannot see it: a dealbreaker must never fire on a derived number.
     ...(ctx?.comp_band ? { _comp_band: ctx.comp_band } : {}),
@@ -569,9 +582,9 @@ function main() {
     // so computeScores stays pure and browser-reusable.
     let body = '';
     if (r.has_body) { try { body = readFileSync(join(BODY_DIR, sk(r.key) + '.md'), 'utf-8'); } catch { /* unreadable → derive from location alone */ } }
-    const { policy: remote_policy } = deriveRemotePolicy({ location: r.location, body, extracted: r.extracted });
+    const { policy: remote_policy, source: remote_policy_source } = deriveRemotePolicy({ location: r.location, body, extracted: r.extracted });
     const region_blocked = detectRegionBlock(body, rubric.preferences);
-    const { dim_scores, computed_score, hard_excluded, meta } = computeScores(r.extracted, rubric, p.llm_dim_scores ?? p.llm_holistic_fit, { company_fit, scanned_comp: r.comp ?? null, scanned_location: r.location ?? null, remote_policy, comp_band, region_blocked });
+    const { dim_scores, computed_score, hard_excluded, meta } = computeScores(r.extracted, rubric, p.llm_dim_scores ?? p.llm_holistic_fit, { company_fit, scanned_comp: r.comp ?? null, scanned_location: r.location ?? null, remote_policy, remote_policy_source, comp_band, region_blocked });
     p.dim_scores = dim_scores;
     p.computed_score = computed_score;
     p.hard_excluded = hard_excluded;
