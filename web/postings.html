@@ -274,8 +274,22 @@ function renderSliders(){
 $('#resetW').onclick=()=>{for(const d of RUBRIC.dimensions){const id=d.id||d.name;WEIGHTS[id]=+d.weight||0;}renderSliders();renderPostings();saveState();};
 
 function fillFacetFilters(){
-  const langs=new Set(),sen=new Set(),rem=new Set(),geo=new Set();
-  for(const r of ROWS){(r.languages||[]).forEach(l=>langs.add(l));if(r.seniority)sen.add(r.seniority);if(r.remote_policy)rem.add(r.remote_policy);if(r.geo_eligibility)geo.add(r.geo_eligibility);}
+  // Fold case variants into ONE option. Extractors write whatever the JD wrote, so the corpus holds
+  // Python/python, TypeScript/typescript/Typescript, Go/go, C#/c# — 15 such collisions. Each became
+  // a separate dropdown entry matching only its own spelling, so choosing "TypeScript" silently
+  // dropped the 22 postings written "typescript". The filter compares case-insensitively for the
+  // same reason; the label shown is the most common spelling, which is the one people look for.
+  const langCount=new Map(),sen=new Set(),rem=new Set(),geo=new Set();
+  for(const r of ROWS){
+    for(const l of (r.languages||[])){
+      const k=String(l).toLowerCase();
+      const e=langCount.get(k)||{n:0,forms:new Map()};
+      e.n++; e.forms.set(l,(e.forms.get(l)||0)+1);
+      langCount.set(k,e);
+    }
+    if(r.seniority)sen.add(r.seniority);if(r.remote_policy)rem.add(r.remote_policy);if(r.geo_eligibility)geo.add(r.geo_eligibility);
+  }
+  const langs=new Set([...langCount.values()].map(e=>[...e.forms.entries()].sort((a,b)=>b[1]-a[1])[0][0]));
   const opt=(s,sel)=>[...s].sort().map(v=>`<option ${sel?'':''}>${esc(v)}</option>`).join('');
   $('#fLang').innerHTML='<option value="">any language</option>'+opt(langs);
   $('#fSen').innerHTML='<option value="">any seniority</option>'+opt(sen);
@@ -323,7 +337,9 @@ function pfiltered(){
   if(compEv==='noguess') list=list.filter(r=>r.comp_source!=='company_estimated');
   else if(compEv==='cited') list=list.filter(r=>!r.comp_source||['listed','scanned','company_direct'].includes(r.comp_source));
   else if(compEv==='listed') list=list.filter(r=>!r.comp_source||['listed','scanned'].includes(r.comp_source));
-  if(lang) list=list.filter(r=>(r.languages||[]).includes(lang));
+  // Case-insensitive: the dropdown shows one folded option per language (see fillFacetFilters),
+  // so the comparison has to fold too or the folded-away spellings would never match.
+  if(lang){const lk=lang.toLowerCase();list=list.filter(r=>(r.languages||[]).some(l=>String(l).toLowerCase()===lk));}
   if(sen) list=list.filter(r=>r.seniority===sen);
   if(rem) list=list.filter(r=>r.remote_policy===rem);
   if(geo) list=list.filter(r=>r.geo_eligibility===geo);
