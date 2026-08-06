@@ -138,6 +138,50 @@ export function deriveRemotePolicy({ location = '', body = '', extracted = null 
 
 // Walk the rubric's comp_tiers (highest first) for an annual CAD figure. Shared by the listed
 // and the band-derived paths so both read the same table.
+// ── timezone distance ───────────────────────────────────────────────────────
+//
+// A remote-in-Canada role can still be unworkable. Several roles found in the re-extraction pass
+// (all three Lightspeed reqs, Affirm, MongoDB) are remote-Canada but require East Coast hours —
+// a 6am start from Mountain Time, every day. `geo_eligibility` and `remote_policy` both read
+// "fine" for those, because neither facet is about the clock.
+//
+// The reference instant is FIXED rather than "now" so scoring is reproducible: re-running must
+// produce byte-identical output, and a DST boundary would otherwise silently move scores. The
+// consequence is that permanently-non-DST zones (America/Phoenix) are measured on their winter
+// alignment; that is a known ±1h edge case, not a general inaccuracy, since both sides of the
+// comparison shift together everywhere DST is observed.
+const TZ_REF_MS = Date.parse('2026-01-15T18:00:00Z');
+
+// UTC offset in hours for an IANA zone, via the formatter's own shortOffset ("GMT-7", "GMT+5:30").
+// Uses the platform tz database instead of a hand-maintained abbreviation table, which is the whole
+// reason the extractor was asked for IANA names rather than "EST".
+export function tzOffsetHours(zone) {
+  try {
+    const s = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'shortOffset' })
+      .format(TZ_REF_MS);
+    const m = s.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+    if (!m) return s.includes('GMT') ? 0 : null;      // bare "GMT" = UTC+0
+    return (m[1] === '-' ? -1 : 1) * (Number(m[2]) + Number(m[3] || 0) / 60);
+  } catch { return null; }                            // not a zone this platform knows
+}
+
+// Hours of separation → 1-5. Max's scale, stated directly:
+//   0h → 5, 1h → 4, 2h → 3, 3h → 1, 4h+ → 0
+// Deliberately NOT linear. The drop from 2h to 3h is the point where a working day stops
+// overlapping enough to collaborate in, so the curve falls off a cliff there rather than degrading
+// evenly. Note 4h maps to 0, which is BELOW the 1-5 band every other dimension uses — that is
+// intentional and is why this does not go through clamp(): it lets an impossible timezone drag a
+// posting further than a merely bad score on any other dimension could.
+export function tzScore(diffHours) {
+  if (diffHours == null || !Number.isFinite(diffHours)) return null;
+  const d = Math.round(Math.abs(diffHours));
+  if (d <= 0) return 5;
+  if (d === 1) return 4;
+  if (d === 2) return 3;
+  if (d === 3) return 1;
+  return 0;
+}
+
 function tierScore(val, prefs) {
   const tiers = [...(prefs?.comp_tiers || [])].sort((a, b) => b.min - a.min);
   for (const t of tiers) if (val >= t.min) return clamp(t.score);
@@ -255,6 +299,22 @@ export const COMPUTERS = {
       hasAny([...(ex.location_hints || []), ex.timezone || '', ex._scanned_location || ''], [k]));
     if (rp === 'remote') return (geo === 'canada' || geo === 'global' || tzOk) ? 5 : 4;
     return null;
+  },
+  // How far the role's working hours sit from home. Skipped (null → weight redistributed) when the
+  // JD does not state a timezone, which is the majority case: 1,618 of 2,526 extracted postings say
+  // `unclear`. Silence is not evidence of a bad timezone, and scoring it as one would penalise every
+  // JD that simply didn't mention hours (the same failure as docs/hard-exclusion-plan.md).
+  //
+  // A REMOTE role with no stated timezone is genuinely unconstrained, so there is nothing to score;
+  // an onsite/hybrid role's timezone is already implied by its geography and handled by remote_tz.
+  timezone(ex, prefs) {
+    const home = prefs?.home_timezone || 'America/Edmonton';
+    const raw = String(ex?.timezone ?? '').trim();
+    if (!raw || /^(unclear|unknown|n\/a)$/i.test(raw)) return null;
+    const there = tzOffsetHours(raw);
+    const here = tzOffsetHours(home);
+    if (there == null || here == null) return null;   // unrecognised zone → unknown, not bad
+    return tzScore(there - here);
   },
   // Company fit (Lever B) is NOT a JD facet — it's the vetted company's llm_fit, injected at scoring
   // time as `_company_fit` (see computeScores' ctx merge). null when the company is undecided/skip →

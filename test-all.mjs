@@ -1409,6 +1409,46 @@ try {
   };
   const band = (d, conf) => ({ mid: 250000, currency: 'CAD', component: 'base', derivation: d, confidence: conf, sample_size: 5 });
 
+  // ── timezone dimension ────────────────────────────────────────────────────
+  {
+    const tzPrefs = { home_timezone: 'America/Edmonton' };
+    const tz = (z) => S.COMPUTERS.timezone({ timezone: z }, tzPrefs);
+
+    // Max's scale, verbatim: 0h=5, 1h=4, 2h=3, 3h=1, 4h+=0.
+    const scale = [[0, 5], [1, 4], [2, 3], [3, 1], [4, 0], [9, 0], [-2, 3]];
+    if (scale.every(([d, want]) => S.tzScore(d) === want)) pass('tz: offset→score scale matches spec (0/1/2/3/4h → 5/4/3/1/0)');
+    else fail(`tz: scale wrong — ${scale.map(([d]) => `${d}h=${S.tzScore(d)}`).join(' ')}`);
+
+    // Sign must not matter: two hours east and two hours west are equally far.
+    if (S.tzScore(-3) === S.tzScore(3)) pass('tz: distance is absolute, direction-independent');
+    else fail('tz: sign of the offset changed the score');
+
+    const cases = [['America/Denver', 5], ['America/Vancouver', 4], ['America/Chicago', 4],
+                   ['America/Toronto', 3], ['America/New_York', 3], ['Europe/London', 0], ['Asia/Kolkata', 0]];
+    const bad = cases.filter(([z, want]) => tz(z) !== want);
+    if (!bad.length) pass('tz: real IANA zones score by true offset from Mountain');
+    else fail(`tz: wrong for ${bad.map(([z, w]) => `${z} want ${w} got ${tz(z)}`).join('; ')}`);
+
+    // Kimberley BC is MOUNTAIN despite being in British Columbia. Using America/Vancouver as home
+    // would put every Mountain role 1h away and every Pacific role at 0 — inverted, by a full hour.
+    if (tz('America/Denver') === 5 && tz('America/Vancouver') === 4) pass('tz: home zone is Mountain, not Pacific');
+    else fail('tz: home zone appears to be Pacific');
+
+    // Silence is not evidence of a hostile timezone — 1,618 of 2,526 postings say `unclear`, and
+    // scoring those as bad would penalise every JD that simply never mentioned hours.
+    const nulls = ['unclear', '', null, undefined, 'Unknown', 'Mars/Olympus'];
+    if (nulls.every(z => tz(z) === null)) pass('tz: unstated or unrecognised zone → null, not a penalty');
+    else fail(`tz: an unstated zone produced a score — ${nulls.map(z => `${z}=${tz(z)}`).join(' ')}`);
+
+    // Fixed reference instant: re-running must not move scores across a DST boundary.
+    if (S.tzOffsetHours('America/Toronto') === -5 && S.tzOffsetHours('Europe/London') === 0) pass('tz: offsets computed against a fixed reference instant');
+    else fail('tz: reference instant is not stable');
+
+    // Half-hour zones must not produce a fractional score.
+    if (Number.isInteger(tz('Asia/Kolkata'))) pass('tz: half-hour zones round to an integer score');
+    else fail('tz: half-hour zone produced a fractional score');
+  }
+
   // a LISTED figure must be used verbatim and never replaced by a band
   const listed = S.COMPUTERS.comp({ comp: { min: 250000, currency: 'CAD' }, _comp_band: band('estimated', 'low') }, prefs);
   if (listed === 5) pass('listed comp wins over any band');

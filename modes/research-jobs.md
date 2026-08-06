@@ -30,6 +30,17 @@ is a deterministic helper only.
      "languages": [<programming languages named>],
      "technologies": [<frameworks/tools/clouds/datastores/architectures named (e.g. AWS, Kubernetes, Postgres, ML, LLM, data pipeline, distributed systems)>],
      "location_hints": [<locations/regions named>], "timezone": "<e.g. America/… or unclear>",
+     <!-- `timezone` is the zone the ROLE'S HOURS are anchored to, not where the office is. It is
+          scored by distance from Mountain Time (0h=5 … 4h+=0), so it is the facet that catches a
+          remote-Canada job that still demands a 6am start. Give an IANA name so the offset can be
+          computed — "EST" is ambiguous, "America/New_York" is not.
+          Capture it whenever the JD states working hours, core hours, or an overlap requirement
+          ("must overlap 9-5 ET", "East Coast hours", "EST +/- 2"), even if the location is
+          "Remote - Canada". If the JD only names an office and says nothing about hours, use
+          `unclear` — do NOT infer the zone from the office, because a remote role's hours are
+          frequently not its headquarters'. `unclear` skips the dimension; a guess penalises a job
+          that never made the demand. -->
+
      "remote_policy": "remote|hybrid|onsite|unclear",
      "geo_eligibility": "canada|us_only|eu_only|global|unclear",
      "comp": {"min": <num|null>, "max": <num|null>, "currency": "<CAD|USD|…>", "equity": <bool|null>} | null,

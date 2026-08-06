@@ -69,7 +69,9 @@ function main() {
       }
       // MERGE facets (not overwrite) so a partial re-extraction can backfill new facet keys
       // without re-sending the whole schema. Fresh extraction: r.extracted is null → becomes s.extracted.
-      if (s.extracted && r) { r.extracted = { ...(r.extracted || {}), ...s.extracted }; extracted++; }
+      // Stamped so it can be compared against `body_fetched_at`: facts older than the body they
+      // were read from are stale, and the score computed from them is unreliable.
+      if (s.extracted && r) { r.extracted = { ...(r.extracted || {}), ...s.extracted }; r.extracted_at = new Date().toISOString().slice(0, 10); extracted++; }
       // recompute the deterministic score from facets × rubric (never trust an LLM-authored score)
       if (r?.extracted) {
         const sc = computeScores(r.extracted, rubric, p.llm_dim_scores ?? p.llm_holistic_fit);
