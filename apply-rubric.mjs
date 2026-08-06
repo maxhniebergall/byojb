@@ -55,6 +55,10 @@ function renderInterpretation(interp) {
 }
 
 function injectMarkers(filePath, body) {
+  if (!existsSync(filePath)) {   // target renamed/removed in this fork (e.g. ofertas.md) — skip
+    console.warn(`  skip (missing): ${filePath}`);
+    return;
+  }
   let text = readFileSync(filePath, 'utf-8');
   const block = `${BEGIN}\n${body}\n${END}`;
   if (BLOCK_RE.test(text)) {
