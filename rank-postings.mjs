@@ -144,6 +144,18 @@ function main() {
   // Carry forward postings absent from this scan. If their board WAS scanned → live:false
   // (the listing is gone). If their board was NOT scanned this run (e.g. JobSpy didn't run,
   // or a --company partial scan) → keep their prior state untouched.
+  //
+  // Deliberately NOT extended to "the ledger says this board was re-read OK since we last saw the posting",
+  // which looks correct and is not. `raw` is the TITLE/LOCATION-FILTERED capture, so a posting can
+  // be absent from it while still being listed on the board — it merely stopped matching. Probing
+  // a stratified sample of the 835 postings that rule would have retired against the authoritative
+  // ATS APIs: 35 genuinely gone, 35 STILL LISTED (Saviynt, Invoca, comfy-org). A ~50% false-
+  // positive rate, and retiring a real opening is the worse error — it hides a job forever, which
+  // is the one thing this tool exists not to do.
+  //
+  // Retiring on ledger evidence needs scan.mjs to record the UNFILTERED set of URLs each board
+  // returned; see retire-dead-postings.mjs, which confirms each candidate against the ATS API
+  // instead of inferring death from a filter miss.
   let expired = 0, kept = 0;
   for (const [key, prevR] of priorResearch) {
     if (research.has(key)) continue;
