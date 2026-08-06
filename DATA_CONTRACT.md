@@ -15,6 +15,9 @@ These files contain your personal data, credentials, and job-search records. The
 | `config/jobspy.yml` | Query strings for broad-board searches |
 | `data/applications.jsonl` | Source of truth for your application tracking records |
 | `data/applications.md` | Read-only markdown representation of the application tracker |
+| `data/contacts.jsonl` | People you reach out to (name, title, archetype, relationship tier incl. LinkedIn 1st/2nd degree, 0–5 relevance, LinkedIn activity level, notes, email) |
+| `data/outreach.jsonl` | Outreach threads — one per conversation, with the full `messages[]` log, the prepared-but-unsent `draft` + `scheduled_for` send day, and its link to a posting/application |
+| `data/outreach.md` | Read-only markdown representation of the outreach tracker |
 | `data/posting-research.jsonl` | Cache of objective extracted facets for job postings |
 | `data/postings-personal.jsonl` | Personal scores, overrides, and shortlist/skip decisions for postings |
 | `data/posting-research/*` | Full job description bodies captured during scan |
@@ -47,6 +50,7 @@ These files form the engine, backend, and UI of the application.
 | `ingest/jd-comp.mjs` | Builds pay bands from comp already present in the postings registry (no network access) |
 | `posting-core.mjs` | Registry reading, saving, and canonical URL normalization utilities |
 | `application-core.mjs` | Applications registry logic and markdown sync engine |
+| `outreach-core.mjs` | Contacts + outreach-thread registries, lifecycle states, and markdown sync engine |
 | `autofill-fields.mjs` | Heuristic field/form classifier for autofill planning |
 | `score-postings.mjs` | Scoring utility combining rubric parameters with extracted facets |
 | `rank-postings.mjs` | Scan results cache merging, basic deduplication, and initial heuristic sorting |

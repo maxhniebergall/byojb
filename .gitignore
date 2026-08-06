@@ -5,6 +5,11 @@ data/submitted-essays.md
 # applications.jsonl is the generated source of truth for the tracker (regenerated from
 # scans/extension submits); essay-answers + submission snapshots are personal application data.
 data/applications.jsonl
+# Outreach: people you contact + message threads. Personal, and contains third-party
+# names/contact details — never commit.
+data/contacts.jsonl
+data/outreach.jsonl
+data/outreach.md
 data/essay-answers.jsonl
 data/application-snapshots/
 data/pipeline.md
