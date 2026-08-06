@@ -73,6 +73,19 @@ is a deterministic helper only.
    postings whose location named the US and never mentioned Canada. `geo_eligibility` combines with
    `remote_policy` into the `work_eligible` hard filter, so a wrong `canada` on a remote US role
    does not merely mis-rank it — it defeats the filter and surfaces an unreachable job as a match.
+   **`global` carries exactly the same risk as `canada` and needs exactly the same evidence.** It
+   passes the eligibility filter, so it is not a safe way to say "not sure". Two tests before using it:
+   - **Workforce is not eligibility.** "We're a globally distributed, remote-first team", "400+
+     members across 12 countries", "colleagues in 75+ countries" describe who already works there,
+     not where this req can be filled. This one trap accounted for most of a 124-posting audit in
+     which **only 20 were genuinely `global`** — ClickHouse, Alpaca, Docker and Sezzle reqs were all
+     mislabelled on that basis.
+   - **A single-currency band or a city list is evidence of a RESTRICTION.** A req quoting only a USD
+     range, or naming four metros, is not worldwide. "Anywhere we have a hiring presence" is
+     unenumerated, not global → `unclear`.
+   Genuine `global` looks like an explicit statement of employer reach: "we hire almost anywhere in
+   the world", "work from any country", "remote roles open in every time zone". Canonical, Sourcegraph
+   and Cloudlinux really are this. When the JD does not say, the answer is `unclear`.
 4. Write a short **personal fit verdict** → `data/posting-fit/<sk(key)>.md` (PRIVATE; `sk` =
    key with `:`/`/`→`-`). Prose only — Recommend (shortlist|skip|consider), Aligns, Concerns,
    Verdict (1-2 sentences). **No numbers** — every score is computed from the facets, not authored here.

@@ -20,6 +20,11 @@ First read `config/rubric.yml` (dimensions, weights, `preferences`) and `config/
    - **Use judgement, not keyword automation.** Reserve 4-5 for well-scoped backend/platform/
      infra/data/MLOps/cloud IC roles at credible companies; most postings are 2-3; give 1 to
      clearly off-target roles (product/growth/customer-facing/management, internships, wrong stack).
+   - **Agent/agentic/LLM roles are IN SCOPE, not hype — do not reflexively down-rank them.** The
+     user WANTS agent-infrastructure work: agent runtimes, orchestration, tool-calling/MCP servers,
+     evals, guardrails, RAG/retrieval, inference/model serving = 4-5 (it's plumbing other teams and
+     agents run on). Only the thin prompt-wrapper / "bolt a chatbot onto our product" role is the
+     hype anti-target. When a title says "Agent"/"Agentic"/"Applied AI", judge the scope, don't assume product.
    - The excerpt is a hint, not the full JD — when unsure, score CONSERVATIVELY (2-3) rather than
      inflating. Stage 3 reads the full JD and can still promote a 3.
    - Keep batches ≤50 so you judge each posting rather than reaching for a script.
