@@ -1,0 +1,22 @@
+# F&G (Fidelity & Guaranty Life Insurance Company) — research
+Provider/key: greenhouse:fidelityguarantylife | company_type: product
+
+What they do: F&G is a US financial-services firm selling **annuities and life insurance** — retirement-income and protection products distributed through independent agents, banks and broker-dealers. Founded 1959. Engineering exists to run the insurer's own systems (investments/hedging data platforms, policy administration, internal applications), not as a product line. Entity check: the postings resolve to `fglife.com`, the same domain as the F&G corporate site, so the registry entity is confirmed correct — no name collision.
+
+How they describe themselves: Mission — "help turn aspirations into reality, striving every day to improve the financial lives of more and more people." Their culture page names five stated values: **Collaborative, Authentic, Inclusive, Dynamic, Empowered**, with emphasis on transparency in decision-making and cross-team innovation. Notably absent from their own pages: any hustle/rocketship language. The JDs, however, do ask for "flexibility and tolerance for ambiguity with the ability to thrive in a **rapidly changing business environment**", "dedicated work ethic", "results-oriented", and "regular and punctual attendance".
+
+Size / stage / funding: Headcount not disclosed on the culture page. Established 1959, part of the US annuity/life sector; not a startup and not runway-dependent. Public/private status not confirmed from the pages fetched (unverified — not asserted here).
+
+Locations / HQ: Offices in **Des Moines, Iowa** and **New York, New York**, plus "remote positions nationwide" (US). Multi-year Iowa Top Workplace recognition.
+
+Remote policy: First-party statement in the JD: "F&G believes in an employee-centric flexible environment, which is why we offer the ability for **in-office, hybrid and remote work arrangements. During the hiring process, you'll work with your leader to decide what works best for your role.**" Both target postings carry `#LI-Remote`. So remote is genuinely available, but it is negotiated per-role rather than a company-wide remote-first posture, and the culture page brands it a "hybrid work environment".
+
+Remote-Canada eligibility: **No — effectively disqualifying, unverified in the negative but strongly indicated.** Every geographic statement is US-scoped: "remote positions **nationwide**", US offices only, US disability-law compliance language, US talent-acquisition contact. Nothing on any page or JD mentions Canada or a Canadian entity. A US-regulated insurer hiring a Canada-resident remote employee would be unusual; treat as US-only unless they say otherwise.
+
+Engineering & tech: Enterprise data/BI stack rather than distributed-systems product engineering. From the Sr. Data Engineer (Investments) JD: **Informatica Data Management Cloud** (Cloud Data Integration + Cloud Mass Ingestion), **Snowflake**, **Azure** data tooling, SQL Server/Oracle, Python scripting, ETL and real-time pipelines, unit/integration/acceptance tests for data interfaces, Erwin for data modelling, EFT file transfers to external organisations. Domain-specific preferred experience: investment systems (Aladdin, FactSet, Clearwater, INTEX, Bloomberg) and investment analytics (yield, duration). The Sr. Software Engineer JD is generic application development — "code, test, and document software solutions", "write more progressively complex code", "in lead capacity with other developers", explicitly framed as a stepping stone: "The ideal candidate will have a desire to grow into a **Lead Software Engineer** role."
+
+Notable / other: Both roles ask 4-7 years of experience and are seniority-labelled "Sr." at what reads as a mid-level scope by tech-industry standards. Minimal travel (<10%). Community/ERG programs (Inclusive Culture Advisory Council, employee resource groups) and charitable giving around food security, housing, education, health and safety. No compensation figures appear on the JDs or the culture page.
+
+Open relevant roles (sample): Sr. Data Engineer, Investments (Remote, #LI-Remote); Sr. Software Engineer (Remote, #LI-Remote).
+
+Sources: https://www.fglife.com/about/culture.html ; JD bodies for fglife.com/about/careers/apply.html?gh_jid=7749360003 and ?gh_jid=7746593003 (via registry); job board https://job-boards.greenhouse.io/fidelityguarantylife (cited, not fetched).

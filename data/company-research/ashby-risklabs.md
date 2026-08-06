@@ -1,0 +1,24 @@
+# Risk Labs — research
+Provider/key: ashby:risklabs | company_type: product
+
+What they do: Risk Labs is, in its own words, "the core team behind **UMA** and **Across**, building infrastructure that pushes crypto forward." UMA is an optimistic oracle — a mechanism for getting real-world data and dispute resolution on-chain, notably used to resolve prediction-market outcomes (Polymarket is the best-known consumer of this class of oracle). Across is a cross-chain bridging protocol. The current engineering push is an **oracle automation stack**: LLM-driven systems that reason about prediction-market rules, evidence and oracle outcomes to resolve markets automatically.
+
+How they describe themselves: Values listed verbatim on the JD — "We value curiosity. We value openness, honesty and directness. We value integrity. We value iterative learning. We value taking smart risks. We value being high agency." Culture framing: "Philosophies for a culture that show we care: Take vacation when you need it, family care, training and development." On the role itself they are notably grounded: "This is a production systems role, not a research-only or prompt-only role. You will build the evaluations, observability, tooling, fallbacks, and feedback loops that make LLM behavior measurable and dependable in real-world conditions."
+
+Size / stage / funding: A small, globally distributed crypto-protocol team — "Our global team blends deep technical expertise with diverse business perspectives." Backed by Placeholder, Blockchain Capital, Bain Capital, Coinbase Ventures and Dragonfly. Funding is protocol/token-adjacent rather than a conventional venture ladder, so stability tracks crypto-market conditions rather than an ARR curve.
+
+Locations / HQ: No headquarters is stated — the team is distributed globally, with **at least two team-wide offsites per year**.
+
+Remote policy: **100% remote**, stated as such: "100% remote, which means we encourage you to create the work environment that you thrive in." The posting is banded simply "Remote" with global eligibility.
+
+Remote-Canada eligibility: **Likely yes on policy; the mechanics are unusual.** The role is globally remote with no geographic restriction stated, so Canada is in scope and Mountain Time poses no problem for a distributed team with no stated core hours. The material caveat is the payment arrangement — the JD says they "Will pay in stablecoins or fiat", which signals contractor-style engagement rather than conventional employment for many hires. For a Canadian, that means self-employment tax treatment, no employer benefits or RRSP matching, and possible crypto-denominated income. This should be settled before anything else.
+
+Engineering & tech: A well-specified applied-LLM-systems role. Stack stated in full: "Python, TypeScript, Postgres, GCP, Cloud Run, GitHub Actions, Terraform, React, Node.js, Solidity, and LLM APIs from major model providers." Ownership areas: LLM accuracy (prompts, model selection, tool usage, structured outputs, retrieval, evaluation coverage); system performance (latency, token usage, cost); resilience (validation, retries, fallbacks, uncertainty handling, human review paths); evaluation and monitoring (datasets, regression tests, dashboards, traces, review loops); agent and tooling architecture (agent orchestration and tool use across internal services, APIs, search workflows, databases); and production operations (debugging live issues, regressions, runbooks). Nice-to-haves reveal the domain: oracle systems, prediction markets, DeFi, UMA/optimistic oracles/Polymarket, LLM tracing and AI observability, blockchain operational constraints (RPC limits, indexing, event logs, finality). Required experience is only "3+ years" of professional software engineering.
+
+Notable / other: Compensation is stated openly and includes "meaningful long term equity participation" alongside salary, with payment available in stablecoins or fiat. Time off is discretionary ("Take vacation when you need it"). The success criteria on the JD are unusually concrete and quality-oriented — measured accuracy, regressions instead of manual spot checks, inspectable model behaviour, "latency and cost improve without hiding quality regressions", graceful failure under ambiguity — which reads as a mature engineering culture for a crypto team.
+
+Open relevant roles (sample): Senior LLM Systems Engineer (Remote); Senior DevOps Engineer (Remote).
+
+Pay (see data/company-comp.jsonl): Senior LLM Systems Engineer — "Salaries for this role range from **$100-200k (USD)**", stated on their own JD, plus long-term equity participation. The range is exceptionally wide, which likely reflects global location-adjustment.
+
+Sources: https://jobs.ashbyhq.com/risklabs/5ce32b6c-a892-4c9f-8b78-26914a7b35ee (JD body, held locally)

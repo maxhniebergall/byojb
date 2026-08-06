@@ -1,0 +1,24 @@
+# Federato — research
+Provider/key: greenhouse:federato | company_type: product
+
+What they do: Federato builds an AI-native underwriting platform for property & casualty and specialty insurance — a "RiskOps" system spanning the full policy lifecycle. In its own words it "is on a mission to defend the right to efficient, equitable insurance for all. We enable insurers to provide affordable coverage to people and organizations facing the issues of today - the climate crisis, cyber-attacks, social inflation." The platform triages submissions as they arrive, scores them against a carrier's portfolio goals/appetite, and gives underwriters real-time portfolio feedback: "Better decisioning is built-in, not bolted on." Modules include Product Studio, Submission-to-Quote, Billing & Payments, Control Tower (portfolio oversight), Producer Portal and Policyholder Portal. Customers are carriers, MGAs, MGA aggregators and mutuals.
+
+How they describe themselves: Marketing emphasises agentic AI handling "systematic, repetitive tasks" so underwriters focus on relationships and strategy, and publishes customer outcome metrics (89% reduction in time-to-quote, 90% reduction in systems used, 3.7x improvement in high-appetite binding). Careers copy is explicit about pace and about culture as a filter: "Here at Federato, your capabilities are important, but culture fit is essential. We move fast, are ea[ger]…" (JD conclusion block). The Senior Data Engineer JD asks for a "proven track record of designing high-impact data products and pipelines in **fast-paced environments**" and comfort "navigating ambiguity". Investor framing on the JD: "Our vision is understood and well funded by those behind Salesforce, Veeva, Zoom, Box, etc."
+
+Size / stage / funding: Private, late-venture. Recently raised a **$100M Series D led by Goldman Sachs** per its own site. Headcount not stated on any page read. Growth-stage, well-capitalised; not a runway-risk company, but not profitable-and-boring either.
+
+Locations / HQ: HQ not stated on the pages fetched (US-based; only info@ / press@federato.ai contacts are published). Engineering postings are listed as "Remote".
+
+Remote policy: Roles are posted as "Remote" with no office requirement stated. Two 2026 JDs mention **15–20% travel**. No async/handbook culture signals were found.
+
+Remote-Canada eligibility: **Likely yes, but with a caveat.** Two Federato JDs (Senior Software Engineer, Staff Software Engineer, both since expired) quoted their salary ranges in **CAD** and were extracted with `geo_eligibility: canada` / `location_hints: ["Canada"]` — strong evidence Federato employs in Canada. The currently live Senior Data Engineer JD quotes **USD** ($160,000–$210,000) and says "Final offer amounts are determined by multiple factors including candidate location", which neither confirms nor excludes Canada. Time-zone expectations are not stated. Treat Canada hiring as established at company level, unverified for this specific role.
+
+Engineering & tech: The live Senior Data Engineer role sits on "a small, high-impact data engineering team within Federato's AI/ML organization" whose "focus is on building the infrastructure and internal frameworks that empower machine learning engineers to develop, deploy, and iterate on AI-powered features ranging from prompt-based LLM workflows to more traditional model-driven systems." Work: robust ETL pipelines, architecture decisions, observability tooling, data-quality initiatives, "a scalable internal framework for managing prompt engineering pipelines and other AI workflows", and raising code-quality/testing/documentation standards across the AI/ML org. Stack: Python, SQL, Airflow/Dagster/Prefect, dbt, CI/CD, AWS/GCP, Terraform; TypeScript a bonus. Elsewhere the org uses React, Node.js, Python/Django, PostgreSQL, Kubernetes, Kafka and event-driven architectures. Bonus points for MLOps exposure and open-source data-tool contributions.
+
+Compensation (on record, from their own JDs): Senior Data Engineer USD $160,000–$210,000 base + stock options; Senior Software Engineer CAD $160,000–$200,000; Staff Software Engineer CAD $200,000–$250,000; Staff Software Engineer, AI Systems USD $215,000–$250,000. These are already in `data/company-comp.jsonl` as `direct`/`jd_posted` rows.
+
+Notable / other: Insurtech domain with heavy regulatory/enterprise sales context. The data-engineering role is genuine AI *platform* work (frameworks and pipelines for ML engineers) rather than prompt-wrapper product work. Only one of the four relevant postings seen is currently live.
+
+Open relevant roles (sample): Senior Data Engineer (Remote, live); Staff Software Engineer, AI Systems; Staff Software Engineer; Senior Software Engineer (last three no longer live).
+
+Sources: https://www.federato.ai/ ; JD bodies in the registry — https://job-boards.greenhouse.io/federato/jobs/5367402008 (Senior Data Engineer), /5248372008, /5248355008, /5204058008

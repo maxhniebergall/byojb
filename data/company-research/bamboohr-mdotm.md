@@ -1,0 +1,23 @@
+# MDOTM — research
+
+Provider/key: bamboohr:mdotm | company_type: product
+
+**What they do:** MDOTM describes itself as "the Global leader in AI-driven investment solutions" — a B2B fintech selling AI/quant-driven investment decision tools to institutional asset managers, banks and wealth managers. The engineering surface is a Spring Boot platform plus a data infrastructure layer handling large-scale and time-series financial data feeding analytics and ML.
+
+**How they describe themselves:** "Founded in 2015, we earned significant recognition in 2017 as the only European fintech startup selected by Google for its acceleration program in Silicon Valley. Since then, we have been growing continuously, establishing a strong international presence with offices in London, Milan and New York." The recruiting pitch is explicitly intensity-flavoured: **"If you are looking for a fast-paced environment and you are willing to take ownership, this is the right opportunity for you!"** Stated perks/values: "Work at the leading edge of technology, leveraging our decade of experience in proprietary AI"; "Competitive salary & truly flexible work environment"; "unlimited learning and development budget… alongside a fast-track path into technical leadership or principal research roles"; "Collaborate daily with an ultra-international team (18+ nationalities) spread across our offices in Milan, London and New York"; "Annual company retreat at a stunning location"; "Fast-track career progression, with opportunities to grow into leadership roles."
+
+**Size / stage / funding:** Private, founded 2015, ~decade old and described as continuously growing; specific headcount, funding stage and profitability are **not stated and were not verified**. The "18+ nationalities" line and three-office footprint suggest a small-to-mid company (likely low hundreds at most) rather than an enterprise. Treat size as unverified.
+
+**Locations / HQ:** Offices in Milan, London and New York. Milan is the apparent engineering/origin centre (Italian fintech).
+
+**Remote policy:** Not stated as a policy anywhere in the JDs; the only signal is "truly flexible work environment" and the existence of two timezone-scoped variants of each role ("Backend Engineer (US Eastern Time Zone)", "Data Engineer (US Eastern Time Zone)") alongside untagged versions. All BambooHR postings have an empty Location field. Read this as timezone-anchored hiring (CET for the Milan/London roles, US Eastern for the American ones), not location-agnostic remote.
+
+**Remote-Canada eligibility: Unclear, leaning no.** Canada is never mentioned; there is no Canadian entity among the three stated offices. The US-facing roles are explicitly scoped to **US Eastern Time**, which is 2 hours ahead of Mountain Time, and the non-US roles are CET-anchored (8–9 hours ahead) — both poor for a Kimberley, BC schedule. No evidence of Canadian employment; do not assume it is available.
+
+**Engineering & tech:** Backend — Java + Spring Boot microservices and REST APIs, MySQL and MongoDB, layered architecture / DDD / event-driven design, TDD with JUnit / Mockito / Testcontainers, messaging via ActiveMQ and Kafka; bonus for gRPC/GraphQL, GitLab Pipelines / GitHub Actions / Jenkins, AWS (EC2, S3), Docker and Kubernetes, and security practice (they name ISO 27001:2022 Annex A 8.28, so they are running a formal ISMS). Data — Java or Python (JVM languages preferred), production data pipelines and data-intensive systems, workflow orchestration/scheduling, AWS *or on-premises* infrastructure, MySQL/PostgreSQL/MongoDB performance tuning, data quality/validation/monitoring, financial time-series modelling; collaboration with Data Scientists and Analysts on ML use cases. The Data Engineer role is written as genuinely senior scope: "take ownership of how data flows across the company, from ingestion to consumption" and "help define the roadmap for data infrastructure."
+
+**Notable / other:** Google Silicon Valley accelerator alum (2017). Financial-domain data quality is treated as a first-class requirement, which implies real rigour rather than move-fast prototyping — this sits somewhat in tension with the "fast-paced" recruiting language. Compensation is never posted.
+
+**Open relevant roles (sample):** Backend Engineer; Backend Engineer (US Eastern Time Zone); Data Engineer; Data Engineer (US Eastern Time Zone); DevOps Engineer.
+
+**Sources:** JD bodies captured in the registry — `https://mdotm.bamboohr.com/careers/62`, `/66`, `/69`. No first-party corporate site was fetched: the registry only carries the BambooHR board and the corporate domain was not derivable without guessing, so anything not quoted above is unverified.

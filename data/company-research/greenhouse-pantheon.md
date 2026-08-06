@@ -1,0 +1,31 @@
+# Pantheon — research
+Provider/key: greenhouse:pantheon | company_type: product
+
+What they do: Pantheon is a WebOps platform — managed hosting, workflow and governance for open-source websites (WordPress, Drupal, and now Next.js). The platform bundles a global CDN and WAF, a serverless CMS layer, a sophisticated branching/environment model (dev/test/live), performance monitoring, agile workflows and security compliance. From their own JD: "We power more than 300,000 websites globally for organizations including Google, Princeton, Salesloft, Clorox, and the United Nations. Every day, thousands of developers and marketers use our WebOps platform to build, iterate, and scale WordPress, Drupal, and Next.js sites that reach billions of people worldwide." Their marketing site claims 700K+ sites hosted, 17 billion+ monthly page views and 2,500+ agency partners. Their current strategic bet, stated in the JDs: "Content management has been largely unchanged for two decades... Pantheon is uniquely positioned — with deep roots in the web platform, a global CDN, and a sophisticated branching platform already trusted by thousands of organizations — to build the content management experience that the modern web actually deserves."
+
+How they describe themselves: Mission on their own site: "One platform for every open source website." Their four stated values, verbatim: **Trust** — "Trust clears the path for bold experimentation, creativity, and growth."; **Teamwork** — "WebOps is a team sport. Collaboration empowers us to deliver incredible results."; **Customer First** — building "the best possible environment for extraordinary digital work"; **Passion** — "Our curiosity drives us to find innovative solutions every day." Their employer framing in JDs: "As an employer, we operate with the same philosophy that drives our product: foundation and freedom. Pantheon is a vibrant, remote-forward team of experts who care deeply about their craft and results. Here, you take ownership of work that matters, contribute alongside exceptional people, and see the impact you create." They also say they value diversity and bringing "full selves to work", and are committed to the open web / open source.
+
+Size / stage / funding: Private, late-stage. Investors named on their own site: SoftBank, Sageview Capital, Scale Venture Partners, Foundry and Industry Ventures — "funded by the backers of Heroku, ExactTarget, and SendGrid." Founded 2010; a mature, revenue-generating infrastructure business rather than an early startup. Headcount not published (several hundred range).
+
+Locations / HQ: San Francisco, CA (US HQ). They maintain an in-office workspace in Vancouver, BC, Canada (listed as a benefit on Canadian JDs). Postings are split between "United States (Remote)" and "Canada (Remote)".
+
+Remote policy: "Remote-forward" in their own words. Postings are explicitly labelled "(Remote)" by country, and the Vancouver, BC office is offered as an optional "In-office workspace" benefit rather than a requirement. No stated in-office day count anywhere in the JD bodies.
+
+Remote-Canada eligibility: VERIFIED YES. Multiple live roles are posted as "Canada (Remote)" — Senior Software Engineer - New Customer Experience, Software Engineer II - Data Platform, Staff Software Engineer - Collaborative Web Platform, Software Engineer - Customer Insights — each with a Canadian base salary range stated in CAD. No province restriction and no timezone requirement appears in the JD text, and the company is SF-headquartered (Pacific), so Mountain-Time hours are unproblematic. The optional Vancouver workspace is a benefit, not an obligation. This is the cleanest remote-Canada story in the batch.
+
+Engineering & tech: Real infrastructure surface — hosting platform, global CDN/WAF, container/environment orchestration, a data platform team, and a "Collaborative Web Platform" group building the branching/collaboration layer. Roles span Software Engineer II through Principal (Hosting). Stack signals from the JDs: CMS architectures "headless, hybrid, or traditional — and their tradeoffs in real-world deployments", WordPress/Drupal/Next.js, plus data-platform engineering. They emphasise ownership: "exceptional builders who take ownership, drive meaningful impact."
+
+Notable / other — pay transparency: Pantheon states base ranges on its own postings, in local currency, with the caveat "Our salary ranges are determined by role, level, and location. At Pantheon, it is not typical for an individual to be hired at or near the top of the range for their role and compensation decisions are dependent on the facts and circumstances of each case." Observed on their own live JDs:
+- Staff Software Engineer - Collaborative Web Platform (Canada Remote): CAD 139,200 - 174,000
+- Senior Software Engineer - New Customer Experience (Canada Remote): CAD 115,400 - 144,000
+- Software Engineer II - Data Platform (Canada Remote): CAD 103,206 - 129,008
+- Software Engineer - Customer Insights (Canada Remote): CAD 103,000 - 129,000
+- Senior Software Engineer - Collaborative Web Platform (US Remote): USD $166,700 - $232,000
+- Staff Software Engineer - Data Platform (US Remote): USD $139,680 - $174,600
+Note the large US/Canada differential — the Canadian bands sit roughly 35-40% below the US bands for comparable levels. Other stated benefits: "Industry competitive compensation and equity plan"; optional in-office workspace in Vancouver, BC.
+
+Open relevant roles (sample): Staff Software Engineer - Collaborative Web Platform (Canada Remote); Senior Software Engineer - New Customer Experience (Canada Remote); Software Engineer II - Data Platform (Canada Remote); Staff Software Engineer - Data Platform (US Remote); Principal Software Engineer - Hosting (US Remote); Senior Software Engineer - Collaborative Web Platform (US Remote).
+
+Sources:
+- https://pantheon.io/about
+- Their own live JD text (values, remote model, CAD/USD ranges): https://pantheon.io/about/careers/detail?gh_jid=8017939 , https://pantheon.io/about/careers/detail?gh_jid=8009175 , https://pantheon.io/about/careers/detail?gh_jid=7647311 , https://pantheon.io/about/careers/detail?gh_jid=7843250 , https://pantheon.io/about/careers/detail?gh_jid=8054337

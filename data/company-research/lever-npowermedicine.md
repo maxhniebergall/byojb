@@ -1,0 +1,26 @@
+# N-Power Medicine — research
+Provider/key: lever:npowermedicine | company_type: product
+
+What they do: N-Power Medicine is a clinical-research company rebuilding how oncology drug development is run. Rather than running trials in separate research centres, it embeds an "always-on clinical research system" inside community oncology practices, so that "routine care and research [are] one and the same." Products/services include prospective external control arms and a community trial accelerator, backed by the Kaleido Registry of real-world oncology data. Its own site reports 1,000+ partnered oncologists, 12,000+ Kaleido Registry patients at a 95% consent rate, 100,000+ cancer cases annually, and 60 sites planned by end of 2026. Customers are pharma/biotech sponsors and partnered oncology practices.
+
+How they describe themselves: The mission is to "establish a new paradigm in drug development by reinventing the 'how' and transforming clinical trials through better integration with clinical practice, ensuring broader participation by physicians and patients." Their stated core value is "Empowering Community through generosity, curiosity and humility" — and those three words recur as a hiring criterion in the JD itself ("Generous, Curious, and Humble"). They are explicit about pace: "We are working with urgency to bring better therapies to patients faster," and describe themselves as "a mission-driven, well-funded, rapidly growing company" offering "a balanced and flexible work environment." Equity framing: bringing trials to underrepresented populations and reducing physician burden rather than adding to it (they claim physicians save 5-10 hours/week).
+
+Size / stage / funding: Private, venture-backed; self-described as "well-funded, rapidly growing." No headcount, funding total or stage was disclosed on the pages fetched (unverified). The company offers equity at hire plus a discretionary annual bonus, which is standard private-company structure.
+
+Locations / HQ: HQ at 2635 Broadway, Redwood City, CA 94063. Operationally distributed across partnered community oncology practices (60 sites planned by end of 2026) rather than corporate offices.
+
+Remote policy: The AI/data-science role is posted as fully remote, and the JD states plainly: "This position is remote within the United States." Their site also refers to "embedded virtual & remote staff" supporting sites, so remote work is normal for them — but scoped to the US. Up to 10% travel may be required for this role.
+
+Remote-Canada eligibility: **No — explicitly disqualifying.** The JD states "This position is remote within the United States" and, separately, "Applicants must be currently authorized to work in the U.S. on a full-time basis. The Company will not sponsor applicants for work visas." There is no path here for a Canada-based remote worker.
+
+Engineering & tech: The relevant role is Senior LLM Operations Engineer, owning MLOps/LLMOps for AI-powered clinical variable abstraction and clinical note generation — "building the factory for our AI models." Scope: architecting scalable AI infrastructure including human-in-the-loop (HITL) feedback paradigms; CI/CD, monitoring and automated feedback loops for LLMs; model and data versioning, experiment tracking, reproducibility; validation, monitoring and lifecycle management of AI products; and HIPAA/privacy safeguards across model deployment and data pipelines. Stack: Python; a major cloud (AWS/GCP/Azure); Docker and Kubernetes; CI/CD via GitHub Actions or Jenkins. Preferred: productionizing LLMs (prompting strategies, RAG, fine-tuning), deep Databricks expertise (MLflow, Delta Tables, Unity Catalog), building data annotation/HITL systems from scratch, vector databases (Pinecone, Chroma), model serving (Ray Serve, Triton, Databricks/Mosaic), and regulated-environment/HIPAA experience. Minimum bar is 3+ years MLOps/DevOps/ML-systems plus a track record of technical leadership. Security/compliance posture is strong: HITRUST, HIPAA, ISO 27001 and ISO 9001 certified.
+
+Notable / other: The role is heavily leadership- and influence-flavoured — "recognized technical expert," "define and shape solutions," "influence stakeholders at all levels," "exceptional written, verbal, and presentation skills," "tackling complex system design through ambiguity." Benefits: 401K, competitive package, equity at hire, discretionary annual bonus, standard company perks. They post a fraud notice stating only positions on https://npowercareers.multiscreensite.com/ are legitimate. Note the posting is dated 2025-10-21 but was still live at last scan (first seen locally 2026-07-30), so it has been open a long while — either hard to fill or a stale board entry.
+
+Open relevant roles (sample): Senior Large Language Model (LLM) Operations Engineer — Data Science, Remote (US only), posted 2025-10-21, $165,000-205,000 USD.
+
+Pay: The live JD states an expected salary range of $165,000-$205,000, plus equity at hire and a discretionary annual bonus. A direct band for ml_eng/senior is already on record from that posting; no new band written.
+
+Sources:
+- https://www.npowermedicine.com/ (the non-www host returned HTTP 526)
+- https://jobs.lever.co/npowermedicine/ae7fa790-ff1a-42fd-b037-9abb1b70dacf (JD text via local registry; ATS board not fetched)

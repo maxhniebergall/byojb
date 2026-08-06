@@ -1,0 +1,24 @@
+# S&P Global (SPGI) — research
+Provider/key: workday:spgi/spgi_careers | company_type: product
+
+Entity check: the registry stores this company under the display name "Spgi", which is the Workday tenant slug, not a company name. The tenant `spgi.wd5.myworkdayjobs.com` is **S&P Global Inc.** (NYSE: SPGI). Flagged as a registry data-quality issue below.
+
+What they do: S&P Global is one of the world's largest financial-information and analytics companies. Its divisions are S&P Global Ratings (credit ratings), S&P Global Market Intelligence (data platforms, Capital IQ), S&P Global Commodity Insights (formerly Platts — energy and commodity price assessments), S&P Global Mobility (formerly IHS Markit automotive), S&P Dow Jones Indices (the S&P 500 and index family), and Kensho (its AI/ML research arm). The business is essentially data infrastructure: collecting, normalizing, benchmarking and distributing reference data, prices, ratings and indices that the financial system prices assets against. Revenue comes overwhelmingly from subscriptions and recurring ratings fees.
+
+How they describe themselves: Positioning centres on "Powering Global Markets" and providing "essential intelligence" — the framing is trusted, benchmark, essential rather than disruptive. Its published values are Discovery, Partnership and Integrity. Note: the corporate site (spglobal.com) returned HTTP 403 to automated fetching, so this section rests on the registry's own postings plus prior knowledge rather than a fresh first-party page read — cited honestly.
+
+Size / stage / funding: Public (NYSE: SPGI), S&P 500 constituent, roughly 40,000 employees globally, highly profitable, decades old (McGraw-Hill lineage; merged with IHS Markit in 2022). About as far from runway-dependent as an employer gets.
+
+Locations / HQ: HQ New York City. Large engineering and operations presence across the US (New York, Denver/Boulder, Charlottesville), Canada (Toronto, Calgary — Calgary is a Commodity Insights hub), the UK, India (Hyderabad, Gurgaon, Ahmedabad) and Poland. The registry's postings resolve to a broad mix of US, Canadian, Indian and European locations.
+
+Remote policy: Hybrid by default, set per office and per requisition. The registry's Canadian reqs resolve to named offices (e.g. Toronto-CAN); the US reqs resolve to New York NY and similar. There is no company-wide remote-anywhere policy.
+
+Remote-Canada eligibility: **Unclear-to-negative for a BC-based candidate.** S&P Global is a real Canadian employer with Toronto and Calgary offices, so Canadian employment is available in principle — the registry contains a Toronto requisition ("Associate Director, Software Engineering", Toronto-CAN). But the relevant open engineering reqs are attached to specific offices under a hybrid model, not to remote-anywhere-in-Canada. No req in the current set is tagged remote in British Columbia. Absent a specific remote req, this is not Mountain-Time-workable from Kimberley.
+
+Engineering & tech: Very large, distributed engineering organization spanning Java, .NET, Python, Salesforce/Appian/Power Platform, big-data and cloud platform work. The open-role mix is heavily data-engineering weighted — Data Platform, Big Data, and data-pipeline roles dominate — alongside backend (Java/Python), ML engineering, DevOps/SRE, and a layer of Lead/Technical-Team-Lead titles. Kensho supplies the ML/NLP research capability. The domains (ratings workflows, index calculation, commodity price assessment, market data distribution) are genuinely infrastructural and change slowly.
+
+Notable / other: The volume here is unusual — 20 relevant live postings, the largest count in this batch after Citi — and titles skew toward Lead/Senior rather than junior. A meaningful share of the requisitions are duplicated across the public tenant (`spgi_careers`) and an internal tenant (`spgi_internal`), which inflates apparent volume; the registry carries both. Comp is disclosed on US reqs subject to state pay-transparency law but generally not on Canadian ones: an existing record shows US$142,000-$215,000 base for a New York "Software Engineering Manager"/Technical Team Lead req.
+
+Open relevant roles (sample): Senior Backend Software Engineer; Senior Software Engineer, Backend Development (Python); Senior Machine Learning Engineer; Senior Data Engineer; Senior Lead Data Engineer - Data Platform; Lead Big Data Engineer; Senior DevOps Engineer; Software Engineer - Commodity Insights; Senior Software Engineer - Site Reliability; Software Engineer II.
+
+Sources: registry postings under https://spgi.wd5.myworkdayjobs.com/spgi_careers ; https://spgi.wd5.myworkdayjobs.com/spgi_careers/job/New-York-NY/Software-Engineering-Manager_328947-2 ; https://spgi.wd5.myworkdayjobs.com/spgi_careers/job/Toronto-CAN/Associate-Director--Software-Engineering_328518 ; https://www.spglobal.com/ (403 to automated fetch — not read)

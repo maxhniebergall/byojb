@@ -1,0 +1,22 @@
+# UiPath — research
+Provider/key: ashby:uipath | company_type: product
+
+What they do: UiPath is an enterprise automation software company — robotic process automation (RPA) extended into agentic AI, document understanding and orchestration for large enterprises. It is a large, publicly traded vendor (NYSE: PATH), not a startup. Its Document Understanding and "Autopilot" product lines are the AI-heavy parts of the portfolio and account for most of the engineering roles in the registry.
+
+How they describe themselves: From their own careers boilerplate — "The people at UiPath believe in the transformative power of automation to change how the world works. We're committed to creating category-leading enterprise software that unleashes that power." The stated people profile is "curious, self-propelled, generous, and genuine. People who love being part of a fast-moving, fast-thinking growth company. And people who care—about each other, about UiPath, and about our larger purpose." Note the explicit "fast-moving, fast-thinking growth company" framing, which is company-level boilerplate rather than team-level.
+
+Size / stage / funding: Public company, thousands of employees, global. Well past the funding-runway stage; the relevant stability question for a company of this type is reorganisation and layoff risk rather than insolvency (not verified either way here — no news check was performed).
+
+Locations / HQ: Global with many offices. The live postings in the registry span London, Hong Kong, Shenzhen (remote) and Taipei (remote). No Canadian location appears in any live posting in the registry.
+
+Remote policy: Stated on their postings as deliberately variable rather than remote-first: work location is decided "depending on the needs of the business and the role," and "the number of hybrid, office-based, and remote workers will vary from team to team." That is a hybrid-default policy with per-team exceptions, not a distributed-company policy.
+
+Remote-Canada eligibility: **No — not for the roles in the registry.** The one substantive engineering role, Senior Software Engineer, Machine Learning Services, is a London role. The other live postings are Hong Kong / Shenzhen / Taipei sales roles. Nothing in the current live set is Canada-based or Canada-remote, and the stated policy makes remote a per-team concession rather than a default. Treat as ineligible unless a Canadian or fully-remote-Americas req appears.
+
+Engineering & tech: The Machine Learning Services (MLS) team is genuinely strong infrastructure work and worth recording. They describe themselves as "a small, sharp group of senior engineers building the core platform that powers UiPath's large-scale AI and Document Understanding products," working in "distributed systems, high-throughput model serving, and complex asynchronous training workflows." The role is framed as "Build the Engine, Not Just the Car" and explicitly disclaims glue work: "This isn't just about gluing APIs together; it's about building the infrastructure that makes it all possible." Stack: "Our core platform is written in Rust for performance, correctness, and fearless concurrency. ML models and services are primarily in Python." Concrete components named — a Rust-based API gateway, Python ML compute workers, a distributed job queue orchestrating unattended model training, and "our custom-built, content-addressable storage abstraction layer over cloud object stores (GCS, S3, Azure Blob), complete with its own garbage collection and sharding logic." They want interest in "the software/hardware interface, OS-level optimization, and building robust, multi-tenant distributed systems."
+
+Notable / other: The registry's title list for this company mixes twelve engineering titles with sales roles ("Emerging Enterprise Account Executive (Agentic AI)"), and several titles contain typos in UiPath's own postings ("Senior Prinicipal Software Engineer"). No salary range is posted on any live role.
+
+Open relevant roles (sample): Senior Software Engineer, Machine Learning Services (London); Senior Software Engineer, Document Understanding; Software Engineer II, Autopilot; Senior Principal Engineer; Software Engineer II, XWorks.
+
+Sources: live JD in the registry: https://jobs.ashbyhq.com/uipath/b651393f-a017-467d-ac27-2a944326e7c8 ; plus the other live postings at https://jobs.ashbyhq.com/uipath/ (ATS board not fetched — client-rendered). The company's own site was not fetched for this pass.

@@ -1,0 +1,22 @@
+# HOOPP (Healthcare of Ontario Pension Plan) — research
+Provider/key: workday:hoopp/hoopp | company_type: product
+
+What they do: HOOPP is a Canadian defined-benefit pension plan providing lifetime pensions to Ontario's healthcare workers. It is both a benefits administrator and a large institutional investor. Per hoopp.com: over 504,000 members, 870 participating employer organizations, $132 billion in net assets, and 109% funded as of 31 December 2025. Internal technology exists to run the pension platform and the investment business — technology is a cost/enablement centre, not the product sold.
+
+How they describe themselves: hoopp.com frames the mission as "delivering retirement security for Ontario's healthcare workers", with public advocacy for broader retirement accessibility, an "equitable, diverse and inclusive workplace" commitment, and sustainable-investing positions (climate, proxy voting). Their own JD leads with "Why you'll love working here" and lists, verbatim: a "high-performance, people-focused culture"; the commitment "that equity, diversity, and inclusion are fundamental to our work environment and business success"; learning and development including workshops, a Speaker Series and LinkedIn Learning; membership in "HOOPP's world class defined benefit pension plan"; 100% company-paid extended health and dental from day one including gender affirmation, fertility, drug treatment, $2,500/yr psychological support, parental leave top-up and a health spending account; optional post-retirement health/dental subsidized at 50%; yoga, meditation, nutritional consultations and wellness seminars. The engineering group is described as valuing "challenging the status quo, innovative solutions, team collaboration, and practicality". Notably absent: any hustle, "fast-paced" or rocketship language.
+
+Size / stage / funding: Institutional, permanent, non-venture. $132B AUM and 109% funded — as stable as an employer gets. Headcount not stated on the pages available; unverified.
+
+Locations / HQ: Toronto, Ontario. Both live engineering postings are located "Toronto, Ontario, Canada".
+
+Remote policy: Not stated on hoopp.com or in the JD bodies — **unverified**. The DevOps JD's extracted facets record `remote_policy: unclear`; the Sr. Data Architect facets record `hybrid`, but that JD body was not captured, so the hybrid label is a facet inference rather than a quoted statement. Both roles are Toronto-located with no remote tag.
+
+Remote-Canada eligibility: Canada-eligible in the legal sense (Canadian employer, Toronto roles), but **not verified as remote**. There is no evidence of a work-from-anywhere-in-Canada arrangement, and both live reqs are pinned to Toronto. A Toronto-anchored role is effectively out of reach from Kimberley BC. Treat as onsite/hybrid Toronto until proven otherwise.
+
+Engineering & tech: The DevOps role sits in the Pension Technology group, on the Pension Core / Release and Configuration Management (RCM) team, owning "the reliability, automation, and continuous delivery of the Insight Pension Platform across 10+ environments, from development through production". Stack is Microsoft-centric: Azure DevOps CI/CD, PowerShell/YAML/Python, Terraform, IIS administration, Windows Server (Active Directory, Group Policy, DNS), Azure Monitor, Azure Key Vault and CyberArk, SQL/SQL Server, MS Dynamics CRM, ServiceNow, Power BI, SharePoint, Node.js, Playwright/JMeter. Heavy compliance content: gMSA service accounts, TDE encryption, SSL/TLS, SOD pipeline enforcement, audit and compliance remediation. Agile Scrum with standups, refinement, planning and retros. **On-call rotation is explicit** ("Respond to and resolve production incidents as part of the on-call rotation"). Vendor coordination is part of the job.
+
+Notable / other: HOOPP discloses in the JD that it "may use artificial intelligence tools to assist in screening, assessing and selecting applicants", with human judgment retained. The DevOps req is stated to be "for an existing vacancy" (backfill, not speculative headcount). Employees get membership in the DB pension plan itself, which is an unusually valuable benefit.
+
+Open relevant roles (sample): DevOps Engineer (Network and Cloud Operations), Toronto — $71,000–$109,000 CAD; Sr. Data Architect, Enterprise Data Platform, Toronto.
+
+Sources: https://hoopp.com ; live JD body captured in the registry — https://hoopp.wd10.myworkdayjobs.com/hoopp/job/Toronto-Ontario-Canada/DevOps-Engineer_JR102467 . The Sr. Data Architect JD body was not available.

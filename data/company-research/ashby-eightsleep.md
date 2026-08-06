@@ -1,0 +1,29 @@
+# Eight Sleep — research
+
+Provider/key: ashby:eightsleep | company_type: product
+
+**What they do:** Consumer sleep-technology company — "the world's first sleep fitness company." Its flagship product, **the Pod**, is a temperature-regulated mattress cover / sleep system with dual-zone temperature control (12–43 °C), an adjustable base for elevation and snoring reduction, integrated sound, and an app layer that turns each night into "a personalized, data-driven recovery experience." Hardware + firmware + mobile + cloud + ML, sold D2C. Available in North America (**United States and Canada**), the UK, much of Europe (Belgium, France, Germany, Italy, Netherlands, Spain, Sweden, Denmark) and Australia; free shipping in 30+ countries; trusted by "high performers, professional athletes, and health-conscious consumers in over 30 countries."
+
+**How they describe themselves:** Two distinct registers appear across their JDs. The mission register: "we're on a mission to fuel human potential through optimal sleep… building the most advanced hardware, software, and AI technology to make it possible." The culture register is unusually explicit and is the important one:
+
+> **"High Standards. No Apologies.** We operate with intensity because our mission demands it. At Eight Sleep, we bring the same mindset as the world's top performers: focused, relentless, and always pushing to be in the top 1% of our craft. Think Kobe Bryant's mamba mentality, applied to bold ideas, next-gen tech, and flawless execution. **This isn't a 9-to-5. Our team is deeply committed, often putting in 60+ hours a week** — not because we're told to, but because we're invested. We're here to build fast, push limits, and deliver without compromise. If you thrive under pressure and want to do the most meaningful work of your career, you'll feel right at home. **If you're looking for something easier — this isn't it.**"
+
+Other stated pillars: "Innovation in a culture of excellence"; "Immediate responsibility and accelerated career growth — from your first day, you'll take on substantial responsibilities… We are a small team that empowers you to own your projects"; "perfect for those who thrive in fast-paced environments aiming for high standards"; "We operate like a high-performance team: fast, focused, and motivated by impact. We don't just ship; we iterate, refine, and obsess over the details."
+
+**Size / stage / funding:** Private, venture-backed — "Backed by leading Silicon Valley investors." Self-described as "a small team." Headcount and funding stage are not stated and were **not verified**. Recognized as one of Fast Company's Most Innovative Companies (2018/2019, 2022, 2023) and twice on TIME's "Best Inventions of the Year."
+
+**Locations / HQ:** No HQ stated in the JDs; postings indicate US presence (NYC is their known base — **unverified here**), a Boston-area role, and a Milan / EU engineering presence. Sales geography spans 30+ countries.
+
+**Remote policy:** Role-by-role rather than a company policy. The MLOps JD asks for "**Effective Remote Communication** — thrive in a remote work environment, ensuring clear and direct communication", so remote work is genuinely supported; but the listings are geo-scoped ("Remote - US", "Milan, EU | Remote", "Boston Area"). Combined with the stated 60+ hour norm, this is remote-tolerant, not async or sustainable-pace.
+
+**Remote-Canada eligibility: No, for the roles that matter.** The Senior Backend Engineer is "**Remote - US**"; the second backend role is Milan/EU; the Clinical Data Engineer is Boston-area onsite. Only the Senior MLOps Engineer is tagged bare "Remote" with no stated country — that one is **unclear, not confirmed**, and there is no Canadian entity evidence anywhere. Note the company *sells* in Canada; that is a sales footprint, not an employment footprint, and must not be read as hiring eligibility.
+
+**Engineering & tech:** Real distributed-systems scale for a consumer hardware company. Backend: ~30 microservices, a data-processing pipeline handling **5 TB per day**, bridging embedded, ML, mobile and BI systems; polyglot expectation ("advanced experience with at least 2 out of Java (Scala or Kotlin), C# (or F#) (.NET core), Python, NodeJS+TypeScript"), deep cloud services understanding, tooling to guarantee service availability and automate operations. ML platform: Python with PyTorch/TensorFlow, ML workflow orchestration and CI/CD for model deployment, shipping models to a **fleet of physical Pods** with telemetry, monitoring and feedback loops; AWS-native (Lambda, ECS, DynamoDB, CloudWatch); real-time ML and streaming (Kinesis, Kafka, Flink) valued; secure ML ops, privacy and compliance for health-related IoT data. Backing science: "over 50 clinical studies", with a Scientific Advisory Board including Andrew Huberman (Stanford) and Matthew Walker (UC Berkeley).
+
+**Compensation (posted on their own JDs):** Senior Backend Engineer $180K–$210K USD base + equity (Remote - US); Clinical Data Engineer $110K–$130K USD (Boston area). Both already ingested into `data/company-comp.jsonl`. The Senior MLOps Engineer and the Milan backend role post no range.
+
+**Notable / other:** Marketing claims cited on their site: "up to 44% less time to fall asleep" and "up to 34% more deep sleep"; 30-night trial, up to 5-year warranty.
+
+**Open relevant roles (sample):** Senior Backend Engineer (Remote - US); Senior ML Operations (MLOps) Engineer (Remote); Senior Backend Engineer (Milan, EU | Remote); Clinical Data Engineer (Boston Area).
+
+**Sources:** `https://www.eightsleep.com/about/` (fetched — product/science detail only; no careers, headcount or remote-policy content on that page). JD bodies in the registry: `https://jobs.ashbyhq.com/eightsleep/d48659e7-608b-4c0e-9e5f-4131b5df50ca` (Senior Backend) and `.../e009226b-f04a-43d1-b895-0719599e8f6c` (Senior MLOps). Ashby board pages cited, not fetched.

@@ -1,0 +1,23 @@
+# YipitData — research
+
+Provider/key: greenhouse:yipitdata | company_type: product
+
+**What they do:** YipitData is a market-research and analytics firm for "the disruptive economy" — it licenses and analyses alternative data (billions of data points daily) across software, AI, cloud, e-commerce, ridesharing and payments, and sells the resulting research to institutional investors and Fortune 500 corporates. Two customer motions: an investor-research business (top investment funds) and a Corporate business (retailers/brands, delivered through an analytics portal and "Insight Agent" LLM products). In their words they deliver "not just data, but clarity and confidence."
+
+**How they describe themselves:** Culture copy is explicit and repeated verbatim across JDs: "YipitData isn't a place for coasting — it's a launchpad for ambitious, impact-driven professionals." Their four stated pillars are **Ownership That Matters** ("lead high-impact projects with real business outcomes"), **Rapid Growth** ("We compress years of learning into months"), **Merit Over Titles** ("Trust and responsibility are earned through execution, not tenure"), and **Velocity with Purpose** ("We move fast, support each other, and aim high"). The "Who Thrives Here?" section is unusually blunt: "We hire sprinters, not coasters — people who choose growth over comfort, lead through challenges, are energized by high expectations. It's not for everyone, and that's intentional." They also cite a "people-centric culture — recognized by *Inc.* as a Best Workplace for three consecutive years — emphasiz[ing] transparency, ownership, and continuous mastery."
+
+**Size / stage / funding:** Private, late-stage and well capitalized: "most recently raised $475M from The Carlyle Group at a valuation of over $1B." Established (not early-stage), revenue-generating with blue-chip customers.
+
+**Locations / HQ:** HQ New York City. Offices in the US (NYC, Austin, Miami, Mountain View), APAC (Hong Kong, Shanghai, Beijing, Guangzhou, Singapore), and India.
+
+**Remote policy:** Remote-friendly *within defined countries*, not location-agnostic. The Staff Software Engineer, AI JD: "This is a remote-friendly opportunity that can sit in NYC (where our headquarters is located), one of our office hubs, **or anywhere else in the US.** However, depending upon where the remote work is performed, income could be subject to New York State tax withholding." Their other engineering openings are tagged "India Remote" and staffed on a Global Team. Backend roles ask for cross-timezone flexibility: "Work hand-in-glove with our US/SG/China teams. Be flexible with work hours as the data world never sleeps."
+
+**Remote-Canada eligibility: No — not supported by any evidence.** Every live engineering posting is either **US-only remote** (explicitly "anywhere else in the US") or **India Remote**. Canada is never mentioned as a hiring geography, and there is no Canadian office. Treat as disqualifying.
+
+**Engineering & tech:** Python, React, AWS and "modern data platforms"; distributed systems, APIs, observability, messaging and workflow patterns. Newer AI work is substantive rather than a thin wrapper — "production AI Agent systems", "designing Agent Loops, integrating MCP, and developing custom tools", plus an expectation that AI coding tools are treated "as core infrastructure for how they work — not a novelty." Backend/Infrastructure team work includes ERP data connectors with high-availability requirements, backend APIs and ERP data storage; a separate Data Feeds team; a Corporate Applications org reporting into a Head of Corporate Applications. Roles are described as full-stack and end-to-end ("Own features and systems end-to-end… from requirements gathering… through implementation, deployment, and iteration"), with direct business-stakeholder contact.
+
+**Notable / other:** Named an *Inc.* Best Workplace three years running. The AI staff role explicitly warns about on-call-flavoured responsiveness: "being responsive, reliable, and an excellent communicator — both when things are going well and especially when they're not." Specs are deliberately not written up front: "you won't be waiting for fully written specs."
+
+**Open relevant roles (sample):** Staff Software Engineer, AI (Remote, US); Sr. Backend Engineer (India Remote); Senior Software Engineer (India Remote); Software Engineer (India Remote); Data Engineer — Global Team (India Remote).
+
+**Sources:** JD bodies captured in the registry — `https://job-boards.greenhouse.io/yipitdata/jobs/8088335` (Staff SWE, AI) and `https://job-boards.greenhouse.io/yipitdata/jobs/7791555` (Sr. Backend Engineer). ATS board pages were cited, not fetched (client-rendered); no first-party marketing site was fetched.

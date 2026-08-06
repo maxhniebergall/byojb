@@ -1,0 +1,22 @@
+# Geotab — research
+Provider/key: greenhouse:geotab | company_type: product
+
+What they do: Geotab is a global telematics / connected-vehicle and fleet-management company. It builds the GO device hardware and firmware plus the server platform and analytics that fleet operators use for productivity, fuel reduction, driver safety, sustainability and regulatory compliance, and runs the Geotab Marketplace of hundreds of third-party integrations. It reports "more than 100,000 customers", roughly 6 million connected vehicles and assets, and processing "100 billion data points daily" (the JD text says "billions of data points a day"). Notably, Geotab "owns all IP for the device hardware and firmware, and for the software that powers the server and customer-facing tools", and publishes an SDK and APIs.
+
+How they describe themselves: Mission is "a safer, more efficient and more sustainable world in motion", with a stated commitment to "trust, continuous learning and teamwork". Certified "Great Place to Work™". The JD is candid about pace: "Ours is a fast paced, ever changing environment. Geotabbers accept that challenge and are willing to take on new tasks and activities - ones that may not always be described in the initial job description." It also asks for someone "comfortable working under pressure in a flat organization" who can "manage multiple fast-changing priorities simultaneously".
+
+Size / stage / funding: "Over 2,700 employees"; founded 2000 in Oakville, Canada. Private (no ticker; ownership is not stated on the about page — UNVERIFIED beyond the absence of any public-listing claim). Long-established and revenue-generating rather than venture-runway dependent.
+
+Locations / HQ: Founded and headquartered in Oakville, Ontario; Canadian engineering postings are Oakville / Toronto / Waterloo, with a Burnaby, BC posting seen earlier (now closed) and international postings including Remote - Singapore.
+
+Remote policy: "At Geotab, we have adopted a flexible hybrid working model in that we have systems, functions, programs and policies in place to support both in-person and virtual work. However, you are welcomed and encouraged to come into our beautiful, safe, clean offices as often as you like. When working from home, you are required to have a reliable internet connection with at least 50mb DL/10mb UL. Virtual work is supported with cloud-based applications, collaboration tools and **asynchronous working**." They publish a "flexible-first work model" page at https://www.geotab.com/blog/flexible-first-work-model/ (not fetched this session).
+
+Remote-Canada eligibility: PARTIAL / UNCLEAR for British Columbia. The hybrid model is genuinely flexible and async-supportive, and Geotab has posted BC roles before ("Senior Software Developer, Burnaby / Remote", now closed). But every currently live Canadian posting is anchored to Oakville / Toronto / Waterloo, Ontario — a hybrid model attached to an Ontario office is not the same as remote-from-BC. The one live posting explicitly labelled remote is "Remote - Singapore". Treat BC eligibility as needing confirmation per role; the pay note also states base salary "depends on… the location the applicant lives while performing the job".
+
+Engineering & tech: High-throughput, performance-critical, scalable backend systems over a very large telemetry stream; data-platform and AI-platform teams ("Data & AI Platform" department); infrastructure roles; embedded/firmware in-house. Lead roles own "complex, long-term projects", architecture proposals, prototypes/PoCs, and mentorship, working across internal technical teams, product managers and external stakeholders in a flat organization.
+
+Notable / other: Pay transparency appears on the Canadian JDs — the Lead Software Developer posting states a "Hiring Range $116,200—$155,000 CAD" base, plus equity and benefits (bonus, parental-leave top-up, EV purchase incentive, medical/dental, retirement savings, online learning). Careers blog at https://careers.geotab.com/blog/.
+
+Open relevant roles (sample): Lead Software Developer; Lead Data Platform Developer - AI Platform (Remote - Singapore); Senior Software Developer (Geotab Vitality); Software Developer; Software Developer - Infrastructure.
+
+Sources: https://www.geotab.com/about/ ; JD bodies https://job-boards.greenhouse.io/geotab/jobs/5254440008 and https://job-boards.greenhouse.io/geotab/jobs/5271055008 (ATS board itself not fetched).

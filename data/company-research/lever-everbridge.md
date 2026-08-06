@@ -1,0 +1,24 @@
+# Everbridge — research
+Provider/key: lever:everbridge | company_type: product
+
+What they do: Everbridge is a critical event management (CEM) / emergency mass-notification SaaS vendor — software used by enterprises and public agencies to keep people safe and operations running during critical events. Their own JD language frames the mission as "solving complex problems that help keep people safe." They are currently building an "agentic AI platform used by our SaaS solution" alongside a long-lived legacy platform.
+
+How they describe themselves: No published values list was reachable, so this reflects JD tone only. The engineering framing is notably measured and anti-heroic: "The work involves careful modernization rather than wholesale replacement — extracting services, introducing new capabilities, and reducing technical debt while maintaining production stability." They say the role suits engineers who enjoy "Improving complex systems", "Incrementally replacing legacy components", "Designing modern architectures that coexist with mature platforms", and "Making pragmatic technical decisions that balance innovation with operational reliability." On stack philosophy: "Our technology stack is diverse, and we value engineers who are adaptable and eager to embrace new challenges with a technology-agnostic approach… we encourage applications from candidates experienced in other technologies."
+
+Size / stage / funding: An established, mature company — evidenced by a large multi-country engineering footprint (US, India, New Zealand, Norway, Netherlands) and "large code-base products or enterprise grade software" as a stated requirement. Everbridge was formerly NASDAQ-listed (EVBG); it is understood to have been taken private, but the current ownership and financials are **unverified from first-party sources this session** — treat the specifics as unconfirmed.
+
+Locations / HQ: Distributed across at least five countries. Live postings show: United States (remote), Auckland NZ (remote), India (remote), Norway (remote), Netherlands (remote). HQ not confirmed here.
+
+Remote policy: Remote roles are the norm — every one of the eight live postings is listed as remote — but each is remote *within a specific country*. Roles are hired against a named national market, not "remote anywhere."
+
+Remote-Canada eligibility: **No — not eligible on current evidence.** Across eight live postings the countries offered are United States, India, New Zealand, Norway and the Netherlands. Canada does not appear in any of them. The one role in the relevant `software_general / staff` slot (Staff Software Engineer) is explicitly "to join our Auckland engineering team" — New Zealand, which is also a badly-misaligned timezone for Mountain Time (roughly a 19–20 hour offset). No Canadian entity is evidenced.
+
+Engineering & tech: "Diverse" and deliberately technology-agnostic. Named across the postings: React, Node.js, Java and Python; cloud platforms with AWS preferred; APIs; "Agentic AI practices and coding tools." Role types on the board span backend, platform/SRE and staff-level engineering. The modernization charter is strangler-pattern work: service extraction, incremental legacy replacement, technical-debt reduction while preserving production stability. Requirements for the staff role: degree or equivalent, 5+ years professional experience, "Experience developing AI solutions or an eagerness to learn," "A range of software development and delivery experience," "Experience in large code-base products or enterprise grade software."
+
+Comp (their own statement): two US-remote Software Engineer postings state ranges under US pay-transparency rules — **$132,900–$154,000 USD** and **$132,900–$177,200 USD**. No range is posted on the Auckland Staff Software Engineer role, nor on the India/Norway/Netherlands roles. An inferred rollup band for `software_general / unspecified` already sits in `data/company-comp.jsonl`.
+
+Notable / other: The overall posting mix (Senior Backend Engineer ×2 in India, Senior Platform/SRE in Norway and the Netherlands, Staff SWE ×2 in Auckland, Software Engineer ×2 in the US) suggests engineering is being staffed heavily outside the US.
+
+Open relevant roles (sample): Staff Software Engineer (Auckland, remote); Senior Platform Engineer / Site Reliability Engineer (Norway, remote); Senior Platform Engineer / SRE (Netherlands, remote); Senior Backend Engineer (India, remote); Software Engineer (United States, remote).
+
+Sources: registry JD bodies at `data/posting-research/https---jobs.lever.co-everbridge-175b6264-db7f-4a76-9bec-11d923a86ede.md` and `…-20f04a0b-eb61-4546-98f3-d48bab046b08.md`, plus posting metadata for the eight live roles (from https://jobs.lever.co/everbridge). No first-party everbridge.com page was fetched, so ownership, headcount and values are unverified.

@@ -1,0 +1,25 @@
+# Aescape — research
+Provider/key: ashby:aescape | company_type: product
+
+What they do: Aescape is, in their own words, "a New York-based physical AI and robotics company redefining human recovery through intelligent, precision bodywork." The product is a robotic massage/bodywork table: "Powered by real-time body mapping, advanced robotics, and proprietary software, Aescape delivers deeply personalized bodywork that continuously adapts to the individual." It is sold into commercial wellness venues rather than to consumers directly — deployed "across leading fitness, hospitality, and wellness environments, including Equinox, Life Time, Marriott, Hilton, Four Seasons, Pause Studios, and Remedy Place." The stated business thesis is behavioural: shifting recovery "from a sporadic experience into a progressive, measurable routine."
+
+How they describe themselves: Heavily brand- and mission-forward. They describe themselves as "building a defining brand for recovery" and "laying the groundwork for an entirely new category of proactive human health and performance." The careers pitch: "At Aescape, we're on a mission to redefine self-care for a better world, and we're seeking trailblazers to join us on this journey. We're inspired by individuals who are passionate, driven, and eager to learn. We value diverse perspectives and resourceful, determined individuals who are committed to making a difference." Their sign-off tagline is "YOUR JOURNEY. YOUR AESCAPE." Stated workplace character: "An environment that empowers individuals, emboldens teams, and rewards achievement." The engineering JD asks candidates to "Be diligent, curious, and take complete ownership of your code end-to-end with a clear sense of urgency." No formal values list or engineering handbook was located.
+
+Size / stage / funding: Venture-backed private company. Named investors, in their own words: "backed by Valor Equity Partners, BroadLight Capital, and Mecha Ventures." Headcount, funding round and profitability are **not stated and were not verified.** A hardware-plus-robotics company with named enterprise deployments implies meaningful capital intensity, but no round size or runway information is available here.
+
+Locations / HQ: New York City. The JD's requirements include the "Ability to travel to our NYC office a few times a year," confirming NYC as the office of record.
+
+Remote policy: Remote, with occasional travel. The Ashby posting location field reads "Fully Remote" and the JD states plainly: "This is a US-based remote role." Expected travel is "to our NYC office a few times a year." No async-work practices are described.
+
+Remote-Canada eligibility: **No — verified negative, and stated by the company itself.** The job description contains the explicit sentence "This is a US-based remote role." This is not an inference from benefits or location fields; it is the company's own words in the body of the posting. Combined with an NYC office and US-only benefits (401k with 4% match), there is no basis to think a Canada-based employee is employable here. Disqualifying.
+
+Engineering & tech: Go (Golang) is the primary backend language for the role — "Design and implement scalable, robust APIs in Golang that power our main applications." Also named: PostgreSQL and database design/modelling, RESTful services, data pipelines and ETL processes, automated testing and deployment tooling. The role is positioned as platform-flavoured: the engineer will "help build core software components that enable the team to quickly build and deploy complex software" and "build software and systems that act as force multipliers for our development teams," with the chance to "own core services architecture." Working style expectations include a "Bias toward action - iteratively creating solutions and deploying to production frequently" and collaboration "closely with Product and Design teams to shape innovative features." No engineering blog was located.
+
+Notable / other: Benefits as stated — "Medical, vision, and dental insurance covered by us"; "401k with up to a 4% company match"; "Flexible paid time off and a generous parental leave policy"; "Working late? Dinner is on us"; and "Competitive salary + bonus. The base salary range for the role is $180,000-$220,000 + 10% discretionary bonus." The "Working late? Dinner is on us" perk is worth noting as a culture signal in its own right — late hours are anticipated enough to have a perk built around them. The technical problems are described as "Super interesting, challenging-but-tractable."
+
+Open relevant roles (sample): Senior / Staff Backend Engineer, Golang — Fully Remote (US-based), $180,000–$220,000 base + 10% discretionary bonus.
+
+Sources:
+- https://jobs.ashbyhq.com/aescape/0f620725-524d-4722-955b-385fe04ee4b8 (full JD body, held locally; ATS board not fetched by policy)
+- Registry: data/posting-research.jsonl, data/company-comp.jsonl
+- No first-party aescape.com page was fetched (no domain appeared in the registry material and no search budget was spent guessing one), so all facts above come from the company's own job-posting text.

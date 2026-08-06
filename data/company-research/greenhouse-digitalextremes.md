@@ -1,0 +1,22 @@
+# Digital Extremes — research
+Provider/key: greenhouse:digitalextremes | company_type: product
+
+What they do: Digital Extremes is a video game developer and publisher based in London, Ontario. It is best known for Warframe, a long-running free-to-play live-service action game, and its upcoming title Soulframe — both named in their own posting: "opportunities to grow your career while working on beloved titles like Warframe and the highly anticipated Soulframe". The data engineering roles support live-service game telemetry and analytics infrastructure.
+
+How they describe themselves: From their own JD boilerplate: "We offer competitive compensation, industry-leading benefits, flexible work arrangements, and opportunities to grow your career... you'll be part of a studio where your ideas matter, your contributions are valued, and your work leaves a lasting impact on our community." On inclusion: "At Digital Extremes, we believe our strength comes from the diversity of our people and the respect we show one another. We are an equal opportunity employer committed to creating a welcoming, accessible, and supportive environment where everyone can do their best work and feel valued for who they are. We welcome applications from all qualified individuals, including those from underrepresented communities and people with disabilities. If you require accommodations at any stage of the recruitment process, we will work with you to ensure you have the support you need."
+
+Size / stage / funding: Established studio (founded in the 1990s), privately held under foreign game-industry ownership; Warframe is a mature revenue-generating live-service title, so the studio is not runway-dependent. Exact headcount and current ownership details not verified this session.
+
+Locations / HQ: London, Ontario, Canada. All three live relevant postings are located there.
+
+Remote policy: The postings advertise "flexible work arrangements" but state no remote policy and give London, Ontario as the location on every role. Game studios of this type typically require substantial on-site presence for production work. Unverified either way.
+
+Remote-Canada eligibility: Canadian employment is certain (an Ontario studio), but FULLY-REMOTE eligibility is UNVERIFIED and the postings are location-attached to London, Ontario — Eastern time, ~3,000 km from Kimberley. "Flexible work arrangements" is not a remote commitment. Treat as not verified Canada-remote.
+
+Engineering & tech: Notably self-hosted and on-premise rather than cloud-managed, which the JD calls out explicitly: "Unlike many modern roles that rely entirely on cloud-managed services, this position focused on owning and managing self-hosted and on-premise data stacks." Stack and duties: PostgreSQL and MongoDB at depth ("Extensive hands-on experience managing and optimizing database management systems, specifically PostgreSQL and MongoDB"), self-hosted data warehousing with "performance tuning, hardware upgrades, and OS/environment monitoring for large-scale data warehousing", ETL/ELT pipeline design, orchestration with Dagster or Airflow, Linux/Unix command line and shell scripting, Kimball-style relational data modelling, and data governance including "government policies, data privacy standards, and GDPR regulations". The Lead role is a people-management role as well as a technical one: "This role serves as a technical leader while also directing the team—ensuring projects stay on track, timelines are met, and direct reports are actively mentored and developed", including code reviews and technical coaching.
+
+Notable / other: All three live roles state pay, and it is modest for the seniority: Lead Data Engineer CA$120,000–130,000; Principal Data Engineer CA$115,000–125,000 (lower than the Lead — worth noting); Software Engineer II, Web CA$80,000–95,000. Games is a sector with well-documented crunch dynamics around live-service release cadence, though these postings contain no explicit crunch or hustle language.
+
+Open relevant roles (sample): Lead Data Engineer (London, Ontario, CA$120–130K); Principal Data Engineer (London, Ontario, CA$115–125K); Software Engineer II, Web (London, Ontario, CA$80–95K).
+
+Sources: their own live JDs — https://job-boards.greenhouse.io/digitalextremes/jobs/5089564007 , https://job-boards.greenhouse.io/digitalextremes/jobs/5165072007 , https://job-boards.greenhouse.io/digitalextremes/jobs/5169126007 (bodies already local; ATS board not re-fetched).

@@ -1,0 +1,22 @@
+# MeridianLink — research
+Provider/key: ashby:meridianlink | company_type: product
+
+What they do: MeridianLink builds a digital lending and account-opening platform for financial institutions — loan origination, deposit account opening, mortgage processing, collections, consumer-reporting and data analytics, sold to credit unions, banks, mortgage lenders, auto lenders and consumer reporting agencies. Their own homepage claims the platform powers "more than half of U.S. credit union members" and cites 16M+ auto loan applications, 1M+ home loan applications, 8M+ unsecured loan applications and 5M+ new accounts processed. It is B2B financial infrastructure — regulated, integration-heavy, and about as "boring mission-critical" as software gets.
+
+How they describe themselves: The positioning line on the homepage is "Technology handles the complexity. Your people build the trust," with a stated "people first" framing for lending. Recurring themes are speed, trust, automation and personalisation, plus "the largest ecosystem" in their sector (i.e. partner/integration breadth). Job descriptions are procedural and low on hype — one Staff platform JD describes the work as anticipating "how product-level changes cascade across integration surfaces and flags risk before it ships," which reads as mature platform-engineering framing rather than startup urgency.
+
+Size / stage / funding: Publicly traded (NYSE: MLNK) — that ticker is from background knowledge, not from a page fetched here, so treat as unverified; the homepage does not state public/private status. Established rather than early-stage; scale figures above are the company's own. Headcount not stated on any source read.
+
+Locations / HQ: HQ not stated on the homepage read here (commonly cited as Costa Mesa, California — unverified). All engineering roles in the registry are posted as "US Remote."
+
+Remote policy: Remote-first for engineering in practice — all nine engineering postings on record are labelled "US Remote," with no office attached. No written remote-work philosophy or async/handbook culture statement was found on the pages read; the remote posture is inferred from the postings themselves.
+
+Remote-Canada eligibility: NO (as posted). Every engineering posting is scoped "US Remote" and every salary range is a USD range; no Canadian location, Canadian entity or Canada-eligible posting appears anywhere in the registry. Nothing found states an explicit ban, but there is no evidence of Canadian hiring and the location field is uniformly US.
+
+Engineering & tech: Roles cluster into an AI platform group, a platform-services / platform-integrations group, engineering enablement (internal developer productivity), and data engineering. Titles on record: Staff Software Engineer - AI Platform, Staff Software Engineer - AI Products, Staff Platform Engineer - Platform Integrations, Sr. Software Engineer - Engineering Enablement, Software Engineer - Platform Services, AI Software Engineer, Data Engineer, plus Java Software Engineer III. The presence of a dedicated Engineering Enablement role and a Platform Integrations staff role indicates a real internal-platform function rather than product teams wearing an infra hat.
+
+Notable / other: Unusually complete pay transparency — a range is posted on every single engineering role even though they are nationwide-remote. Observed: Data Engineer $95K-$120K; Software Engineer II $92.9K-$125.8K; Software Engineer - Platform Services $130K-$163K; Sr. Software Engineer - Engineering Enablement $150K-$190K; Sr. Software Engineer - Technical Lead $126K-$197K; AI Software Engineer $104,148-$177,600; Staff Platform Engineer - Platform Integrations and Staff Software Engineer - AI Platform both $126K-$214.9K plus bonus; Staff Software Engineer - AI Products $152,519-$260,000 plus bonus. Data-engineering pay is notably weak relative to the platform and AI ladders.
+
+Open relevant roles (sample): Staff Software Engineer - AI Platform; Staff Platform Engineer - Platform Integrations; Sr. Software Engineer - Engineering Enablement; Software Engineer - Platform Services; AI Software Engineer; Data Engineer.
+
+Sources: https://www.meridianlink.com/ ; JD bodies for the nine postings under https://jobs.ashbyhq.com/meridianlink. (https://www.meridianlink.com/about returned 404.) Entity confirmed as the credit-union lending-software vendor from the JD and homepage content.

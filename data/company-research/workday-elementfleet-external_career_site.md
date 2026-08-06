@@ -1,0 +1,23 @@
+# Element Fleet Management — research
+Provider/key: workday:elementfleet/external_career_site | company_type: product
+
+What they do: Element Fleet Management is one of the largest **fleet management** companies in the world — it finances, acquires, services and remarkets commercial vehicle fleets for large corporate, government and utility customers across North America, Australia and New Zealand. The business is part financial services (leasing, asset finance, payment/settlement flows) and part operations/telematics services. Their careers copy: "Element employees make a difference in the lives of others every day. We are re-defining the fleet management industry to be people first, then business — delivering on our promise of a superior client experience."
+
+How they describe themselves: "This takes hard work and innovation, and we need more like-minded people on our team." Their "What's in it for You" list names "a culture of innovation, empowerment, decision-making, and accountability," comprehensive health and welfare benefits, and paid time-off programs. Notably, they publicly disclose that "Element Fleet Management also uses AI-assisted tools to help screen and assess applications… AI outputs do not by themselves determine whether you advance or receive an offer." Tone across the JDs is corporate-enterprise, not startup — no hustle language, no "rocketship" framing.
+
+Size / stage / funding: **Public company** (registry facet extraction classifies `company_stage: public`; listed in Canada as Element Fleet Management Corp.). Established, large, revenue-generating — not runway-dependent. Exact headcount not verified from a first-party page in this session.
+
+Locations / HQ: Toronto, Ontario. A JD note records the office "moving to 1 Adelaide, Toronto in September 2026" from Mississauga. Other geos exist (US, ANZ) but every live relevant posting is Toronto.
+
+Remote policy: Not stated on any of the three JDs; each is location-tagged **Toronto, ON**, and the Finance Systems JD's pay disclosure adds "the disclosed salary range is solely for candidates hired to perform work within this geographic location. Candidates hired to work in other locations will be subject to the pay range associated with that location." Facet extraction records `remote_policy: unclear`. The office-relocation note implies real office attendance.
+
+Remote-Canada eligibility: **Canada-eligible but not remote-eligible as far as can be verified.** All roles are Toronto-located with an Eastern-Time timezone tag (`America/Toronto`) and no remote statement. The Lead Software Engineer role is described as "primary escalation and decision-making point for complex system issues," which implies presence and incident duty. Nothing supports hiring a BC-based remote worker; treat as effectively Toronto-onsite/hybrid unless they say otherwise.
+
+Engineering & tech: Enterprise modernization shop. Java, C#, Python, JavaScript/TypeScript; Spring Boot, Node.js, REST and GraphQL APIs, microservices and event-driven architecture; AWS (EKS, ECS, Lambda), Kubernetes, CI/CD, IaC, observability; React/Angular on the front. Significant **legacy integration**: "mainframe-based applications such as COBOL, CICS, DB2, MQ, and exposing them via APIs or service layers," plus ERP/financial platforms (SAP FICO/FICA) and payment processing (authorization, capture, settlement). One JD adds agentic/LLM/AI orchestration keywords. The Cloud Infrastructure Engineer role is straight platform work: AWS (EC2/EKS/ECS/S3/IAM/VPC/CloudWatch/CloudTrail), Terraform/CloudFormation, Transit Gateway, PrivateLink, Control Tower, KMS, DNS, VPN/Direct Connect, hybrid on-prem/VMware, FinOps and SRE practice, framed around a cloud-migration cutover.
+
+Notable / other: Pay transparency is genuine — Ontario-posted ranges appear on the JDs themselves. Roles are Lead/senior individual contributor with mentoring expectations. Facet extraction rates autonomy on the Lead SWE role as **low** (enterprise standards, architecture governance) and culture as balanced.
+
+Open relevant roles (sample): Lead Software Engineer (Toronto, CA$111,100–$152,800); Lead Software Engineer, Finance System (Toronto, CA$111,100–$152,800); Cloud Infrastructure Engineer (Toronto, CA$99,200–$136,400); registry also lists Applied AI Specialist – AI Solutions / Data Systems.
+
+Sources:
+- JD bodies already in the registry (Workday, first-party): https://elementfleet.wd3.myworkdayjobs.com/external_career_site/job/Toronto/Lead-Software-Engineer_R105709-1 , .../Lead-Software-Engineer--Finance-System_R105719 , .../Cloud-Infrastructure-Engineer_R105830

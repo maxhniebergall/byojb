@@ -1,0 +1,37 @@
+# Centralize — research
+Provider/key: ashby:centralize | company_type: product
+
+What they do: Centralize sells relationship intelligence to enterprise sales organizations, positioning itself as a CRM replacement. In their own words: "Enterprise sales runs on relationships, and every tool built to manage them is a database from 2005. Reps lose seven-figure deals because they can't see who actually matters inside an account. We're building the system of intelligence that replaces the CRM." And: "Centralize is the relationship intelligence platform for enterprise revenue teams." Technically, the product is an integrations-and-graph business — it ingests from customers' existing tech stacks (Salesforce, Gmail, calendar, CRM data are named) and derives who-knows-whom structure across accounts. Named customers: "Webflow, Intercom, Brex, Cognition, LangChain, and Cresta use us to close their largest deals."
+
+How they describe themselves: This is one of the most explicitly intense self-descriptions in the batch, and they intend it to be. The section is headed "Our Bar":
+
+> "We stay small on purpose. No passengers, no politics, no waiting for permission or for someone else to fix what's broken.
+> We own the unglamorous work alongside the exciting work. The 9pm customer request, the integration buried three layers deep, the bug nobody wants to touch. You go after it because it needs to get done, and because the next thing you build is better for it.
+> You won't have the answers handed to you. The roadmap, the architecture, the right call on a customer request, you'll be the one figuring it out. We hire people who are energized by ambiguity, not slowed down by it.
+> Your work shapes what Centralize becomes."
+
+They also publish an explicit anti-fit list, "This Role Is Not For You If": "You want to work on infra at a company that already has it figured out"; "You prefer to specialize in one layer of the stack"; "You optimize for the perfect long-term solution at the expense of shipping. Infra at Centralize is graded on impact per week, not architectural elegance"; and "You want a slower pace. We work hard and move quickly. Please only apply if that excites you." This is unusually honest self-description and should be taken at face value.
+
+Size / stage / funding: Series A, small and deliberately so. Their words: "We just raised a Series A led by NEA, bringing our total funding to $18M+ alongside Salesforce Ventures, Y Combinator, and operators including Cal Henderson (Co-Founder, Slack), Noah Weiss (former CPO, Slack), and sales leaders from Figma, Box, Dropbox, Anthropic, and Notion." Growth: "We've grown 5x since last year, and customers are pulling us forward faster than we can ship." Exact headcount is not stated, but "We stay small on purpose" and the description of the infra hire as potentially "the first or second infra hire" put engineering in the single digits to low teens. Not profitable — this is a burn-rate, funding-driven stage.
+
+Locations / HQ: San Francisco and New York City. "This role is open to remote candidates in the US, with a strong preference for candidates based in or willing to relocate to San Francisco or New York City." Registry postings list locations as "Remote, SF, NYC."
+
+Remote policy: Remote permitted within the US, with a strong stated preference for SF or NYC proximity, up to and including relocation. There is a "Quarterly offsite." No async practices are described; the "9pm customer request" framing implies availability expectations rather than async-friendly ones.
+
+Remote-Canada eligibility: **No — verified negative, twice over, in the company's own words.** The Compensation and Logistics section states: "Location: This role is open to remote candidates in the US" and, separately and explicitly: "Work Authorization: We are unable to sponsor visas. Candidates must have existing US work authorization." A Canada-based candidate is excluded on both counts. Disqualifying, unambiguously.
+
+Engineering & tech: A data-and-scale-heavy backend. The stated scope of the infrastructure role: "Our system processes millions of events per day from integrations across our customers' tech stacks and writes hundreds of millions of records into our pipeline. The infrastructure that makes that possible is yours to design, harden, and scale. You'll own Postgres, our job queue infrastructure, our backend architecture, and the systems that move data from customer integrations into the product. You'll work in AWS, OpenSearch, and Redis."
+
+Required depth: "Deep expertise in Postgres at scale, including query optimization, indexing strategy, replication, and the failure modes you only learn the hard way," plus "Strong fluency with job queue infrastructure, AWS, OpenSearch, and Redis." Preferred: "Experience scaling B2B SaaS infrastructure through Series A to Series C+ stages," "Prior experience as the first or second infra hire at a fast-growing startup," "Background in integrations-heavy systems (Salesforce, Gmail, calendar, CRM data) where data quality and rate limits are first-class problems," and "Experience with OpenSearch or Elasticsearch at scale."
+
+Ownership expectations are broad and explicitly generalist within infra: "Our infra engineer touches Postgres, queues, search, cache, AWS, and the integration layer." Milestones: "Day 30: First major scalability win shipped... Day 60: Owning the on-call rotation, observability stack, and capacity planning for our core systems. Day 180: Our infrastructure handles 10x the load it does today." The engineer also "Set[s] the bar for reliability, observability, and operational excellence. You decide what 'production-ready' means at Centralize." Writing matters: "You can document an architecture decision in a doc another engineer can read in five minutes."
+
+Notable / other: Founders, in their words: "Centralize was founded by Rachit Kataria, a founding engineer on Facebook Shops who helped scale it to 250M MAUs, and Will Wang, who led the launch of Slack Huddles, the fastest-growing product in Slack's history." Team: "You'll work directly with Rachit and Will, alongside former founders and engineers from Coinbase, Gusto, Modern Treasury, and C3 AI." Compensation is disclosed: "$190,000 to $260,000 base salary depending on level, plus 0.20% to 0.40% equity. Final offer calibrated to seniority and experience." Benefits: "Fully covered medical, dental, and vision insurance," 401(k), parental leave, "Unlimited PTO plus company holidays," quarterly offsite, equipment stipend. The registry shows four postings, of which only Software Engineer (Infrastructure) remains live; Software Engineer (Applied AI), Software Engineer (Product) and Software Engineer (Product / Design) have closed.
+
+Open relevant roles (sample): Software Engineer (Infrastructure) — Remote (US) / SF / NYC, $190K–$260K base + 0.20–0.40% equity.
+
+Sources:
+- https://jobs.ashbyhq.com/centralize/79ee0fab-fbd7-4268-8244-a4a228262d99 (full JD body, held locally; ATS board not fetched by policy)
+- https://jobs.ashbyhq.com/centralize/03f64297-a8b8-4090-8bf7-7a2883dc5615, .../217e243b-878f-44c0-a50f-12b8359331f3, .../c231e810-3517-4b9f-a0b1-ebbb1bc7cb7e (closed postings, cited for locations and comp)
+- Registry: data/posting-research.jsonl, data/company-comp.jsonl
+- No first-party corporate site was fetched (no domain in the registry material; no search budget spent guessing one).

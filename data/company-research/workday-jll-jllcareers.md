@@ -1,0 +1,36 @@
+# JLL (Jones Lang LaSalle) — research
+Provider/key: workday:jll/jllcareers | company_type: product
+
+Note on classification: JLL is a commercial real-estate **services** firm — brokerage, property and facilities management, advisory and investment management. It is not a software vendor, and it is not a staffing/consulting/outsourcing firm in the sense the pipeline excludes: the engineering roles here are internal corporate technology building JLL's own platforms and client-facing real-estate products, not billable placements. Classified `product` for that reason, but the domain context matters — engineering is a cost/enablement function inside a services business, not the core product.
+
+What they do: Global commercial real estate services and investment management, combining "world class services, advisory and technology for our clients". The technology org builds internal and client-facing platforms: geospatial applications on the ArcGIS stack, enterprise data warehousing and pipelines, and a GenAI/Central Platform group building "applications and services powering next-generation AI assistants and RAG (Retrieval-Augmented Generation) systems… serving both internal teams and external stakeholders."
+
+How they describe themselves: Their careers boilerplate, quoted: "JLL empowers you to shape a brighter way. Our people at JLL are shaping the future of real estate for a better world by combining world class services, advisory and technology for our clients. We are committed to hiring the best, most talented people and empowering them to thrive, grow meaningful careers and to find a place where they belong. Whether you've got deep experience in commercial real estate, skilled trades or technology, or you're looking to apply your relevant experience to a new industry, join our team as we help shape a brighter way forward." No engineering-specific values, principles or handbook language appears anywhere in the postings.
+
+Size / stage / funding: Large, publicly traded (NYSE: JLL), Fortune 500, global, decades old. Financially stable in the sense of being an established public company, though commercial-real-estate services revenue is cyclical with the property market. Headcount not stated in the postings.
+
+Locations / HQ: Chicago, IL is the historical headquarters and dominates the technology reqs. Locations across the live engineering postings: Chicago IL, Westmont IL, Boston MA, Dallas TX, San Francisco CA, San Diego CA, Toronto ON, Calgary AB, Vancouver BC, Ostrava (Czech Republic), Hong Kong SAR.
+
+Remote policy: **On-site.** This is stated unambiguously and consistently — every relevant live posting carries an explicit location block reading "On-site –" followed by a list of offices. Examples: "On-site –Calgary, AB, Toronto, ON, Vancouver, BC"; "On-site –Chicago, IL, San Diego, CA"; "On-site –Chicago, IL, Westmont, IL"; "On-site –Boston, MA, Chicago, IL, Dallas, TX, San Francisco, CA". One JD's prose separately mentions "Hybrid work arrangements", which conflicts with its own "On-site" location block; the structured field is the more reliable signal. There is no async, remote-first or documentation-culture language anywhere.
+
+Remote-Canada eligibility: **Verified NO.** JLL does hire in Canada — the Staff Software Developer req (REQ509754) is posted in CAD and lists Calgary, Toronto and Vancouver — but the same req states "On-site –Calgary, AB, Toronto, ON, Vancouver, BC". Every other relevant req is on-site at a US or Czech office. For a candidate in Kimberley, BC who cannot relocate, none of these are workable: the nearest options (Vancouver or Calgary) require being physically in those cities. This is effectively disqualifying rather than a partial fit, and should not be read as "Canada-eligible" merely because CAD compensation appears.
+
+Engineering & tech: Broad full-stack enterprise development rather than specialized infrastructure.
+- **Staff Software Developer (Toronto/Calgary/Vancouver)**: "lead the design and implementation of complete features spanning React frontend, C# backend services, database layer, and deployment pipeline"; geospatial solutions on the ArcGIS stack; DevSecOps with Octopus Deploy; 8+ years required. Heavy emphasis on LLM-assisted coding: "Leverage AI coding assistants and enterprise software agents to rapidly develop, test, and iterate on production-quality code with strong ability to review, validate, and debug AI-generated outputs", plus required "Hands-on experience with modern LLM APIs across multiple providers, including prompt engineering, tool use/function calling, structured outputs, and context engineering". Also ArcGIS JS, Python/Node/Java/Go/C#, REST/gRPC, AWS or Azure or GCP, PostgreSQL/MySQL/MongoDB/DynamoDB, Terraform/Docker/Kubernetes.
+- **Senior Software Engineer, AI Platforms (Chicago + 3)**: described openly as "a Full Stack Software Engineer to join our GenAI and Central Platform teams", building AI assistants and RAG systems.
+- **Data engineering (Westmont/Chicago)**: Senior and Staff Data Engineer roles.
+- **Ostrava, Czech Republic** hosts a second engineering site (Senior Software Engineer / Senior Software Developer).
+Work cadence is described as "Working closely with Product Managers and business stakeholders in fast iteration cycles."
+
+Notable / other: The engineering openings are labelled with an "Opening Type" field — the Toronto Staff Software Developer is marked "Replacement", i.e. backfill rather than growth. The domain expertise preferred is "Commercial Real Estate, Research, Financial Services, or other data-intensive domains".
+
+Open relevant roles (sample): Staff Software Developer (On-site Calgary/Toronto/Vancouver); Senior Software Engineer (On-site Chicago/San Diego); Senior Software Engineer, AI Platforms (On-site Boston/Chicago/Dallas/SF); Senior Data Engineer (On-site Chicago/Westmont); Staff Data Engineer (On-site Chicago/Westmont); Senior Software Engineer and Senior Software Developer (Ostrava, CZE); Senior Engineer (Hong Kong).
+
+Pay: JLL posts estimated base ranges on its reqs, with the caveat "This range represents the estimated base salary and actual compensation may differ. Final base salary is determined by various considerations including but not limited to candidate qualifications, location, market conditions, and internal considerations. Some roles and employees may be eligible for discretionary bonuses, benefits, or other compensation." Ranges from live JDs: Staff Software Developer (Toronto/Calgary/Vancouver) **CAD 159,100–238,700**; Senior Software Engineer (Chicago/San Diego) USD 162,700–199,300; Senior Software Engineer, AI Platforms USD 120,000–200,000; Senior Data Engineer USD 140,000–180,000; Staff Data Engineer USD 160,000–200,000.
+
+Sources (all JD bodies already in the registry; cited, not re-fetched — Workday pages are client-rendered):
+- https://jll.wd1.myworkdayjobs.com/jllcareers/job/Toronto-ON/Staff-Software-Developer_REQ509754
+- https://jll.wd1.myworkdayjobs.com/jllcareers/job/Chicago-IL/Senior-Software-Engineer_REQ512212-1
+- https://jll.wd1.myworkdayjobs.com/jllcareers/job/Chicago-IL/Senior-Software-Engineer_REQ469154
+- https://jll.wd1.myworkdayjobs.com/jllcareers/job/Westmont-IL/Senior-Data-Engineer_REQ508360
+- https://jll.wd1.myworkdayjobs.com/jllcareers/job/Westmont-IL/Staff-Data-Engineer_REQ508348

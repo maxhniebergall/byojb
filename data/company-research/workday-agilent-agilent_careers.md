@@ -1,0 +1,26 @@
+# Agilent Technologies — research
+Provider/key: workday:agilent/agilent_careers | company_type: product
+
+What they do (their words): "Agilent Technologies Inc. is a global leader in the life sciences, diagnostics, and applied markets, delivering insight and innovation that advance the quality of life. Agilent's full range of solutions includes instruments, software, services, and expertise that provide trusted answers to our customers' most challenging questions." Scientific instrumentation plus the software and services around it, sold to labs, pharma, diagnostics and applied-market customers.
+
+How they describe themselves: The framing is measured and corporate rather than hype-driven — "trusted answers," "advance the quality of life." Notably, the internal-platform role states the philosophy directly: **"you will treat developers as customers and platform capabilities as products."** No "fast-paced"/"scrappy"/"rocketship" language appears in the JDs read; the closest is "deliver high-quality software at speed and scale" and "work effectively in globally distributed Agile teams."
+
+Size / stage / funding: Public — **NYSE: A**. Revenue **$6.51 billion in fiscal 2024**, **18,000 employees worldwide** (both stated in their own JD). Long-established (spun out of Hewlett-Packard in 1999). Stable, profitable, not runway-dependent.
+
+Locations / HQ: HQ Santa Clara, CA. Its careers site lists operations across **Americas: Brazil, Canada, Mexico, United States**; **Europe:** Austria, Belgium, Denmark, Finland, France, Germany, Ireland, Israel, Italy, Netherlands, Spain, Sweden, Switzerland, UK; **Asia Pacific:** Australia & New Zealand, China, Hong Kong, India, Japan, Korea, Malaysia, Singapore, Taiwan, Thailand. Engineering postings in the registry resolve to US-CO (Remote Location), US-CA Santa Clara, and India-Remote Location-Manesar.
+
+Remote policy: Remote-capable per role. The DevOps & Platform Engineer posting is filed under "US-CO-Remote Location" and states: "This job has a full time weekly schedule. It includes the option to work remotely." Two other engineering roles are filed under "India-Remote Location-Manesar." No company-wide remote policy statement was found; careers.agilent.com/locations says nothing about remote work.
+
+Remote-Canada eligibility: **Unclear — plausible at the company level, unsupported at the posting level.** Agilent explicitly lists **Canada** as one of its Americas locations, so a Canadian employment entity exists. However, none of the four relevant open postings is scoped to Canada: they are US-CO remote, US-CA Santa Clara, and India remote (×2). A Canada-based hire would require Agilent to open the US-CO remote requisition to a Canadian entity, which nothing on record says it will do. Do not score this as Canada-eligible without asking.
+
+Engineering & tech: Two distinct clusters. (1) **CrossLab Connect** — a hybrid cloud/on-premise ecosystem; the DevOps & Platform Engineer role covers CI/CD (GitLab CI/CD, Jenkins, GitHub Enterprise/Actions), IaC (CloudFormation, Terraform), AWS-native cloud (EC2, S3, Lambda, ECS/EKS), Docker and Kubernetes, scripting in Bash/PowerShell/Python, observability with Sentry and New Relic, SSO via Okta, multi-tenant distributed systems and microservices, SQL and NoSQL operations, and some application development in C#/.NET, JavaScript/TypeScript, with React/Angular and Ruby on Rails as preferred extras. Bar: 8+ years. (2) An **internal developer platform for global R&D** (the AVP role) — architecting and operating engineering infrastructure, CI/CD and cloud platforms for R&D teams, explicitly product-managed as a platform. India-based roles cover backend and eCommerce solutions.
+
+Notable / other: Pay transparency is practiced on US postings (Colorado and California ranges are posted with the note that they include bonus, stock and benefits eligibility); India postings state only that ranges vary by location and point to careers.agilent.com/locations. The DevOps posting notes applications accepted "until at least June 8, 2026" — it may be stale.
+
+Open relevant roles (sample): DevOps & Platform Engineer (AWS / CI/CD) — US-CO Remote, USD 143,760–224,625; AVP Platform Engineering & DevOps — US-CA Santa Clara, USD 232,032–362,550; Senior Software Engineer Backend — India-Remote Manesar; Software Engineer eCommerce Solutions — India-Remote Manesar.
+
+Pay on record (both direct, posted on its own JDs): sre_devops/senior USD 143,760–224,625 base; sre_devops/unspecified USD 232,032–362,550 base. The backend/senior and software_general/unspecified slots have no obtainable band — both are India-based postings that state no range, and a location-generic figure would not be attributable. See data/company-comp.jsonl.
+
+**Registry data-quality note:** the location field for all four Agilent postings reads "2 Locations" / "3 Locations" — an unresolved Workday multi-location placeholder rather than a real location. The true location is only recoverable from the job URL slug. This will silently defeat any geo filter.
+
+Sources: https://careers.agilent.com/locations ; JD bodies from registry (agilent.wd5.myworkdayjobs.com … AVP-Platform-Engineering---DevOps_4036444, DevOps---Platform-Engineer--AWS---CI-CD-_4036644-1, Senior-Software-Engineer-Backend_4034910-1, Software-Engineer-eCommerce-Solutions_4034907-1)

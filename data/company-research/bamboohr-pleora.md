@@ -1,0 +1,12 @@
+# Pleora Technologies — research
+Provider/key: bamboohr:pleora | company_type: product
+What they do: Pleora builds real-time video/data connectivity hardware and software for machine vision and imaging systems — frame grabbers, embedded video interfaces, and AI-based visual inspection tooling. In their own words, "Global manufacturers rely on Pleora's real-time connectivity software and hardware solutions, standards knowledge, and systems expertise for mission-critical applications in the industrial automation, medical, and security & defense markets." Customers are OEMs and manufacturers, not consumers.
+How they describe themselves: Founding mission was "delivering video over Ethernet for performance applications that require real-time analysis." They emphasize standards leadership (GigE Vision / GenICam lineage) and helping manufacturers "bring new products to market quickly, while reducing risk and lowering costs." The about page is engineering/standards-forward rather than hype-driven; no "fast-paced"/"rocketship" language observed.
+Size / stage / funding: 75 employees across engineering, sales and support. Founded 2000; celebrated its 25th anniversary in 2025. Private; funding stage not stated on their site (unverified).
+Locations / HQ: HQ Ottawa, Canada — 450 March Road, Suite 500, Kanata NBIA tech park. States "global locations in North America, Europe, and Asia."
+Remote policy: Not stated anywhere on the about page (unverified). The live posting is location-tagged "Kanata, Ontario," which reads as on-site/hybrid at HQ for a hardware company.
+Remote-Canada eligibility: Unclear-to-no. The company is Canadian (Ottawa), so employing a Canada-based worker is not itself a barrier, but the only relevant open role is tagged to the Kanata office and the work is hardware/imaging-adjacent. No remote-work statement found. Not verifiable as remote-eligible from BC.
+Engineering & tech: Embedded video/networking — GigE Vision, USB3 Vision, CoaXPress, FPGA/embedded, plus an AI visual-inspection product line (AI Gateway). No public engineering blog or handbook found.
+Notable / other: 25-year-old standards participant in the machine-vision industry; "boring", mission-critical domain, which is a positive stability signal. Small headcount means broad scope per engineer.
+Open relevant roles (sample): Infrastructure Engineer (Kanata, Ontario); DevOps Engineer.
+Sources: https://www.pleora.com/about-us/ ; registry posting https://pleora.bamboohr.com/careers/111

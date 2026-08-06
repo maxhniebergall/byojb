@@ -1,0 +1,12 @@
+# G Adventures — research
+Provider/key: workday:gadventures/gadventures | company_type: product
+What they do: G Adventures is a small-group adventure travel operator running tours worldwide, founded in 1990 by Bruce Poon Tip. It positions itself as a social enterprise built on community-based tourism — the stated model is that travel dollars land with local communities, Indigenous peoples and marginalized groups rather than with international chains. Engineering exists to support a consumer travel-booking and tour-operations business; software is not the product.
+How they describe themselves: The founding goal is stated as "Changing the world through travel." Its about page emphasizes that travellers "become community members rather than transaction numbers," and its responsible-travel programme is branded "G for Good," delivered in partnership with the Planeterra Foundation, its non-profit arm working on community projects and conservation. The tone is mission/impact-led rather than technical.
+Size / stage / funding: Over 2,200 employees across 28 offices worldwide. Private, founder-led, in business since 1990 — long-established rather than venture-stage. Profitability not disclosed; note that adventure travel is a cyclical, discretionary-spend industry.
+Locations / HQ: 28 offices globally; the Toronto office is the head office and is where both live engineering roles sit.
+Remote policy: Not stated on the about page. The registry's own extraction of both live engineering JDs classifies them as hybrid, both located "Toronto, Canada."
+Remote-Canada eligibility: Canada-based employment YES, but Toronto-anchored and hybrid. No evidence of a remote-anywhere-in-Canada option. Treat as NOT eligible for a BC-based remote worker.
+Engineering & tech: Thin on record. Neither live JD has a fetched body, and the extracted facets list no languages or technologies — the roles are known only by title and level (5+ years, senior). No engineering blog or handbook was located this run.
+Notable / other: The "Intermediate Data Engineer" title is classified in the registry under a senior data_eng slot, which looks like a level-mapping mismatch worth distrusting. Planeterra Foundation is the associated non-profit.
+Open relevant roles (sample): Senior Software Engineer-1 (JR1913, Toronto); Intermediate Data Engineer (JR1899, Toronto).
+Sources: https://www.gadventures.com/about-us/ (fetched); posting metadata and extracted facets from data/posting-research.jsonl. No JD bodies available. No engineering-specific page fetched.

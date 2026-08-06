@@ -1,0 +1,23 @@
+# Social Discovery Group (SDG) — research
+
+Provider/key: breezy:social-discovery-ventures | company_type: product
+
+**What they do:** Social Discovery Group is a holding group of "social discovery" companies — social entertainment / online dating / virtual-intimacy platforms connecting people across cultures and regions. Their own framing: "SDG solves the problems of loneliness, isolation, and disconnection — transforming virtual intimacy into the new normal." Consumer social products, monetized directly to end users; marketing-data pipelines and a large internal platform org sit behind them.
+
+**How they describe themselves:** "We bring together a team of like-minded people and IT professionals who specialize in creating and developing globally impactful social discovery products. Our international team of digital nomads works remotely from all over the world." They lean heavily on remote-work credentials: "two-time 'Great Place to Work' winner (USA & Japan, 2024–2025)" and "Top-5 Company for Work-From-Anywhere Jobs (FlexJobs, 2025)." Benefits language is unusually detailed and employee-oriented (28 days vacation, 7 "wellness days" explicitly for recovering *without* taking sick leave, 50% of training/conference costs, up to $1,000/yr health-benefit reimbursement where corporate insurance isn't available, up to $1,000/3yr workplace-equipment reimbursement, an internal gamified "gratitude" bonus system, referral bonuses up to $5,000). No hustle/grind language anywhere in the JDs — the tone is calm and benefits-forward.
+
+**Size / stage / funding:** Not stated on any page reachable without search; described as a "group of companies" with an international distributed workforce. Unverified — I did not confirm headcount, ownership, or funding. Widely associated in press with Dating.com Group / Eastern-European founding roots; **treat that as unverified here.**
+
+**Locations / HQ:** No HQ stated in the JDs. Postings are tagged Worldwide, Serbia, Georgia (Tbilisi), and Poland — the "Team Lead Data Engineer" posting spells out "Worldwide / Serbia / Georgia / Poland — remote any."
+
+**Remote policy:** Remote-first / work-from-anywhere by design ("REMOTE OPPORTUNITY to work full-time" on every posting; "international team of digital nomads"). Offices/coworking exist in some geographies but are optional; remote workplace costs are reimbursed.
+
+**Remote-Canada eligibility:** **Unclear-to-unlikely.** Postings say "Worldwide" and the company markets itself as work-from-anywhere, so geography is probably not the blocker — but **two of the three infra postings require "Fluent Russian and intermediate (B1) or higher English"**, which is a hard disqualifier for this candidate. Hiring-entity/EOR arrangements for Canada are not stated anywhere I could verify. The de-facto centre of gravity is Serbia / Georgia / Poland (Eastern Europe / CET-ish hours), which is a poor Mountain-Time overlap.
+
+**Engineering & tech:** Real infrastructure org, not a thin one. Go for internal services and tooling; an in-house internal developer platform / deployment system named **Packman**; GitLab CI/CD; Kubernetes in prod and pre-prod; Terraform + Ansible IaC; observability on Grafana, OpenSearch/ELK, Prometheus/VictoriaMetrics; ephemeral/stage environment optimization. Separately an "IT Infrastructure" function running Jira Data Center / Confluence at scale (ScriptRunner, REST API, Groovy/Python/Bash automation, JVM/indexing performance work). Data side: Python, Airflow, MS SQL DWH + SSRS, Superset, and an in-flight migration of marketing pipelines and DWH from MS SQL to GCP/BigQuery. They explicitly credit AI-assisted development tools (Cursor, Copilot, Claude) as a plus in "structured engineering workflows."
+
+**Notable / other:** Job families are split cleanly (IT Infrastructure vs Analytics), suggesting reasonably scoped ownership. Comp is deliberately withheld: "The initial pay level or pay range for this role will be shared with candidates during the recruitment process and before the commencement of employment."
+
+**Open relevant roles (sample):** DevOps Engineer (Worldwide, remote); Senior Atlassian Platform Engineer (Worldwide, remote); Team Lead Data Engineer (Worldwide/Serbia/Georgia/Poland); Site Reliability Engineer (Tbilisi, GE remote); Senior NLP/LLM Engineer (Serbia remote).
+
+**Sources:** JD bodies captured in the registry — `https://social-discovery-ventures.breezy.hr/p/7eb1ec57d96901-devops-engineer`, `.../8dcfb259103801-senior-atlassian-platform-engineer`, `.../841b1fa0074301-team-lead-data-engineer`. No first-party corporate site was fetched (the registry only carries the Breezy board; the corporate domain was not derivable without guessing) — everything above is from the company's own JD copy.

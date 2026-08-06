@@ -1,0 +1,22 @@
+# Meroka — research
+Provider/key: rippling:meroka | company_type: product (technology-enabled acquisition holdco)
+
+What they do: Meroka acquires "physical-economy, blue-collar, built-world businesses and enable[s] them with technology so they can last forever" — a technology-enabled roll-up/holdco focused on longevity and succession rather than a single SaaS product. It deliberately does not consolidate brands: "We don't roll everything up under one brand — we preserve each company's local name, its autonomy, and the hard-won knowledge of the operators who built it." Engineering builds the internal operating system for those businesses — quoting, scheduling, dispatch, invoicing, field operations — deployed to companies Meroka itself owns, so there is no external sales cycle. Starting in Canada with stated intent to expand internationally.
+
+How they describe themselves: Mission framing is "create generational wealth for the people who run the local economy — to power those who power everyday life." Their stated thesis: "the physical world is starved for labor while demand for building and infrastructure keeps climbing. Build genuinely good systems for it and you don't shrink the workforce — you grow it." Culture is described as "one foot on the job site and one foot in Silicon Valley… A morning building product and talking to top-tier investors; an afternoon in a truck headed to a site… steel-toe boots optional, but you'll want them eventually." They explicitly prize in-person work: "We also get everyone together twice a year at an offsite, because in-person is how we work best." JDs carry blunt "This Is Not For You If…" sections: needing "a fully scoped backlog before you can move", wanting to "own one narrow layer" rather than front-end-to-back-end, needing "clean, well-documented data sources rather than the tangle of real acquired systems", or wanting "the architecture handed to you rather than designing it from a blank page."
+
+Size / stage / funding: Early-stage. "We've raised roughly $25M CAD from Slow Ventures, 8VC, Better Tomorrow Ventures, Interplay, and others." First business acquired, "with many more to come." Founding team background: construction-tech operations at ~$100M revenue / 600+ people, VC, public-company M&A, manufacturing. They self-describe as "an early-stage company where you'll have outsized impact… with the runway and stability of a company that's already raised real capital."
+
+Locations / HQ: Montreal, Quebec, Canada. All three live engineering postings are Montreal.
+
+Remote policy: **Hybrid, Montreal** — stated verbatim on every posting ("Location: Hybrid, Montreal"). Reinforced by "in-person is how we work best" and twice-yearly all-hands offsites.
+
+Remote-Canada eligibility: **No — verified negative for a distributed Canadian worker.** The company is Canadian and the roles are Canadian, but every posting is explicitly hybrid in Montreal (Eastern Time). There is no remote option and no statement of distributed hiring anywhere in the JD text. This is not workable from Kimberley, BC.
+
+Engineering & tech: Small early team; engineers set "technical direction, conventions, and tooling." The Software Engineer role is explicitly **full-stack** ("from data and back-end services to the interfaces field teams actually use"). The Data Engineer / Architect role owns data foundations end to end — modelling, storage, movement, reliability, integrations and pipelines connecting acquired businesses, plus data-quality/access standards; the central problem is reconciling heterogeneous legacy schemas from acquired companies ("its own systems, its own schemas, its own decades of quirks"). Stack is not specified in the postings.
+
+Notable / other: Compensation described only as "Competitive salary plus meaningful equity and benefits" — no numbers posted on any of the three roles. Roles are full-time permanent. Unusually direct anti-fit screening in the JDs, which is honest and useful. Strong ambiguity/greenfield emphasis throughout.
+
+Open relevant roles (sample): Data Engineer / Architect (Montréal, hybrid); Software Engineer (Montréal, hybrid); Senior Backend Engineer (Montréal, hybrid).
+
+Sources: JD bodies already in the registry — https://ats.rippling.com/meroka/jobs/074479f0-6d1a-4f01-b74e-cbf9e52c17cb, https://ats.rippling.com/meroka/jobs/34ed3849-0103-43ec-bd5c-a40949739b0d, https://ats.rippling.com/meroka/jobs/2c342708-4db4-43cc-92c7-f2c1f14c83fc. No external pages fetched.

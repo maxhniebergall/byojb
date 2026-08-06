@@ -1,0 +1,26 @@
+# Plata Card (Banco Plata) — research
+Provider/key: greenhouse:platacard | company_type: product
+
+What they do: Plata (Banco Plata, formerly Different Technologies) is a **Mexican digital bank / consumer fintech** founded in 2022. It holds a Mexican banking licence and sells consumer credit cards, savings accounts and investment products, and has been building out Mexico's first ATM network of its own. Its self-description: "elevate the standards of financial products and services through innovation, exceptional customer service, and greater benefits for people's money," and a "high-tech financial platform that is changing the way Mexicans interact with money." It targets underserved consumers and simplified access to credit. Market is explicitly Mexico / Latin America.
+
+How they describe themselves: Positions itself as "the fastest-growing financial institution in Latin America and the largest private digital bank by number of customers," reaching a **$5 billion valuation in under three years**. Emphasis on "people-centered financial experiences" and using technology to make everyday banking simpler and safer. The careers site is high-growth in tone ("on the lookout for exceptional talents," 100+ open roles). Their own site does not publish a values list or a documented working-norms page.
+
+Size / stage / funding: Founded 2022; extremely fast growth. Headcount figures vary by source — their own about page claims **5,000+ employees**, while third-party hiring profiles report **700+** (the gap is likely employees-plus-agents vs. corporate/tech staff). 3+ million clients / over one million active credit-card users depending on the source and date. Privately held, ~$5bn valuation as of April 2026. Three years old, so genuinely early despite the scale.
+
+Locations / HQ: HQ Mexico City (Mariano Escobedo 476, Col. Anzures, Miguel Hidalgo, CDMX). A second engineering/corporate hub in **Limassol, Cyprus**. The team is international and English-speaking; the company originated from the Different Technologies group, which carries a largely Russian-origin engineering staff now distributed across Cyprus and Mexico.
+
+Remote policy: All their engineering postings are tagged **"Worldwide."** Third-party hiring summaries describe the setup as fully remote with flexible hours, "work from anywhere in the world," plus relocation support to Mexico with full visa and permit assistance for the employee and family. Their own about page publishes nothing about remote policy, so the "worldwide" claim rests on aggregator and JD framing rather than a first-party statement.
+
+Remote-Canada eligibility: **Unclear and likely awkward in practice.** Postings say "Worldwide" and nothing excludes Canada, but there is no Canadian entity and no evidence of Canadian employment — companies structured this way (Mexican bank + Cyprus hub, "work from anywhere") almost always engage non-local staff as **independent contractors** rather than employees, with no Canadian payroll, benefits or employment protections. Time zones are a further problem: the two hubs are Mexico City (Central, MT+1) and Limassol, Cyprus (EET, roughly **MT+9**), and JDs require B1+ English "for effective communication with an international team." Treat as not a verified Canada-eligible employer.
+
+Engineering & tech: **Go (Golang)** is the dominant backend language, plus **Python** (risk, data), Angular 19+ on the web side, and a substantial data/ML footprint (AI Engineer roles for an AI Team and a Financial Assistant, DWH/external reporting data engineering, antifraud). Platform side: AWS, Kubernetes and Helm, **GitLab CI/CD** (pipelines, templates, secrets handling, containerization), Prometheus/VictoriaMetrics and ELK for observability, Kafka, key-value stores, Bash/Python scripting. The SRE role is embedded in a product team (Cards & Accounts) and is a well-defined reliability brief: design for HA/performance/scale, define SLIs/SLOs, own the release lifecycle with blue/green and canary rollouts, maintain Helm charts, harden CI/CD with security scans and progressive delivery, run end-to-end observability, run RCAs and incident response, support migrations and load testing. Roles are levelled explicitly as Middle / Middle+ / Senior — a European-style ladder rather than a North American Senior/Staff/Principal one.
+
+Notable / other: The engineering org is organised into product-aligned streams (Cards & Accounts, Processing, Origination Delivery, Risk, DWH). Some postings route through careers.bancoplata.mx rather than the Greenhouse board directly. On-call and incident response are an explicit part of the SRE role. A consumer credit business in a high-growth emerging market carries meaningful regulatory and credit-cycle risk.
+
+Open relevant roles (sample): SRE [Cards & Accounts]; Software Engineer - Golang Senior [Origination Delivery]; Software Engineer - Python Senior [Risk]; AI Engineer Senior [Financial Assistant]; Principal Engineer; Data Engineer Middle/Middle+ [DWH].
+
+Sources:
+- https://plata.careers/about-us
+- https://platacard.mx/en/about
+- https://job-boards.greenhouse.io/platacard/jobs/4927873008 (SRE [Cards & Accounts])
+- https://careers.bancoplata.mx/ (careers portal)

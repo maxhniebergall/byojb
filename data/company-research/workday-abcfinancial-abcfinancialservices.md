@@ -1,0 +1,30 @@
+# ABC Fitness Solutions (registry name: "ABC Financial Services") — research
+Provider/key: workday:abcfinancial/abcfinancialservices | company_type: product
+
+**Entity note / registry data-quality flag:** the registry name "ABC Financial Services" is stale. The Workday tenant is `abcfinancial`, but every JD on it is branded **ABC Fitness Solutions** (formerly ABC Financial), which also owns **Trainerize**, **ABC Glofox**, **ABC Ignite** and **ABC Evo**. This is fitness-club management software with an embedded payments business — *not* a financial-services firm. Confirmed from the JD text itself ("Join ABC Fitness…", "Trainerize powered by ABC Fitness Solutions (www.trainerize.com)").
+
+What they do: Club/gym management SaaS and payments processing. Their own numbers: "the #1 software provider for fitness businesses of any size… Supporting 30K clubs, 650K coaches, 40M members, and processing more than $12B in payments every year." Products span club management (Ignite, Evo), boutique studios (Glofox) and personal-training (Trainerize). Their careers page claims they serve "40% of clubs in the US."
+
+How they describe themselves: Three stated values, quoted in full on every JD —
+- **Best Life:** "We believe great work begins with great people. That's why our culture is built on respect, trust, and belonging. We create an inclusive environment where every team member can bring their authentic self to work—because diverse perspectives drive innovation and meaningful impact."
+- **Growth Mindset:** "We are doers, thinkers, and dreamers. At ABC Fitness, your growth is our investment. Through continuous learning, mentorship, and professional development opportunities, we empower you to reach new heights."
+- **One Team:** "From day one, you'll be part of a team that collaborates, celebrates, and cares. **We move fast**, support one another, and have fun along the way."
+Their careers page adds an innovation line — "We experiment. We fail fast. We have a growth mindset" — plus heavy DEBI (diversity, equity, belonging, inclusion) committee emphasis and a "people first passion" quote from the Chief People Officer. The engineering JDs push an **AI-native** identity hard: "an environment where AI agents are part of how you think, build, and review… proving that AI-native engineering isn't a side project here — it's how we build."
+
+Size / stage / funding: Large, established private SaaS company (registry facet extraction: `company_stage: growth`). Ownership/PE backing is **not disclosed** on the careers page and was not verified in this session. $12B/yr payment volume and 30K clubs indicate a substantial, revenue-generating business rather than a runway-dependent startup.
+
+Locations / HQ: Global and distributed. No HQ is stated on the careers page ("emphasizes remote operations while being intentional on creating opportunities to engage with our teams across the globe"). A large engineering presence is in **Hyderabad, India** — 5 of 6 live relevant postings are Hyderabad-tagged. One live role is **Vancouver, BC / Canada**.
+
+Remote policy: **Remote-first, stated first-party.** The careers page describes the company as remote-first, "allowing them to hire talent globally without geographic restrictions," with benefits "personalized by country." The Lead Software Developer JD carries the `#LI-REMOTE` tag.
+
+Remote-Canada eligibility: **Verified YES for at least one role.** The Lead Software Developer (Trainerize) JD states plainly: "This is a **Canada-based individual contributor role**. You will lead through technical direction, influence, code quality, mentoring, and cross-functional partnership — not through people management." It is posted to Vancouver, BC (facet extraction: `timezone: America/Vancouver`, `geo_eligibility: canada`, `remote_policy: remote`) and tagged `#LI-REMOTE`. **However**, the Principal AI/MCP-layer and Staff/Lead Developer roles — the ones that match Max's target archetypes best — are all **Hyderabad, India**, and are not open to a Canadian.
+
+Engineering & tech: Microsoft-centric backend. C#/.NET, ASP.NET Core, REST APIs, MVC, Entity-Framework-era tooling, Microsoft SQL Server + T-SQL (schema, query performance), JavaScript/ES6/TypeScript, AWS ("a strong plus"), Git, CI/CD, containers and observability, multi-tenant SaaS, high-traffic third-party API integrations. Distinctively, **agentic-IDE usage is a hard requirement**: "Habitual use of an agentic coding IDE (Cursor or similar) and a track record of setting review standards for AI-generated code across a team," and the role owns "team practices and guardrails for agentic-IDE development." Separate Hyderabad postings target an MCP/ACP orchestration layer and API modernization with AI/agent systems — real agentic-platform work, just in the wrong geography.
+
+Notable / other: Benefits: open PTO policy; **"Days of Disconnect" — once a quarter the whole company takes a day off together**; parental and "pawternity" leave; a quarterly fitness reimbursement ("Best Life Perk"); medical/dental/vision; EAP; Calm app subscription for the employee and up to 4 dependents. On-call is explicit: "Share ownership of production health: monitor, respond to critical incidents, and drive fixes for instability or regressions." Facet extraction rates the culture **hustle** ("we move fast") and autonomy medium.
+
+Open relevant roles (sample): Lead Software Developer — Trainerize backend (Vancouver BC / Canada remote, CA$120,000–$128,000); Principal Engineer – MCP/ACP Layer (API & AI Orchestration) (Hyderabad); Principal Engineer – API Modernization (AI & Agent Systems) (Hyderabad); Staff Software Developer (Hyderabad); Lead Software Developer (Golang) (Hyderabad); Lead Software Developer – Java (Hyderabad).
+
+Sources:
+- https://abcfitness.com/careers/ (fetched)
+- JD bodies already in the registry (Workday, first-party): https://abcfinancial.wd5.myworkdayjobs.com/ABCFinancialServices/job/Vancouver-BC/Lead-Software-Developer_REQ-1386 and the Hyderabad postings under the same tenant

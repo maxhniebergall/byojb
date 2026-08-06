@@ -1,0 +1,27 @@
+# Canals — research
+Provider/key: ashby:canals | company_type: product
+
+What they do: "Canals builds software for wholesale distributors, helping them operate more efficiently through automation and AI. Our customers are the companies responsible for moving the materials that power the real economy; electrical supplies, plumbing products, roofing materials, HVAC equipment, and more. Every day, thousands of people rely on Canals to help process orders, manage purchasing, handle accounts payable, and streamline critical business workflows." They market this as "Operating AI" for distributors, manufacturers and contractors, with workflow tools for order entry, inquiry handling, accounts payable, statement reconciliation, PO tracking and receipt tracking.
+
+How they describe themselves: "We're a profitable, rapidly growing company with a team of roughly 100 people distributed across North and South America. We care deeply about building great products, hiring exceptional people, and creating an environment where talented individuals can do the best work of their careers." Stated values: "We value ownership, transparency, and continuous improvement. Good ideas can come from anywhere, and people are trusted to make things happen." On team and pace: "You'll work alongside ambitious, thoughtful teammates who care deeply about what they do, challenge each other directly, and have a lot of fun along the way." On market position: "We've found strong product-market fit and continue to grow quickly, creating opportunities for people who want to have a meaningful impact on the trajectory of a company." The JD asks for "experience working independently in a fast-paced, product-focused environment" and lists "previous experience in high-growth startups or small teams" as a plus.
+
+Size / stage / funding: Roughly 100 people. Series A: raised $35 million led by Base10 Partners in May 2026. Notably, the company reached meaningful enterprise scale organically on customer revenue before taking institutional venture money, and describes itself as profitable — an unusual and positive combination for a company at this stage. Still, it is a recently-funded Series A startup with growth expectations attached.
+
+Locations / HQ: Miami, Florida. Team distributed across North and South America. They post separate country-scoped requisitions for Canada, USA, Mexico, Colombia, Argentina, Brazil and Chile.
+
+Remote policy: "We're remote-first, flexible, and distributed across North and South America, bringing together talented people from a wide range of backgrounds and experiences." Timezone alignment across the Americas is inherent to their hiring model, which makes Mountain Time unproblematic.
+
+Remote-Canada eligibility: PROBABLY YES, but with a conflict in the posting. The requisition is titled "Senior Software Engineer - Canada" and the JD text states the company is remote-first and distributed across North and South America, which reads as Canada-wide remote. However, the requisition's own location field is tagged "Toronto, Vancouver" rather than "Remote (Canada)" — so the posting names two specific cities. Vancouver is at least in British Columbia, but Kimberley is a 12-hour drive from it and in a different timezone (Mountain vs Pacific), so a Vancouver-anchored role would not work either. Given the explicit remote-first language and the pattern of one requisition per country, the city tags are most likely indicative rather than restrictive — but this needs confirming before applying.
+
+Engineering & tech: Backend-focused. "Backend engineering work focused on scalability, performance, and reliability. Own large, complex projects from planning to deployment. Collaborate directly with product and customer teams to align engineering with business needs. Balance hands-on coding with guiding the team's technical direction. Help shape the future of Canals as we continue scaling with our customers." They seek "senior-level experience as a backend engineer building scalable, high-performance systems" and "ability to guide and unblock other engineers, providing thoughtful code reviews and architectural feedback." No specific stack, engineering blog or handbook is disclosed publicly.
+
+Compensation: No range stated on the Canadian requisition, and the Ashby compensation fields are empty. No first-party pay disclosure was found; no band was written, as a parametric estimate for a company of this size and obscurity would be pure anchoring.
+
+Notable / other: Serves more than 100 distributors including DSG, The Kendall Group and Locke Supply, and reports having processed over 8 million sales orders and $5 billion in payables. Customer-reported outcomes include doubled quote conversion rates and up to 96% touchless invoice processing. Entity check: this is canals.ai, the Miami wholesale-distribution AI company — confirmed as the same entity as the ashby:canals registry key, which posts the country-scoped Senior Software Engineer requisitions.
+
+Open relevant roles (sample): Senior Software Engineer - Canada; and parallel Senior Software Engineer requisitions for USA, Mexico, Colombia, Argentina, Brazil and Chile.
+
+Sources:
+- https://jobs.ashbyhq.com/canals/a7371df9-2d85-405c-81f0-35e13967a5bb (JD body, local copy)
+- https://distributionstrategy.com/2026/05/canals-raises-35-million-to-expand-ai-automation-platform-for-wholesale-distributors/
+- https://www.canals.ai/blog/canals-launches-end-to-end-operating-ai-suite-for-distributors

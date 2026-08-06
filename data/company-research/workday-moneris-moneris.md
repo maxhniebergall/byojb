@@ -1,0 +1,12 @@
+# Moneris — research
+Provider/key: workday:moneris/moneris | company_type: product
+What they do: Moneris is one of Canada's largest payment processors — merchant acquiring, POS terminals, e-commerce payment gateways and related merchant services for Canadian businesses. It is a joint venture of RBC and BMO. Its engineering work is payments infrastructure: transaction processing, terminal software, merchant-facing platforms.
+How they describe themselves: The corporate about page returned a server error, so the company's own self-description could NOT be verified. From its own live JD: flexibility framing including "hybrid work arrangements, a Work from Abroad program, and paid time off programs," and an explicit equity/inclusion statement encouraging applicants from equity-deserving groups (including "those born outside of Canada") to apply even when not meeting every listed requirement. Tone in the JD is corporate-Canadian and measured, not hustle-flavoured.
+Size / stage / funding: Large, established Canadian payments company (bank-owned JV, not venture-funded). Exact headcount not verified from first-party sources here.
+Locations / HQ: Toronto. Both registry postings are Toronto-located.
+Remote policy: Hybrid, explicitly. Its Software Developer II JD states: "You will be based in our Toronto office, balancing in-office collaboration with remote flexibility," and is tagged #LI-Hybrid. A "Work from Abroad" program exists but is a temporary-travel benefit, not a remote-hiring policy.
+Remote-Canada eligibility: Canadian employer, but roles are Toronto-office-based hybrid. NOT eligible for a permanently BC-remote worker on the evidence of its own JD.
+Engineering & tech: Payments/fintech engineering; ladders visible in the registry span Software Developer II/III up to Senior Software Developer, plus Salesforce and bilingual data-engineering roles. Specific stack not stated in the extracted data; no public engineering blog found.
+Notable / other: Bilingual (EN/FR) roles appear in its posting mix, consistent with a national Canadian employer. Bank-JV ownership implies conservative pace and regulatory scrutiny — stable, slow-moving.
+Open relevant roles (sample): Software Developer II (Toronto, live); Software Developer III, Senior Software Developer, Senior Salesforce Software Developer, Bilingual Data Engineer (recently seen)
+Sources: https://www.moneris.com/en/about-us (returned an internal server error — no content); JD body for Software Developer II JR105719 in local registry

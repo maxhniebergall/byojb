@@ -1,0 +1,12 @@
+# Planera — research
+Provider/key: ashby:planera | company_type: product
+What they do: Planera builds a construction planning/scheduling platform ("our construction planning platform"), positioning against a "$12.1 trillion industry". The backend is a Go/Python microservice system on MongoDB with analytics and LLM-based features layered on.
+How they describe themselves: "Impact: Be at the forefront of transforming a $12.1 trillion industry. Make a meaningful impact on how the world builds." "Culture: Join a smart, spirited team dedicated to innovation and excellence." "Growth: Opportunity for professional growth and career advancement in a fast-paced start-up environment." Benefits described as "Competitive salary, stock options, benefits package, and a dynamic work environment."
+Size / stage / funding: Self-described "fast-paced start-up"; stage, headcount and funding not stated. UNVERIFIED — no first-party domain in the registry and I did not guess one.
+Locations / HQ: Not stated. The Backend Software Developer posting is listed for "United States, Canada".
+Remote policy: Implied remote/distributed — the JD requires "Excellent remote communication skills" — but no explicit remote-first policy statement exists in any source I could reach.
+Remote-Canada eligibility: LIKELY YES, on registry evidence only: the posting's location field is "United States, Canada". No timezone requirement is stated anywhere, so Mountain Time is not excluded but also not confirmed.
+Engineering & tech: Go, Python, MongoDB (modeling, indexes, aggregation, transactions), Redis, REST/websockets/SSE, Kafka/SQS/PubSub, Docker, ECS/EKS/GKE, AWS/GCP, Terraform, Prometheus/Grafana, Datadog. Scope framed as "a product engineering role with a strong focus on reliability, performance, and data correctness, with AI- and analytics-driven features as key accelerators" — engineers "design and evolve microservices" and own "clear APIs and SLAs", plus CI/CD and observability. Also expected to "Collaborate with product and frontend to deliver features end-to-end" and "Partner with AI engineers to integrate LLM-based capabilities".
+Notable / other: The JD asks for a "Product mindset with a focus on user impact and pragmatic tradeoffs" and lists secure-coding practice explicitly. Construction-tech domain knowledge is a preference, not a requirement.
+Open relevant roles (sample): Backend Software Developer.
+Sources: JD body at https://jobs.ashbyhq.com/planera/8fcbe202-8880-4f74-95e6-6f2f1219950e (cited, not fetched). No first-party Planera page verified.

@@ -1,0 +1,12 @@
+# Bask Health — research
+Provider/key: workable:bask-health-1 | company_type: product
+What they do: Telehealth infrastructure — per its own job posting, Bask Health builds a platform for launching and running direct-to-consumer telehealth businesses ("building infrastructure to modernize healthcare delivery"). Beyond that the posting gives very little company background, and no first-party company website is linked from the posting.
+How they describe themselves: Only through the JD. The tone is early-stage and founder-adjacent: engineers "work directly with the CEO and CTO" to build "the backbone of the platform," are expected to "prototype rapidly with real users," to be "AI-first" in how they develop (Claude and Cursor named as part of the workflow), and to "work independently and are comfortable owning entire projects" end to end from concept to production. No published values, handbook, or engineering blog was found.
+Size / stage / funding: Unknown — nothing stated in the postings, and no verifiable company site was reachable from registry URLs. The direct-to-CEO/CTO reporting and 3-person open eng team imply a very small early-stage startup, but this is inference, not verified fact.
+Locations / HQ: Not stated. Postings are listed as "United States (Remote)" and "Argentina (Remote)".
+Remote policy: Fully remote, but scoped per posting to a named country: US for two roles, Argentina for one.
+Remote-Canada eligibility: **No evidence of Canada eligibility — treat as not eligible.** Every live posting names either "United States (Remote)" or "Argentina (Remote)"; Canada is not listed anywhere, and nothing in the postings suggests hiring beyond those two countries. Unverified whether they would consider a Canadian contractor.
+Engineering & tech: TypeScript/JavaScript, Next.js, SST (Serverless Stack) on AWS, Node.js, AWS Lambda, SQS and EventBridge, SQL databases with Drizzle ORM. Explicitly AI-assisted development (Claude, Cursor). Serverless-first rather than a dedicated platform/infra org.
+Notable / other: No salary is stated on any of the three postings. No engineering blog, handbook, or public technical writing found. Registry facets mark all three roles remote.
+Open relevant roles (sample): Back-End Software Engineer (US Remote); Senior Back-End Software Engineer (Remote) (Argentina); Machine Learning Engineer (US Remote).
+Sources: https://apply.workable.com/bask-health-1/jobs/view/2E81740BCC (fetched); sibling postings 698289253D and 580E703364 read from the local registry.

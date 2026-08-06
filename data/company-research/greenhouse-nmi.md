@@ -1,0 +1,13 @@
+# NMI — research
+Provider/key: greenhouse:nmi | company_type: product
+What they do: Payments technology company. Products in the registry's postings include FeeNavigator, "a platform that automates merchant statement analysis and proposal generation — ingesting a processing statement in virtually any format, classifying every fee, computing markup and potential savings, and producing a signable proposal in seconds. It replaces work that previously took analysts hours per statement." Also money-movement engineering and merchant account management / signup tooling. Work is organized into named "value streams" (e.g. Account Management & Signup Tools).
+How they describe themselves: Practical and product-team oriented; the postings describe concrete platform automation replacing manual analyst work rather than any grand mission statement. No values list was found in the JD bodies.
+Size / stage / funding: Established payments/ISV infrastructure vendor; specific headcount, ownership and funding not stated in available sources and not verified in this pass.
+Locations / HQ: Not stated in the postings read; postings are region-tagged Remote UK, Remote US and Remote Canada.
+Remote policy: Remote roles are explicitly tagged (#LI-Remote) and posted per-region.
+Remote-Canada eligibility: **Yes — verified.** NMI posts a dedicated "Senior Software Engineer (PHP)" role tagged **Remote, Canada** with a CAD salary range, alongside parallel Remote-US and Remote-UK versions of the same roles. A Canadian employment path clearly exists. No timezone requirement was stated in that posting.
+Engineering & tech: PHP full-stack for the FeeNavigator / Account Management value stream; a separate Money Movement backend team. Legacy-adjacent stack (PHP) with document-ingestion and classification automation.
+Notable / other: Regional pay is genuinely differentiated — the same senior title is posted at CAD 95–120K in Canada, roughly USD 96–130K in the US, and about USD 48–58K equivalent in the UK. Privacy policy: https://www.nmi.com/legal/privacy-policy/
+Open relevant roles (sample): Senior Software Engineer (PHP) — Remote, Canada; Senior Software Engineer (PHP) — Remote, US; Senior Software Engineer – Money Movement — Remote, US; Senior Software Engineer — Remote, UK.
+Pay (from their own JDs): Senior Software Engineer (PHP), Canada — **CAD $95,000–$120,000** base, stated verbatim: "Salary range, depending on experience: $95,000 — $120,000 CAD". US equivalents roughly $96K–$130K USD; UK role materially lower.
+Sources: locally cached JD body for https://job-boards.greenhouse.io/nmi/jobs/5262858008 (and /5364510008, /5262856008, /5251043008 for the regional ranges). No nmi.com page was fetched in this pass.

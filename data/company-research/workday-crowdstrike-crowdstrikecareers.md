@@ -1,0 +1,34 @@
+# CrowdStrike — research
+Provider/key: workday:crowdstrike/crowdstrikecareers | company_type: product
+
+What they do: CrowdStrike is a **cybersecurity platform company** — endpoint detection and response, cloud security, identity protection, threat intelligence and SIEM/next-gen log management, all delivered through the **Falcon** platform and its lightweight sensor. In their own words: *"As a global leader in cybersecurity, CrowdStrike protects the people, processes and technologies that drive modern organizations. Since 2011, our mission hasn't changed — we're here to stop breaches, and we've redefined modern security with the world's most advanced AI-native platform."*
+
+How they describe themselves: The standard req preamble is the clearest statement of culture available: *"We work on large scale distributed systems, processing almost **3 trillion events per day** and this traffic is growing daily. Our customers span all industries, and they count on CrowdStrike to keep their businesses running, their communities safe and their lives moving forward. We're proud to work for a mission-driven company leveraging AI to transform the way we work. **CrowdStrikers drive their careers through flexibility and autonomy** while also being expected to contribute to a culture of responsible AI adoption, experimentation, and innovation. We use an **AI-first mindset as a force multiplier to proactively and continuously accelerate execution**, build expertise, uncover insights, and solve complex problems. We're always looking to add talented CrowdStrikers to the team who have **limitless passion, a relentless focus on innovation and a fanatical commitment to our customers**, our community and each other. Ready to join a mission that matters?"*
+
+Notably, they also state an explicit training posture: *"CrowdStrike is a computer security company, but we do not require candidates for this role to have prior security industry experience. We will mentor and train in security topics as needed."* Role text asks for *"Exceptional ability to write clean, elegant, performant, and well-tested code, coupled with a strong focus on action and delivering results quickly"* and expects senior engineers to *"champion engineering best practices… and actively mentor and strengthen the team's technical knowledge."*
+
+Size / stage / funding: **Public (NASDAQ: CRWD)**, founded 2011, ~10,000 employees, one of the largest pure-play cybersecurity vendors by market capitalisation. Subscription/ARR business, at scale. Financially secure, though it carried out a workforce reduction in 2025 and continues to carry reputational weight from the July 2024 Falcon content-update outage.
+
+Locations / HQ: HQ Austin, Texas (previously Sunnyvale). Major engineering sites in **Sunnyvale CA, Redmond WA, New York, Austin, London (UK), Pune and other India sites, Sydney (Australia), Romania and Israel**. The live req inventory in the registry is concentrated in **USA (Sunnyvale, Redmond, New York, Austin), United Kingdom (London), India, Australia, Romania and Israel**.
+
+Remote policy: **Mixed, and trending firmly toward hybrid.** The overwhelming majority of live engineering reqs are titled with an explicit **"(Hybrid)"** suffix tied to a named office — "(Hybrid)", "(Hybrid, London)", "(Hybrid, NYC)", "(Hybrid, EST)", "(Hybrid, ROU)", "(Hybrid, ISR)". A smaller set is genuinely "(Remote)" — but those are posted as **"USA - Remote"**, "USA - Remote, NY", "USA - Remote, CA", "India - Remote" or "Remote, AUS". Several reqs list "2 Locations", "3 Locations" or "7 Locations", all within those same countries.
+
+Remote-Canada eligibility: **No — not for the roles currently open.** Across the full live req inventory in the registry there is **not a single Canadian location**: every relevant posting is USA, United Kingdom, India, Australia, Romania or Israel. The remote roles are country-scoped to the USA, India or Australia. CrowdStrike does maintain some Canadian presence corporately, but nothing in the current engineering pipeline is Canada-eligible, and the dominant "(Hybrid)" convention means even the US roles expect proximity to an office. This is disqualifying from Kimberley BC.
+
+Engineering & tech: Genuinely large-scale distributed systems — *"The scale of our systems and data are approaching **Exabytes** in size. Experience with extremely large-scale systems, including DevSecOps patterns, practices, and standards are important for this work."* Go is the house backend language (multiple "Golang Core Services and Libraries" reqs); also Python, C/C++ and Rust for sensor work (Linux and macOS sensor teams). Cloud on **AWS, GCP and OCI**. AI/ML infrastructure line is substantial: GPU cluster provisioning for LLM training and fine-tuning, **vLLM and Triton Inference Server** for serving, **PyTorch, Ray, Megatron, JAX** for distributed training, **MLflow, SageMaker, Vertex AI** for MLOps, **Docker, Kubernetes, Slurm, Airflow**, **Terraform and Ansible** for IaC, plus quantization/batching/caching for GPU efficiency and model lifecycle management (versioning, checkpointing, reproducibility). Role families in the registry: platform/infra, backend, SRE/DevOps, data platform, ML/AI infrastructure, sensor engineering, and product teams (Falcon Fusion, Risk Platform, Cloud Security CSPG, Asset Management, Charlotte AI).
+
+Notable / other: Pay ranges are posted on US reqs under state transparency law and are consistent and legible — senior engineering clusters at **$140,000–$215,000 USD base**, principal at **$195,000–$290,000**, with $160,000–$250,000 for some senior-II/lead bands, $125,000–$180,000 for the Atlassian Cloud Architect and $120,000–$180,000 for sensor/macOS. Bachelor's degree is stated as required (Master's preferred) on the AI infrastructure role.
+
+Open relevant roles (sample):
+- Sr. AI Infrastructure Engineer, LLM/AI Platforms (Remote, USA) — R29213
+- Principal Software Engineer, Real Time Data Enrichment Platform (Hybrid) — R29505
+- Sr. Backend Engineer (Hybrid, NYC) — R28993
+- Sr. Software Engineer - Linux Sensor (Hybrid, Redmond) — R27317
+- Sr. Software Engineer, Cloud Detection (Hybrid, London) — R29383
+- Sr. Platform Engineer - Kubernetes (Remote, USA) — R29056
+
+Sources:
+- https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers/job/USA---Remote/Senior-AI-Infrastructure-Engineer--LLM-AI-Platforms_R29213 (full JD body incl. the company preamble, scale claims and tech stack)
+- https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers/job/USA---New-York-NY/Principal-Software-Engineer--Real-Time-Data-Enrichment-Platform--Hybrid-_R29505 (posted range)
+- https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers/job/USA---Remote-NY/Sr-Backend-Engineer--Hybrid--NYC-_R28993 (posted range)
+- Local registry: data/posting-research.jsonl (full req/location inventory and JD bodies)

@@ -1,0 +1,22 @@
+# Sectigo — research
+Provider/key: smartrecruiters:sectigo | company_type: product
+
+What they do: Sectigo is a commercial Certificate Authority and certificate-lifecycle-management (CLM) vendor — public TLS/SSL certificates, private PKI, code-signing, S/MIME and automated certificate management for enterprises. Its own job descriptions describe the domain as "certificate lifecycle management / security infrastructure" and "PKI", and describe "a large-scale 24/7 production environment" of "internet-facing production" services. Customers are enterprises and web properties that need trusted certificates at scale.
+
+How they describe themselves: Only their JD voice was reachable this session (no first-party marketing/values page was fetched — see Sources). In their own words the SRE role exists to "design and implement solutions to reduce toil and ensure reliability of our critical services", working with "engineering and information security teams to enhance, document, establish processes and generally improve the operability and security of our services", on a "growing global team". Tone is plain, operational and non-hype: no "rocketship"/"hustle" language anywhere in the two JD bodies on file. Stated compensation policy is unusually transparent — every Canadian JD names a target package and says it is "subject to internal equity and years of experience", with adjustments only "through an approval process". UNVERIFIED: no company values/mission statement was retrievable.
+
+Size / stage / funding: UNVERIFIED from first-party sources this session. Registry shows 41 open postings on its SmartRecruiters board, and the JDs reference a "growing global team" and a large 24/7 production estate — consistent with a mid-size established vendor rather than an early startup. The Stage-3 extractor read one JD as "profitable" and another as "growth"; treat both as inference, not company statement.
+
+Locations / HQ: HQ not verified first-party. Canadian engineering presence is clearly Ottawa, Ontario (JDs require "reporting to our Ottawa office at least 3-4 days a week"), plus a British Columbia / Pacific-timezone remote hire. Team is described as global.
+
+Remote policy: Mixed and role-specific, stated explicitly per JD. The "Site Reliability Engineer (West Coast)" is "a full-time position, working remote from BC on the Pacific time zone". The Ottawa SRE and the DevOps Engineer roles are hybrid, 3-4 days/week in the Ottawa office.
+
+Remote-Canada eligibility: YES for the West Coast SRE role specifically — verified from the JD body: full-time remote from British Columbia, Pacific time zone, posted location "Vancouver, BC, Canada, Remote". Note the constraint is BC-resident + Pacific hours; Kimberley BC is in BC but on Mountain Time, so the timezone expectation is worth confirming with them. The other two Canadian roles (Ottawa) are hybrid 3-4 days onsite and are NOT viable from BC.
+
+Engineering & tech: Linux/Unix systems administration, Git, configuration management and IaC (Ansible, Puppet, Terraform), Docker and Kubernetes, monitoring with Prometheus/Grafana/Nagios and centralized logging + time-series databases, CI/CD with Jenkins or DroneCI, Bash and Python scripting, HTTP service APIs, virtualization (VMware, Proxmox, Oracle Linux Virtualization Manager), and notably "experience with non-cloud infrastructure" — i.e. they run their own metal/virtualized estate, not a pure-cloud shop. Team on-call rotation is required; the role explicitly covers incident management, postmortems and incident-response process improvement.
+
+Notable / other: Pay transparency on Canadian postings is voluntary and unusually clear (Ontario/BC ranges stated in the JD text). Degree "strongly preferred" but 2+ years of equivalent experience is accepted in lieu. Regulated-industry exposure is listed as a plus, consistent with a WebTrust-audited CA.
+
+Open relevant roles (sample): Site Reliability Engineer (West Coast) — Vancouver, BC, remote; Site Reliability Engineer — Ottawa, ON (hybrid); DevOps Engineer (Senior-Principal Levels) — Ottawa, ON.
+
+Sources: JD bodies on file in the registry — https://jobs.smartrecruiters.com/sectigo/postings/3743990013704366 and https://jobs.smartrecruiters.com/sectigo/postings/3743990013330726 ; board https://careers.smartrecruiters.com/sectigo (ATS, not fetched). No corporate site was fetched: WebSearch was exhausted for this session and no sectigo.com URL appears in the registry, so guessing one was avoided.

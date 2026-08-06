@@ -1,0 +1,24 @@
+# Relay — research
+Provider/key: ashby:relayfi | company_type: product
+
+Entity check: The registry key `ashby:relayfi` and its postings match Relay Financial Technologies, the Toronto-based small-business banking platform at relayfi.com. Confirmed from the JD text: "Relay is a digital banking platform that gives self-made business owners the tools and know-how to be great with money." Note this is a different company from the several other firms trading as "Relay" (the delivery-logistics and the API-testing companies) — no mismatch with the registry, but the name is collision-prone.
+
+What they do: Online business banking and money-management software for small businesses — checking and savings accounts, debit and credit cards, expense management, accounts payable and invoicing. They position against financial opacity: "Visibility breeds profitability. Relay gives you a real-time view of your cash and automated systems that make every dollar work harder." Their framing is that they "took financial systems long used by large companies and rebuilt them for small businesses that want control without complexity," and their JD adds that the aim is "replacing financial guesswork with real visibility, transforming cash flow from a constant source of stress into a clear signal owners can use to run stronger, more resilient businesses."
+
+How they describe themselves: Tagline "Every dollar. Every account. Under control." Purpose-built rather than universal — "built for the ones who do everything and need their money structured to keep up." The engineering self-description is explicitly high-velocity: they want "a curious, impact-driven Senior Software Engineer... someone who thrives on taking smart risks, experimenting boldly, and learning from every challenge," working in "a fast-growing, collaborative environment," and they ask directly that "you thrive in fast-paced, dynamic environments and are comfortable navigating ambiguity and change." No formal published values list was found on the site.
+
+Size / stage / funding: Private, venture-backed, growth stage. Their site claims "110,000+ businesses" served and "$1 billion+" in customer deposits under management. Headcount, funding round and profitability are not published; unverified.
+
+Locations / HQ: Toronto, Ontario, with a second Ontario site in Kitchener-Waterloo — inferred from the posting locations, which are exclusively "Toronto, ON" and "Kitchener-Waterloo, ON." No HQ statement was found on the site itself.
+
+Remote policy: Not published. Every one of the five live engineering postings names a specific Ontario city rather than "remote" or "Canada," which is how a hybrid or in-office employer tags roles.
+
+Remote-Canada eligibility: **Effectively no — this is Ontario-anchored.** All live roles are tagged "Toronto, ON" or "Kitchener-Waterloo, ON" with no remote designation anywhere in the postings. A Canadian employer, but not a distributed one: nothing indicates they hire remote workers in British Columbia, and a Toronto/KW-anchored role is not workable from Kimberley without relocation. Would require explicit confirmation to overturn.
+
+Engineering & tech: Full-stack product engineering. Their stated stack — Front-end: React, TypeScript, React Native. Back-end: Node.js, TypeScript, Terraform, AWS (DynamoDB, RDS Postgres, Lambda, S3, SQS, SNS, SES, Elasticsearch, ECS). Tools: Cursor, Claude, GitHub Actions, Datadog, Jira, Metabase. Scope is deliberately broad: "Own features across the full development lifecycle – from design and development to testing, deployment, and monitoring," plus "System & Infrastructure Ownership: Manage production systems, optimize infrastructure." The senior bar is "3+ years of full-stack software engineering experience" with mentoring expectations.
+
+Notable / other: The interview process is published in the JD and is long — five stages: a 30-minute recruiter call, a 60-minute call with two Engineering Managers, a 60-minute live coding exercise, a take-home system design challenge plus a 60-minute review, then a final stage. Compensation is posted on the data roles: Senior Data Engineer CA$144,000–176,000 and Data Engineer CA$120,600–147,400 (base); the software-engineering roles post no range.
+
+Open relevant roles (sample): Senior Software Engineer (Toronto, ON); Senior Software Engineer (Kitchener-Waterloo, ON); Software Engineer (Toronto, ON); Senior Data Engineer (Toronto, ON); Data Engineer (Toronto, ON).
+
+Sources: https://relayfi.com ; live JDs in the registry: https://jobs.ashbyhq.com/relayfi/d1544485-6727-4b6b-864c-0fab3d032b08 , https://jobs.ashbyhq.com/relayfi/ab3ad991-e43b-45c1-b198-7bbac9411b21 , https://jobs.ashbyhq.com/relayfi/5f87ae1e-3261-46d9-bd25-17980f1e45e0 , https://jobs.ashbyhq.com/relayfi/33aae920-ae4e-4a60-b06f-4d604219de95

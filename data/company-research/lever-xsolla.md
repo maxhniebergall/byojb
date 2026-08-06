@@ -1,0 +1,28 @@
+# Xsolla — research
+Provider/key: lever:xsolla | company_type: product
+
+What they do: Xsolla is a video-game commerce and payments company — a merchant-of-record and monetization platform for game developers and publishers, covering payment processing across many currencies and methods, web shops, subscriptions, anti-fraud, and player identity/account systems. Its customers are game studios and publishers; its end users are players buying in-game content.
+
+How they describe themselves: Their JDs are conventional engineering copy with little culture manifesto. The relevant hiring themes are identity and access management, payments infrastructure, Go/PHP backend services, platform engineering, and a "DevX & AI" principal track. The company's public voice historically comes from founder-CEO Aleksandr Agapitov rather than a published values page.
+
+Size / stage / funding: Private, roughly 1,182 employees worldwide as of December 2025, up 32.3% from 894 in 2023. Founder-controlled, not venture-treadmill dependent in the usual sense, but with an explicit growth target culture — the CEO has publicly tied headcount decisions to maintaining "40 percent growth."
+
+Locations / HQ: Headquartered in Los Angeles / Sherman Oaks, California, with major engineering presence in Perm (Russia), Baku (Azerbaijan), Belgrade/Serbia, Montreal (Canada), Kuala Lumpur (Malaysia), Shanghai and Beijing (China), and Lisbon/Iberia. Montreal is the Canadian hub.
+
+Remote policy: Genuinely mixed and highly location-specific. Of the relevant requisitions in the registry, a substantial share are explicitly onsite — Baku onsite, Montreal onsite, Beijing onsite, Shanghai onsite, Kuala Lumpur onsite. Others are remote but geographically pinned: "Montreal, remote", "Serbia, remote", "CIS, remote", "Baku, remote", "Canada, remote". There is no single company-wide remote policy; each requisition sets its own terms.
+
+Remote-Canada eligibility: YES for a specific subset, which is a real positive. Several requisitions are tagged "Canada, remote" outright — Backend Software Engineer (Infrastructure-Focused), Senior Data Engineer (Data Governance Lead), Staff Software Engineer — Identity & Access Management, Senior Software Engineer — and several more are "Montreal, remote", which in Lever's tagging typically means remote from Canada with Montreal as the anchor. Montreal is Eastern Time, 2 hours ahead of Mountain, which is workable. Care is needed to distinguish these from the parallel Baku/Serbia/Shanghai/Kuala Lumpur duplicates of the same titles, and from the explicitly onsite Montreal variants.
+
+Engineering & tech: Go (Golang) and PHP are the dominant backend stack, frequently posted together. Areas include payments and monetization services, identity and access management/control, network and infrastructure engineering, platform engineering, SRE (Monetization), data engineering and data governance, and a DevX & AI principal role. Titles run from Middle through Senior, Staff, Tech Lead and Principal.
+
+Compensation (posted, from their own JDs): Xsolla posts ranges on many requisitions, which is unusually transparent. Canadian/CAD figures on record include Principal Engineer — DevX & AI CA$150,000–195,000; Senior Backend Engineer CA$140,000–160,000; Senior Network/Infrastructure Engineer CA$120,000–160,000; Site Reliability Engineer (Monetization) CA$120,000–160,000; Senior Data Engineer (Data Governance Lead) CA$120,000–170,000; Backend Software Engineer (Infrastructure-Focused) CA$130,000–160,000; Platform Engineer CA$100,000–160,000; Senior Software Engineer CA$100,000–170,000; Backend Engineer (PHP&Golang) CA$80,000–130,000; Backend Engineer (Go, Montreal onsite) CA$90,000–150,000. Non-CAD: Principal Engineer – Identity & Golang US$180,000–250,000; Tech Lead — Backend Gaming Services Integrations €90,000–100,000. Note the very wide senior bands and the low floors.
+
+Notable / other — significant: Xsolla drew widespread industry criticism for laying off roughly 150 employees (about a third of the relevant workforce at the time) on the basis of a big-data algorithm that classified them as "unengaged and unproductive," communicated in a mass email from the CEO stating "Many of you might be shocked, but I truly believe that Xsolla is not for you." The CEO publicly attributed the cuts to the company failing to maintain 40 percent growth. The episode was covered critically across the games trade press (Game Developer, MCV/Develop, PocketGamer.biz, Kotaku). Employee sentiment on review sites is reported as negative and declining, with recurring themes of job insecurity and layoffs conducted in batches or "individually and silently," including people being cut mid-project. These are third-party aggregator and press signals rather than company statements, but the algorithmic-layoff event itself is a matter of public record and the CEO's own words.
+
+Open relevant roles (sample): Backend Software Engineer (Infrastructure-Focused) (Canada, remote); Staff Software Engineer — Identity & Access Management (Canada, remote); Senior Data Engineer (Data Governance Lead) (Canada, remote); Site Reliability Engineer (Monetization) (Montreal, remote); Principal Engineer — DevX & AI; Platform Engineer (Montreal, remote).
+
+Sources:
+- https://jobs.lever.co/xsolla/77132545-27aa-45ba-bce9-0ca5bf04f580 and sibling JDs (bodies and posted ranges, local copies)
+- https://www.gamedeveloper.com/business/xsolla-lays-off-150-after-an-algorithm-ruled-staff-unengaged-and-unproductive-
+- https://mcvuk.com/business-news/xsolla-fires-150-employees-based-on-big-data-analysis-of-their-activity-many-of-you-might-be-shocked-but-i-truly-believe-that-xsolla-is-not-for-you/
+- https://www.reveliolabs.com/companies/xsolla/employees/

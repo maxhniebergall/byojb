@@ -1,0 +1,22 @@
+# LayerZero Labs — research
+Provider/key: greenhouse:layerzerolabs | company_type: product
+
+What they do: LayerZero Labs builds LayerZero, an omnichain interoperability / cross-chain messaging protocol for blockchains. In their own words: "Founded in 2021, LayerZero's vision is to create a community of cross-chain developers, building dApps that are no longer constrained by individual blockchain capabilities. With LayerZero's simple, generic messaging protocol, builders will develop cross-chain dApps designed to unify the power of individual blockchains." Customers/users are web3 developers and protocols; their own SRE JD says the systems "support tens of billions of dollars of daily transactional volume" and involve running blockchain node infrastructure (validator/full/archive nodes, RPC optimization) across many DLTs.
+
+How they describe themselves: Tagline "The Future is Omnichain." They lead with investors rather than product philosophy: "We are funded by the best investors in the world including: a16z, Sequoia, PayPal, Binance Ventures, Coinbase Ventures, Uniswap Labs, Circle Ventures, Delphi Digital, and many more." The SRE JD states the team's culture "is deeply rooted in a culture that values intellectual curiosity, effective problem-solving, and an openness to different ideas" and commits to "bringing together individuals from diverse backgrounds, experiences, and viewpoints". The Backend JD is more startup-flavoured: "You enjoy working in a fast-paced start-up environment, where you'll need to take initiative and solve problems independently"; "Pushing code that supports tens of billions of dollars of daily transactional volume doesn't scare you"; "You're not afraid to navigate up and down a deep technical stack. You don't define yourself by the tools you know, only by the problems you solve." No formal published values list was reachable this session.
+
+Size / stage / funding: Founded 2021. Venture-funded crypto infrastructure company; investor list above is the company's own. Headcount, funding round size and runway are UNVERIFIED — no first-party page was fetched. Registry shows 16 open postings total. The Stage-3 extractor labelled one JD "startup" and the other "growth".
+
+Locations / HQ: Both engineering postings on file are located "Vancouver, BC". A corporate HQ statement was not verified first-party this session.
+
+Remote policy: NOT STATED in either JD body on file. Neither posting mentions remote, hybrid, distributed or async working; both simply name Vancouver, BC as the location. The extractor marked remote_policy "unclear" for both.
+
+Remote-Canada eligibility: UNCLEAR, and it should be treated as onsite/Vancouver-based until proven otherwise. The roles are Canada-located (Vancouver), so Canadian employment is plainly possible, but nothing in their own words offers remote work. There is no evidence of a remote-anywhere-in-Canada arrangement.
+
+Engineering & tech: SRE side — blockchain node infrastructure for multiple DLTs (validator/full/archive nodes, RPC optimization), Kubernetes with Helm chart authoring (3+ years asked), Typescript or Golang for tooling/automation, advanced Unix/Linux internals, distributed-system design and high-availability architecture, automation of incident detection/triage/resolution, and "Participate in the on-call rotation for systems owned by the team". 4+ years required. Backend side — distributed backend systems, TypeScript, AWS (deploying/managing/scaling), workflow engines, smart contracts/DeFi a strong plus; only 2+ years required. Degree in CS or equivalent practical experience.
+
+Notable / other: Both JDs state the same base range, $120,000–$200,000/year, and add "LayerZero is a total compensation company. Dependent on the position offered, equity, and other forms of compensation may be provided as part of a total compensation package, in addition to a full range of medical, financial, and/or other benefits." The JDs do not name a currency for that range (see the comp note). Standard equal-opportunity-employer statement included.
+
+Open relevant roles (sample): Backend Engineer — Vancouver, BC; Site Reliability Engineer — Vancouver, BC.
+
+Sources: JD bodies on file in the registry — https://job-boards.greenhouse.io/layerzerolabs/jobs/5554606004 and https://job-boards.greenhouse.io/layerzerolabs/jobs/6082930004 ; board https://job-boards.greenhouse.io/layerzerolabs (ATS, not fetched). No corporate site fetched — WebSearch was exhausted this session and no layerzero domain appears in the registry, so URL guessing was avoided.

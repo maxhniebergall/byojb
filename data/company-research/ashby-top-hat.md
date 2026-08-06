@@ -1,0 +1,30 @@
+# Top Hat — research
+Provider/key: ashby:top-hat | company_type: product
+
+What they do: Top Hat is a Toronto-founded higher-education technology company. Its cloud platform lets college and university instructors run interactive courses — customizable and distributable interactive digital textbooks and course materials, in-class and remote engagement tools, assessment, and attendance tracking — across synchronous and asynchronous formats. It serves over 20,000 educator clients and roughly 3 million student users. In late 2022 it acquired Aktiv Learning, a STEM edtech startup; the "Aktiv Platform" team named in the live backend posting is that acquired STEM product line.
+
+How they describe themselves: Mission is "Spark better teaching and learning for a brighter world"; vision is "Make learning personal for every student". They organize culture around five values they call the Five Cs:
+- "Relentlessly Curious" — "Curiosity is our fuel for innovation, exploring different perspectives"
+- "Community First" — "Our diverse backgrounds and life experiences enable us to do more good as a community"
+- "Customer Obsessed" — "We're always looking for new ways to enrich and improve the customer experience"
+- "Call Our Shots" — "We hold ourselves accountable and ensure we deliver - for our customers and each other"
+- "Change Maker" — "Affordable and equitable higher education has the power to transform people's lives"
+They describe themselves as "one of the fastest-growing education technology companies in the world". Their JD's own list of why people like working there reads: "A noble mission that creates meaningful, fulfilling work; A team that cares deeply for customers and for each other; Flexible, remote first work environment; Professional learning and development for all role levels; An awesome and welcoming Toronto HQ; Competitive health benefits that start on day one; A management team focused on performance, growth, engagement and connection; Our winning strategy and market potential; Innovative PTO policy with lots of time and space for self-care; Passionate customers that believe in us—and what we do; A chance to work with new tech like generative AI—and see the customer impact."
+
+Size / stage / funding: Private, founded 2009, headquartered at 151 Bloor Street West, Toronto. Reported valuation around $0.5B. Venture-backed and acquisitive (Aktiv Learning, 2022). Profitability not disclosed.
+
+Locations / HQ: Toronto, Ontario ("an awesome and welcoming Toronto HQ").
+
+Remote policy: Stated as "Flexible, remote first work environment" in their own JD benefits list, alongside a Toronto HQ. The public careers page does not spell out a formal policy or list eligible geographies.
+
+Remote-Canada eligibility: LIKELY YES, Canada-wide. The live Senior Backend Software Engineer posting carries the location "Canada" with no city qualifier, and the company describes itself as remote-first. Combined with a Canadian HQ and Canadian entity, a BC-based remote hire looks feasible. Caveat: this is inferred from the posting location and the "remote first" phrase rather than from an explicit policy statement, and the Toronto HQ emphasis leaves open how often in-person is expected in practice. Worth confirming directly. Timezone: an Eastern-time company, so Mountain Time means an early start, though no core-hours requirement is stated (unlike Lightspeed's explicit EST/EDT clause).
+
+Engineering & tech: The live role is on the Aktiv Platform team. Stack and expectations from the JD: "Expert Java Foundation... Proven expertise in Spring Boot for building scalable microservices and experience managing data with MongoDB"; "Enterprise Experience: A track record of working on enterprise-level software systems that require high reliability and performance"; cloud platforms (AWS/GCP) and containerization tooling (Jenkins, Docker, Kubernetes) as preferred; "High-Traffic Systems: Experience designing and maintaining systems that handle high volumes of traffic and parallel connections". Responsibilities span independent implementation of complex features, technical leadership and architectural influence, mentoring junior and intermediate engineers, and "Operational Excellence: Proactively identify operational risks and control deficiencies. Drive discussions regarding system redundancy, disaster recovery, and service availability." The role also includes "Cross-Functional Collaboration: Partner closely with Frontend Engineers, Product Managers, and Designers" and "Process Innovation: Identify opportunities for automation and suggest UI improvements", with "UI/UX Awareness" listed as preferred experience. They mention generative AI as something engineers get to work with.
+
+Compensation: No range is posted on the live Canadian JD and no first-party pay-transparency or compensation page was located. Benefits stated: competitive health benefits starting day one, an "innovative PTO policy", and professional learning and development for all levels. See data/company-comp/ for an estimated band only.
+
+Notable / other: Higher-education technology is a seasonal, institution-driven market with long sales cycles and academic-calendar load peaks. Top Hat has been through consolidation (acquiring Aktiv) and the edtech sector broadly has cooled since its pandemic-era peak, so stability is worth probing. The mission — affordability and equity in higher education — is substantive.
+
+Open relevant roles (sample): Senior Backend Software Engineer, Aktiv Platform team (Canada).
+
+Sources: https://tophat.com/careers/ (mission, vision, the Five Cs); live Top Hat JD body at jobs.ashbyhq.com/top-hat (role scope, stack, and the "why team members love working at Top Hat" list); BetaKit and EdWeek Market Brief coverage of the Aktiv Learning acquisition; CB Insights / Tracxn company profiles for HQ and valuation.
