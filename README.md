@@ -45,10 +45,10 @@ Originally derived from `career-ops`, BYOJB transitions the tool from a CLI-cent
    ```bash
    npm run dashboard
    ```
-   Open `http://localhost:4173` in your browser. Review rankings, adjust rubric sliders, shortlist postings, keep/skip companies, and view application statuses.
+   Open `http://localhost:4173` in your browser. Review rankings, adjust rubric sliders, shortlist postings, keep/skip companies, track outreach threads, and view application statuses.
 
 5. **Autofill forms and record applications:**
-   Load the `extension/` directory into Chrome (Developer Mode -> Load unpacked). The extension autofills ATS application fields based on `config/profile.yml` and automatically reports submissions back to your dashboard.
+   Load the `extension/` directory into Chrome (Developer Mode -> Load unpacked). The extension autofills ATS application fields based on `config/profile.yml` and automatically reports submissions back to your dashboard. On LinkedIn it also captures contacts and logs the outreach messages you send.
 
 ---
 
@@ -130,6 +130,8 @@ npm run doctor
 * **AI Job Triage & Research:** Runs sequentially on your own agent subscription (Gemini Antigravity or Claude Code) using custom slash commands `/byojb-triage-jobs` (or `node llm-triage-jobs.mjs`) and `/byojb-research-jobs` (or `node llm-triage-jobs.mjs --research`) to filter and extract objective facets (languages, remote constraints, salary, tech stack) from the queues.
 * **Re-weightable Scores:** The dashboard scores each role dynamically on a facet-weighted model. Start the dashboard with `npm run dashboard` (running `node web/server.mjs`) to adjust rubric sliders and instantly re-sort the queue without re-running the LLM.
 * **Tracking & Autofill:** Track applications, sync status records, and use the MV3 Chrome Extension to autofill forms from your profile and record submissions back to the DB.
+* **Send Plan:** Cold outreach converts best on Tuesday–Thursday mornings, so drafts are written whenever you have the context and queued for the next good slot. The **Plan** tab groups every prepared message by the day you intend to send it, with a word count (100–150 is the target), a Copy button, and *Mark sent* — which moves the draft into the thread's message log. Send days live in `config/rubric.yml` under `workflow.outreach_send_days`. Drafts autosave to `localStorage` first and the server second, so a dashboard crash can't cost you a message you spent ten minutes wording.
+* **Direct Outreach:** Public career pages are the lowest-priority channel at most companies; a message straight to an engineering manager, or a warm referral from someone who has actually worked with you, is not. The **Outreach** and **Contacts** tabs track people (`data/contacts.jsonl`) and message threads (`data/outreach.jsonl`) separately from applications, linked to the posting they're about. Start a thread from any posting page, or capture a person straight off their LinkedIn profile with the extension. Threads that convert become tracked applications in one click. Every message is written and sent by you — BYOJB records outreach, it never automates it.
 
 ## Dashboard Showcase
 

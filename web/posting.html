@@ -31,6 +31,7 @@
 </style>
 </head>
 <body>
+<script src="/conn.js"></script>
 <header><a class="back" href="/postings">← postings</a><span style="color:var(--mut);font-size:.85rem">posting detail</span></header>
 <div class="wrap"><div class="panel" id="detail">loading…</div></div>
 <div class="toast" id="toast"></div>
@@ -116,6 +117,7 @@ async function load(){
       <button class="btn sm" id="saveOvr">Save</button><span style="flex:1"></span>
       <button class="btn good" id="bSL">Shortlist</button><button class="btn applied" id="bAP">Applied</button><button class="btn bad" id="bSK">Skip</button><button class="btn sm" id="bUN">Reset</button>
     </div>
+    <div class="field"><label>Outreach</label><div id="outreach">loading…</div></div>
     ${c.fit_verdict?`<div class="field"><label>Fit verdict</label><div class="jd">${esc(c.fit_verdict)}</div></div>`:''}
     ${c.jd_body?`<div class="field"><label>Job description</label><div class="jd">${esc(c.jd_body)}</div></div>`:''}`;
   $('#saveOvr').onclick=async()=>{const r=await post('/api/posting/override',{key:KEY,manual_score:$('#ovr').value});toast((await r.json()).ok?'override saved':'0–5 only');load();};
@@ -123,6 +125,64 @@ async function load(){
   $('#bAP').onclick=async()=>{await post('/api/posting/decision',{key:KEY,decision:'applied'});toast('applied');load();};
   $('#bSK').onclick=async()=>{await post('/api/posting/decision',{key:KEY,decision:'skip'});toast('skipped');load();};
   $('#bUN').onclick=async()=>{await post('/api/posting/decision',{key:KEY,decision:'undecided'});toast('reset');load();};
+  loadOutreach(c);
+}
+
+// Threads already attached to this posting, plus a one-click way to start a new one. This is
+// the main daily entry point: you're looking at a role and decide to go around the ATS.
+async function loadOutreach(c){
+  const el=$('#outreach'); if(!el) return;
+  const d=await (await fetch('/api/outreach?posting_key='+encodeURIComponent(KEY))).json();
+  const v=d.vocab;
+  const rows=(d.rows||[]).map(r=>`<div style="display:flex;gap:.5rem;align-items:baseline;padding:.25rem 0;border-bottom:1px solid var(--line);font-size:.83rem">
+      <a href="/outreach" style="color:var(--accent);text-decoration:none">${esc(r.contact_name||r.contact_key)}</a>
+      <span style="color:var(--mut)">${esc(r.contact_title||'')}</span>
+      <span class="chip">${esc(r.archetype)}</span><span class="chip">${esc(r.channel)}</span>
+      ${r.draft?`<a href="/plan" class="chip" style="color:var(--warn);text-decoration:none" title="${esc(r.draft.slice(0,180))}">drafted${r.scheduled_for?' · '+esc(r.scheduled_for):''} ↗</a>`:''}
+      <span style="flex:1"></span><span class="dec ${r.open?'shortlist':'skip'}">${esc(r.status)}</span>
+      <span style="color:var(--mut)">${r.message_count} msg${r.message_count===1?'':'s'}</span>
+    </div>`).join('')||'<div style="color:var(--mut);font-size:.83rem">no outreach on this posting yet</div>';
+
+  el.innerHTML=rows+`
+    <div class="actrow" style="margin-top:.6rem">
+      <input id="onName" placeholder="name" style="flex:1;min-width:8rem">
+      <input id="onTitle" placeholder="their title" style="flex:1;min-width:8rem">
+      <input id="onLi" placeholder="linkedin url" style="flex:1.4;min-width:10rem">
+      <select id="onArch">${v.archetypes.map(a=>`<option${a==='hiring_manager'?' selected':''}>${esc(a)}</option>`).join('')}</select>
+      <select id="onRel">${v.relationships.map(a=>`<option>${esc(a)}</option>`).join('')}</select>
+      <select id="onChan">${v.channels.map(a=>`<option${a==='linkedin_dm'?' selected':''}>${esc(a)}</option>`).join('')}</select>
+      <select id="onIntent">${v.intents.map(a=>`<option>${esc(a)}</option>`).join('')}</select>
+      <button class="btn sm good" id="onAdd">Add to plan</button>
+    </div>
+    <div class="field" style="margin-top:.2rem">
+      <label>Draft message — 100–150 words: their team/product, two or three quantifiable
+        achievements matched to their stack, then a low-friction ask. Leave blank to write it later.</label>
+      <textarea id="onDraft" style="width:100%;min-height:90px;background:#0c0d1c;border:1px solid var(--line);color:var(--ink);border-radius:8px;font:12.5px/1.55 ui-monospace,monospace;padding:.5rem .6rem"></textarea>
+      <div class="actrow" style="margin-top:.35rem">
+        <label style="font-size:.78rem;color:var(--mut)">send on</label>
+        <input type="date" id="onWhen" style="font-size:.8rem">
+        <span style="color:var(--mut);font-size:.78rem" id="onWhenHint"></span>
+      </div>
+    </div>`;
+  // Default the date to the next configured send day, fetched from the plan so the policy lives
+  // in one place (rubric.yml) rather than being duplicated here.
+  fetch('/api/plan').then(r=>r.json()).then(p=>{
+    const el=$('#onWhen'); if(el&&!el.value){ el.value=p.next_send_day||''; }
+    const h=$('#onWhenHint'); if(h) h.textContent=`next usual slot (${(p.send_days||[]).join('/')})`;
+  }).catch(()=>{});
+
+  $('#onAdd').onclick=async()=>{
+    const name=$('#onName').value.trim(), li=$('#onLi').value.trim();
+    if(!name&&!li){toast('need a name or LinkedIn url');return;}
+    const draft=$('#onDraft').value;
+    const r=await (await post('/api/outreach/create',{posting_key:KEY,channel:$('#onChan').value,intent:$('#onIntent').value,
+      draft, scheduled_for:$('#onWhen').value,
+      contact:{name,title:$('#onTitle').value.trim(),linkedin_url:li,company:c.company,company_key:c.company_key,
+        archetype:$('#onArch').value,relationship:$('#onRel').value,source:'manual'}})).json();
+    if(r.error){toast(r.error);return;}
+    toast(draft.trim()?'queued on the Plan page':'thread started — draft it on the Plan page');
+    loadOutreach(c);
+  };
 }
 load();
 </script>

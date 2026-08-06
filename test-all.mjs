@@ -1671,13 +1671,53 @@ try {
   if (oc.upsertContact('li:rated', { relevance: '' }).relevance === null) pass('clearing relevance un-rates rather than zeroing');
   else fail('clearing relevance should yield null');
 
+  // — send-day scheduling + the draft→sent transition —
+  // Weekday maths must use LOCAL date parts; toISOString() would shift west-of-UTC users a day.
+  if (oc.nextSendDay('2026-08-03') === '2026-08-04' && oc.nextSendDay('2026-08-07') === '2026-08-11') pass('nextSendDay finds the next Tue/Wed/Thu');
+  else fail(`nextSendDay wrong: ${oc.nextSendDay('2026-08-03')}, ${oc.nextSendDay('2026-08-07')}`);
+  // Drafting ON a send day can go out that same morning rather than waiting a week.
+  if (oc.nextSendDay('2026-08-04') === '2026-08-04') pass('a send day returns itself');
+  else fail('nextSendDay should include the given day');
+  if (oc.nextSendDay('2026-08-03', ['mon', 'fri']) === '2026-08-03') pass('nextSendDay honours configured days');
+  else fail('nextSendDay ignored the custom day list');
+  if (JSON.stringify(oc.parseSendDays(['garbage'])) === JSON.stringify([2, 3, 4])) pass('parseSendDays falls back to Tue/Wed/Thu');
+  else fail('parseSendDays fallback wrong');
+  if (oc.isSendDay('2026-08-04') && !oc.isSendDay('2026-08-07')) pass('isSendDay distinguishes Tue from Fri');
+  else fail('isSendDay wrong');
+
+  const dk = oc.nextThreadKey('li:test');
+  oc.upsertOutreach(dk, { channel: 'linkedin_dm' });
+  oc.saveDraft(dk, { draft: 'Hi Dana — saw the platform work.', scheduled_for: '2026-08-04' });
+  const drafted = oc.loadOutreach().find(r => r.key === dk);
+  // A draft is NOT a message: nothing has been sent, so the log must still be empty.
+  if (drafted.draft && drafted.status === 'Drafted' && (drafted.messages || []).length === 0) pass('saveDraft prepares without logging a message');
+  else fail(`saveDraft leaked into the message log: ${JSON.stringify(drafted)}`);
+  if (oc.saveDraft(dk, { scheduled_for: 'not-a-date' }).scheduled_for === '') pass('saveDraft rejects a malformed date');
+  else fail('saveDraft should blank an invalid scheduled_for');
+
+  oc.saveDraft(dk, { scheduled_for: '2026-08-04' });
+  const sent1 = oc.markSent(dk);
+  if (sent1.status === 'Sent' && sent1.messages.length === 1 && sent1.messages[0].direction === 'out'
+      && sent1.messages[0].body === 'Hi Dana — saw the platform work.' && !sent1.draft && !sent1.scheduled_for) {
+    pass('markSent moves the draft into the log as outbound and clears the slot');
+  } else fail(`markSent wrong: ${JSON.stringify(sent1)}`);
+  // A second outbound message is a follow-up, not a fresh first contact.
+  oc.saveDraft(dk, { draft: 'Bump with a new detail.' });
+  if (oc.markSent(dk).status === 'Followed Up') pass('a second send advances Sent → Followed Up');
+  else fail('markSent should advance to Followed Up');
+  if (oc.markSent(dk) === null) pass('markSent refuses when there is nothing prepared');
+  else fail('markSent should return null on an empty draft');
+
   // A pipe in a name/next-action must not split the generated markdown table.
   oc.upsertOutreach(tk, { next_action: 'ping re: infra | scale work' });
   oc.syncOutreachMd();
   const md = readFileSync(oc.OUTREACH_MD, 'utf-8');
   const bodyLines = md.split('\n').filter(l => l.startsWith('|') && !l.includes('---') && !l.includes('Archetype'));
-  if (bodyLines.length === 1 && bodyLines[0].split('|').length === 13) pass('syncOutreachMd emits one 11-column row with pipes escaped');
-  else fail(`outreach.md row malformed: ${JSON.stringify(bodyLines)}`);
+  // Every thread gets exactly one 11-column row, and a pipe inside a cell must not split it.
+  if (bodyLines.length === oc.loadOutreach().length && bodyLines.every(l => l.split('|').length === 13)
+      && bodyLines.some(l => l.includes('ping re: infra / scale work'))) {
+    pass('syncOutreachMd emits one 11-column row per thread with pipes escaped');
+  } else fail(`outreach.md rows malformed: ${JSON.stringify(bodyLines)}`);
 
   rmSync(odir, { recursive: true, force: true });
   delete process.env.BYOJB_OUTREACH_DIR;

@@ -25,7 +25,8 @@ import {
   loadContacts, loadOutreach, upsertContact, upsertOutreach, resolveContact, contactKey,
   nextThreadKey, linkApplication, threadTiming, syncOutreachMdWithPostings, validateOutreachStatus,
   isOpenOutreach, isStrongTie, OUTREACH_STATES, ARCHETYPES, RELATIONSHIPS, CHANNELS, INTENTS, OUTCOMES,
-  ACTIVITY_LEVELS,
+  ACTIVITY_LEVELS, saveDraft, markSent, nextSendDay, parseSendDays, isoDate, isValidDate,
+  weekdayOf, WEEKDAY_LABEL, isSendDay, DEFAULT_SEND_DAYS,
 } from '../outreach-core.mjs';
 import { classifyForm, classifyField, normLabel, PROFILE_KEYS } from '../autofill-fields.mjs';
 import { validateBandRow } from '../comp-core.mjs';
@@ -68,7 +69,11 @@ function loadRubric() {
 // Workflow knobs (live in rubric.yml under `workflow:`; defaults if absent).
 function workflowCfg() {
   const w = (loadRubric().workflow) || {};
-  return { max_open_per_company: Number(w.max_open_per_company) || 3, apply_floor: Number(w.apply_floor) || 3.5 };
+  return {
+    max_open_per_company: Number(w.max_open_per_company) || 3,
+    apply_floor: Number(w.apply_floor) || 3.5,
+    outreach_send_days: Array.isArray(w.outreach_send_days) && w.outreach_send_days.length ? w.outreach_send_days : DEFAULT_SEND_DAYS,
+  };
 }
 
 // company_key for an application: stored value wins, else join via posting-research, else derive
@@ -382,6 +387,7 @@ function outreachQueue() {
       contact_name: c.name || '', contact_title: c.title || '', linkedin_url: c.linkedin_url || '',
       archetype: c.archetype || 'other', relationship: c.relationship || 'cold', strong_tie: isStrongTie(c.relationship),
       relevance: c.relevance ?? null, activity: c.activity || 'unknown', contact_notes: c.notes || '',
+      draft: r.draft || '', scheduled_for: r.scheduled_for || '',
       // Prefer a real display name; the raw "provider:slug" key is a last resort, not a label.
       company: c.company || p.company || r.company_key || '', company_key: r.company_key || c.company_key || '',
       posting_title: p.title || '', posting_url: p.url || '',
@@ -401,6 +407,63 @@ function outreachDetail(key) {
     posting: { key: p.key || '', title: p.title || '', url: p.url || '', apply_url: p.apply_url || '', company: p.company || '', location: p.location || '' },
     application: app ? { key: app.key, status: app.status, tracker_num: app.tracker_num } : null,
     vocab: { states: OUTREACH_STATES, archetypes: ARCHETYPES, relationships: RELATIONSHIPS, channels: CHANNELS, intents: INTENTS, outcomes: OUTCOMES, activity_levels: ACTIVITY_LEVELS },
+  };
+}
+
+// ── the send plan ───────────────────────────────────────────────────
+// Every prepared-but-unsent message, grouped by the day you intend to send it. This is the
+// Tuesday-morning working view: open it, copy each message, send it yourself, mark it sent.
+function planQueue() {
+  const { outreach_send_days } = workflowCfg();
+  const contacts = new Map(loadContacts().map(c => [c.key, c]));
+  const drafts = loadOutreach().filter(r => String(r.draft || '').trim());
+  const wanted = new Set(drafts.map(r => r.posting_key).filter(Boolean));
+  const postings = new Map();
+  if (wanted.size) for (const p of loadJsonl(POST_RESEARCH_PATH)) if (wanted.has(p.key)) postings.set(p.key, p);
+
+  const todayStr = isoDate();
+  const rows = drafts.map(r => {
+    const c = contacts.get(r.contact_key) || {};
+    const p = postings.get(r.posting_key) || {};
+    return {
+      key: r.key, contact_key: r.contact_key, draft: r.draft, scheduled_for: r.scheduled_for || '',
+      channel: r.channel, intent: r.intent, status: r.status, notes: r.notes || '',
+      contact_name: c.name || r.contact_key, contact_title: c.title || '', linkedin_url: c.linkedin_url || '',
+      archetype: c.archetype || 'other', relationship: c.relationship || 'cold',
+      strong_tie: isStrongTie(c.relationship), activity: c.activity || 'unknown',
+      relevance: c.relevance ?? null,
+      company: c.company || p.company || r.company_key || '',
+      posting_key: r.posting_key || '', posting_title: p.title || '', posting_url: p.url || '',
+    };
+  });
+
+  // Group by day. Unscheduled drafts are their own bucket rather than being hidden — a draft with
+  // no date is written but unplanned, and that's exactly the thing worth surfacing.
+  const byDay = new Map();
+  for (const r of rows) {
+    const k = r.scheduled_for || '';
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(r);
+  }
+  const days = [...byDay.entries()].map(([date, list]) => ({
+    date,
+    weekday: date ? WEEKDAY_LABEL[weekdayOf(date)] : '',
+    unscheduled: !date,
+    // Past-dated drafts are overdue, not invisible: they were planned and never went out.
+    overdue: !!date && date < todayStr,
+    today: date === todayStr,
+    off_day: !!date && !isSendDay(date, outreach_send_days),
+    count: list.length,
+    rows: list.sort((a, b) => (b.relevance ?? -1) - (a.relevance ?? -1) || String(a.contact_name).localeCompare(b.contact_name)),
+  }));
+  // Dated days ascending (soonest first), unscheduled last.
+  days.sort((a, b) => a.unscheduled - b.unscheduled || String(a.date).localeCompare(b.date));
+
+  return {
+    days, total: rows.length,
+    send_days: outreach_send_days,
+    next_send_day: nextSendDay(todayStr, outreach_send_days),
+    today: todayStr,
   };
 }
 
@@ -852,6 +915,8 @@ const server = createServer(async (req, res) => {
       contact_key: ckey, company_key: companyKey, posting_key: pk,
       channel: b.channel, intent: b.intent, notes: b.notes,
       status: b.status || 'Drafted',
+      ...(b.draft !== undefined ? { draft: String(b.draft) } : {}),
+      ...(b.scheduled_for !== undefined ? { scheduled_for: isValidDate(b.scheduled_for) ? b.scheduled_for : '' } : {}),
       ...(b.body ? { message: { direction: 'out', body: b.body, sent_at: b.sent_at } } : {}),
     });
     syncOutreachMdWithPostings();
@@ -886,6 +951,34 @@ const server = createServer(async (req, res) => {
     syncOutreachMdWithPostings();
     return json(res, { ok: true });
   }
+  // ----- SEND PLAN -----
+  if (path === '/api/plan') return json(res, planQueue());
+
+  // Prepare or edit a message without sending it. A new draft with no date lands on the next
+  // configured send day; pass scheduled_for explicitly to override.
+  if (req.method === 'POST' && path === '/api/outreach/draft') {
+    const b = await body(req);
+    const row = loadOutreach().find(r => r.key === b.key);
+    if (!row) return json(res, { error: 'not found' }, 404);
+    const { outreach_send_days } = workflowCfg();
+    let when = b.scheduled_for;
+    if (when === undefined) when = row.scheduled_for || nextSendDay(isoDate(), outreach_send_days);
+    if (when && !isValidDate(when)) return json(res, { error: 'scheduled_for must be YYYY-MM-DD' }, 400);
+    const saved = saveDraft(b.key, { draft: b.draft, scheduled_for: when });
+    syncOutreachMdWithPostings();
+    return json(res, { ok: true, scheduled_for: saved.scheduled_for, draft: saved.draft });
+  }
+
+  // "I just sent this." Moves the draft into the message log as outbound and advances the status.
+  if (req.method === 'POST' && path === '/api/outreach/sent') {
+    const b = await body(req);
+    if (!loadOutreach().some(r => r.key === b.key)) return json(res, { error: 'not found' }, 404);
+    const row = markSent(b.key, { body: b.body, sent_at: b.sent_at });
+    if (!row) return json(res, { error: 'nothing to send — the draft is empty' }, 400);
+    syncOutreachMdWithPostings();
+    return json(res, { ok: true, status: row.status, message_count: (row.messages || []).length });
+  }
+
   // Turn a converted thread into a tracked application, reusing the existing create path so
   // applications.jsonl stays the single source of truth for anything actually submitted.
   if (req.method === 'POST' && path === '/api/outreach/convert') {
@@ -920,6 +1013,12 @@ const server = createServer(async (req, res) => {
   if (path === '/postings') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'postings.html'), 'utf8')); }
   if (path === '/companies') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'companies.html'), 'utf8')); }
   if (path === '/applications') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'applications.html'), 'utf8')); }
+  // Shared connection-error bar, loaded by every page.
+  if (path === '/conn.js') {
+    res.writeHead(200, { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' });
+    return res.end(readFileSync(P('web', 'conn.js'), 'utf8'));
+  }
+  if (path === '/plan') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'plan.html'), 'utf8')); }
   if (path === '/outreach') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'outreach.html'), 'utf8')); }
   if (path === '/vocabulary') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'vocabulary.html'), 'utf8')); }
   if (path === '/contacts') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(readFileSync(P('web', 'contacts.html'), 'utf8')); }
