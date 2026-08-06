@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "BYOJB Autofill",
-  "version": "0.1.0",
-  "description": "Deterministically fills standard fields on job application forms from your BYOJB profile, and tracks submissions back to the dashboard. You always click Submit.",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "name": "BYOJB Autofill & Outreach",
+  "version": "0.3.0",
+  "description": "Fills standard fields on job application forms from your BYOJB profile, and captures LinkedIn contacts + outreach messages back to the dashboard. You always click Submit and Send.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
   "host_permissions": [
     "http://localhost:4173/*",
     "https://job-boards.greenhouse.io/*",
@@ -19,10 +24,16 @@
     "https://jobs.smartrecruiters.com/*",
     "https://careers.smartrecruiters.com/*",
     "https://*.myworkdayjobs.com/*",
-    "https://*.canonical.com/*"
+    "https://*.canonical.com/*",
+    "https://www.linkedin.com/*"
   ],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html", "default_title": "BYOJB Autofill" },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "BYOJB Autofill & Outreach"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -43,7 +54,19 @@
       ],
       "run_at": "document_idle",
       "all_frames": true,
-      "js": ["content.js"]
+      "js": [
+        "content.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.linkedin.com/*"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "js": [
+        "linkedin.js"
+      ]
     }
   ]
 }

@@ -23,6 +23,9 @@ const fmt = (v) => v === true ? 'Yes' : v === false ? 'No' : String(v ?? '');
 
 async function init() {
   TAB = await activeTab();
+  // LinkedIn is an outreach page, not an application form — show the outreach panel instead of
+  // trying to enumerate fields (there are none worth filling, and the ATS flow doesn't apply).
+  if (/^https:\/\/www\.linkedin\.com\//.test(TAB.url || '')) return initLinkedIn();
   let en;
   try {
     en = await tabMsg(TAB.id, { type: 'ENUMERATE' });
@@ -122,6 +125,77 @@ $('#remember').onclick = async () => {
     else setStatus('Save failed: ' + ((r && r.error) || 'unknown'));
   } catch { setStatus('Save failed (dashboard offline?).'); }
 };
+
+// ── LinkedIn outreach mode ──────────────────────────────────────────
+// The real capture UI lives in the page itself (linkedin.js injects a floating button next to
+// what you're reading). The popup is the status surface: is the dashboard reachable, who does
+// it think this page is about, and what threads already exist at this company.
+async function initLinkedIn() {
+  $('#mode').textContent = 'BYOJB Outreach';
+  $('#actions').innerHTML = '<button class="primary" id="capture">Capture / log on page</button>'
+    + '<button id="diag" title="Copy what the extension can see on this page">Copy diagnostics</button>'
+    + '<span class="hint" id="hint"></span>';
+  let ctx = null;
+  try { ctx = await tabMsg(TAB.id, { type: 'LINKEDIN_CONTEXT' }); } catch { /* content script not ready */ }
+
+  if (!ctx) {
+    setStatus('Reload this LinkedIn tab so the BYOJB helper can attach.');
+  } else if (ctx.page === 'profile') {
+    setStatus(`Profile: ${ctx.name || '(name unreadable)'}${ctx.title ? ' — ' + ctx.title : ''}`);
+    // Showing which tier the data came from turns a silent selector failure into a visible one.
+    $('#verdict').innerHTML = ctx.name
+      ? `guessed archetype: <b>${esc(ctx.archetype)}</b>${ctx.company ? ' at <b>' + esc(ctx.company) + '</b>' : ''} <span class="tag">via ${esc(ctx.source)}</span>`
+      + (ctx.degree ? ` <span class="tag">${esc(ctx.degree)}${ctx.degree === '1' ? 'st' : ctx.degree === '2' ? 'nd' : 'rd'} degree</span>` : '')
+      : `<span style="color:var(--bad)">Could not read this profile.</span> Use <b>Copy diagnostics</b> below and check which tier failed.`;
+  } else if (ctx.page === 'messaging') {
+    setStatus(`Message thread: ${ctx.name || '(unreadable)'}`);
+    $('#verdict').textContent = 'Log the message after you send it — BYOJB never sends for you.';
+  } else {
+    setStatus('Open a LinkedIn profile or message thread to capture outreach.');
+  }
+
+  // Existing threads for this person, so you don't re-pitch someone you already contacted.
+  try {
+    const all = await bg({ type: 'OUTREACH_LIST' });
+    conn('ok');
+    const rows = ((all && all.data && all.data.rows) || []).filter(r =>
+      ctx && ctx.name && (r.contact_name || '').toLowerCase() === ctx.name.toLowerCase());
+    if (rows.length) {
+      $('#groups').innerHTML = `<div class="grp"><h4>Existing threads with this person</h4>` + rows.map(r =>
+        `<div class="row"><span class="lab">${esc(r.company || r.posting_title || r.channel)}</span><span class="tag">${esc(r.status)}</span><span class="val">${r.message_count} msg</span></div>`).join('') + '</div>';
+    } else if (ctx && ctx.name) {
+      $('#groups').innerHTML = '<div class="grp"><h4>No thread yet with this person</h4></div>';
+    }
+  } catch { conn('err'); setStatus('Cannot reach the dashboard. Start it with `npm run dashboard`.'); }
+
+  $('#capture').onclick = async () => {
+    try { await tabMsg(TAB.id, { type: 'LINKEDIN_CONTEXT' }); } catch {}
+    $('#hint').textContent = 'Use the button at the bottom-right of the page.';
+  };
+
+  // Diagnostics have to be pulled through the extension messaging channel: a content script runs
+  // in an isolated world, so anything it puts on `window` is invisible to the devtools console
+  // (which evaluates in the page's world). Asking the content script directly is the only way.
+  $('#diag').onclick = async () => {
+    // Gather from EVERY frame, not just the top one: if LinkedIn renders the conversation in a
+    // subframe, a top-frame-only dump reports "nothing found" and hides the real cause.
+    // executeScript lands in the content script's own isolated world, so __byojbDump is in scope.
+    let dumps;
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: TAB.id, allFrames: true },
+        func: () => (window.__byojbDump ? window.__byojbDump() : { note: 'BYOJB not attached in this frame' }),
+      });
+      dumps = results.map(r => r.result).filter(Boolean);
+    } catch (e) {
+      setStatus('Could not read the page: ' + (e && e.message || e) + '. Reload the extension, then refresh this tab.');
+      return;
+    }
+    const text = JSON.stringify(dumps.length === 1 ? dumps[0] : dumps, null, 2);
+    try { await navigator.clipboard.writeText(text); setStatus(`Diagnostics copied (${text.length} chars) — paste them into the chat.`); }
+    catch { console.log('[BYOJB] diagnostics', text); setStatus('Clipboard blocked — the dump is in this popup’s console instead.'); }
+  };
+}
 
 // dashboard base URL config
 chrome.storage.local.get('baseUrl').then(({ baseUrl }) => { $('#base').value = baseUrl || 'http://localhost:4173'; });
