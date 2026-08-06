@@ -19,7 +19,7 @@ function resolveApiUrl(entry) {
 // Reading `descriptionPlain` alone captured roughly 15% of each JD and silently dropped every
 // requirement, every eligibility clause and every posted salary. That is why Spotify's "Toronto,
 // remote" could not be resolved to a country: the section that answers it was never stored.
-function leverBody(j) {
+export function leverBody(j) {
   const parts = [j.descriptionPlain || j.description || ''];
   for (const s of j.lists || []) {
     // `content` is HTML (usually <li> items); comp-core and the extractor both strip tags, and

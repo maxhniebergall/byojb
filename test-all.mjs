@@ -1825,6 +1825,146 @@ try {
   fail(`vocab-report tests crashed: ${e.message}`);
 }
 
+// ── JD FETCHER — closed-posting detection & longer-wins guard ────────
+
+console.log('\n🧲 JD fetcher (tiered) tests...');
+try {
+  const {
+    commitDecision, greenhouseTarget, leverTarget, isThin, sharedBodyKeys,
+  } = await import(pathToFileURL(join(ROOT, 'jd-fetch-lib.mjs')).href);
+  const JD = await import(pathToFileURL(join(ROOT, 'jd-fetch-lib.mjs')).href);
+
+  // Closed-posting detection: 30 bodies in the corpus say the req is dead in words while the page
+  // still answers 200. Those must retire the posting, never be stored as a JD.
+  const closedPhrases = [
+    'Position Closed — thanks for your interest',
+    'We are no longer accepting applications for this role',
+    'This job is closed',
+    'This role has been filled',
+    'Sorry, this posting is closed',
+  ];
+  if (closedPhrases.every(b => commitDecision({ body: b, current: null }).action === 'closed')) {
+    pass('jd-fetch: every closed-posting phrasing retires instead of storing');
+  } else {
+    fail('jd-fetch: a closed-posting phrasing was stored as a body');
+  }
+  if (commitDecision({ body: 'We are hiring — applications close in 2026', current: null }).action === 'store') {
+    pass('jd-fetch: a live JD mentioning "close" is not mistaken for a closed posting');
+  } else {
+    fail('jd-fetch: false positive on closed-posting detection');
+  }
+  // Closed text wins even over the longer-wins guard: a dead req must never keep a stored body alive.
+  if (commitDecision({ body: 'Position closed', current: 'x'.repeat(5000) }).action === 'closed') {
+    pass('jd-fetch: closed detection runs before the length comparison');
+  } else {
+    fail('jd-fetch: closed posting survived because the new body was shorter');
+  }
+
+  // ── tombstone pages ───────────────────────────────────────────────────────
+  // A 200-OK page that renders fine but holds no job. Browser-rendering the 800 bodyless postings
+  // was the plan until a probe showed Workday answers "The page you are looking for doesn't exist."
+  // and BambooHR silently redirects to its careers index — neither blocked nor slow, just empty.
+  {
+    const workdayTomb = 'Skip to main content\nSign In\nSearch for Jobs\nThe page you are looking for doesn\'t exist.\nFollow Us\n© 2026 Workday, Inc.';
+    const bambooIndex = 'Current Openings\n\nThanks for checking out our job openings. See something that interests you? Apply here.\n\nChief of Staff to the CEO\n\nCorporate';
+    if (JD.isGonePage(workdayTomb)) pass('jd-fetch: Workday not-found page is recognised as a tombstone');
+    else fail('jd-fetch: Workday tombstone read as a job description');
+    if (JD.isGonePage(bambooIndex)) pass('jd-fetch: BambooHR careers-index redirect is recognised as a tombstone');
+    else fail('jd-fetch: careers index read as a job description');
+
+    // The false positive that would matter: a real JD whose prose happens to mention pages/not found.
+    const realJd = 'Our observability stack alerts when a page is not found in cache; you will own the CDN. '.repeat(30);
+    if (!JD.isGonePage(realJd)) pass('jd-fetch: a JD mentioning "not found" is not a tombstone');
+    else fail('jd-fetch: false positive — a real JD was classified as a tombstone');
+
+    // Must retire, not store — and must beat the length guard, since a careers index is LONGER than
+    // the absent body it would replace, so store-if-longer would happily write the tombstone in.
+    if (JD.commitDecision({ body: workdayTomb, current: null }).action === 'closed') pass('jd-fetch: a tombstone retires the posting instead of being stored');
+    else fail('jd-fetch: tombstone was stored as a body');
+    if (JD.commitDecision({ body: bambooIndex, current: 'short' }).action === 'closed') pass('jd-fetch: tombstone detection runs before the length comparison');
+    else fail('jd-fetch: a longer tombstone overwrote a shorter stored body');
+
+    // A long careers index is a different problem (sharedBodyKeys) — INDEX_PAGE only fires on short
+    // ones, so a genuine 4k+ JD that opens with a listing header is not swallowed.
+    if (!JD.isGonePage('Current Openings\n' + 'x'.repeat(5000))) pass('jd-fetch: index heuristic is bounded by length');
+    else fail('jd-fetch: index heuristic swallowed a long body');
+  }
+
+  // Longer-wins guard: 345 first-party pages render as JS shells shorter than the ATS content
+  // already on disk. Overwriting them would destroy real JDs.
+  const shell = 'You need to enable JavaScript to run this app.';
+  if (commitDecision({ body: shell, current: 'x'.repeat(4000) }).action === 'kept-shorter') {
+    pass('jd-fetch: a short JS shell never overwrites a longer stored body');
+  } else {
+    fail('jd-fetch: longer-wins guard did not protect the stored body');
+  }
+  if (commitDecision({ body: 'y'.repeat(4000), current: 'x'.repeat(900) }).action === 'store') {
+    pass('jd-fetch: a longer fresh body does replace a shorter stored one');
+  } else {
+    fail('jd-fetch: longer body was not stored');
+  }
+  if (commitDecision({ body: 'x'.repeat(900), current: 'x'.repeat(900) }).action === 'kept-shorter') {
+    pass('jd-fetch: equal-length body is a no-op (no pointless rewrite)');
+  } else {
+    fail('jd-fetch: equal-length body rewrote the file');
+  }
+  // The single exemption: a tier-1 ATS API body replacing an identified careers-index page, where
+  // the junk is LONGER than the real JD (8 Nebius postings shared one 28k listing page).
+  if (commitDecision({ body: 'real JD', current: 'x'.repeat(28000), authoritative: true }).action === 'store') {
+    pass('jd-fetch: tier-1 API body overrides length when the stored body is a careers index');
+  } else {
+    fail('jd-fetch: authoritative tier-1 body was blocked by the length guard');
+  }
+
+  // Index-page detection — siblings of the same company sharing one body are all listing pages.
+  const shared = sharedBodyKeys([
+    { key: 'a', company: 'Nebius', body: 'Open positions at Nebius' + 'z'.repeat(3000) },
+    { key: 'b', company: 'Nebius', body: 'Open positions at Nebius' + 'z'.repeat(3000) },
+    { key: 'c', company: 'Nebius', body: 'A real and quite specific JD' },
+    { key: 'd', company: 'Other', body: 'Open positions at Nebius' + 'z'.repeat(3000) },
+  ]);
+  if (shared.has('a') && shared.has('b') && !shared.has('c') && !shared.has('d')) {
+    pass('jd-fetch: shared-body detection flags siblings only, scoped per company');
+  } else {
+    fail(`jd-fetch: shared-body detection flagged ${[...shared].join(',')}`);
+  }
+
+  // Tier-1 URL derivation.
+  if (greenhouseTarget('https://careers.nebius.com/?gh_jid=4765610101', 'greenhouse:nebius')
+      === 'https://boards-api.greenhouse.io/v1/boards/nebius/jobs/4765610101') {
+    pass('jd-fetch: gh_jid on a first-party host resolves via company_key');
+  } else {
+    fail('jd-fetch: gh_jid board resolution failed');
+  }
+  if (greenhouseTarget('https://job-boards.greenhouse.io/speechify/jobs/4001', null)
+      === 'https://boards-api.greenhouse.io/v1/boards/speechify/jobs/4001') {
+    pass('jd-fetch: greenhouse board slug read straight from the URL');
+  } else {
+    fail('jd-fetch: greenhouse URL-form board resolution failed');
+  }
+  if (greenhouseTarget('https://example.com/careers/some-job', null) === null
+      && greenhouseTarget('not a url', 'greenhouse:x') === null) {
+    pass('jd-fetch: non-greenhouse and malformed URLs yield no tier-1 target');
+  } else {
+    fail('jd-fetch: greenhouseTarget matched something it should not');
+  }
+  if (leverTarget('https://jobs.lever.co/provectus/0bf1decc-002c')
+      === 'https://api.lever.co/v0/postings/provectus/0bf1decc-002c'
+      && leverTarget('https://jobs.lever.co/provectus') === null) {
+    pass('jd-fetch: lever per-posting API derived from the posting URL only');
+  } else {
+    fail('jd-fetch: leverTarget derivation failed');
+  }
+
+  if (isThin('x'.repeat(899)) && !isThin('x'.repeat(901)) && isThin('You need to enable JavaScript'.padEnd(2000, '.'))) {
+    pass('jd-fetch: thin = under 900 chars OR a JS shell of any length');
+  } else {
+    fail('jd-fetch: isThin threshold/shell detection wrong');
+  }
+} catch (e) {
+  fail(`jd-fetch tests crashed: ${e.message}`);
+}
+
 // ── SUMMARY ─────────────────────────────────────────────────────
 
 console.log('\n' + '='.repeat(50));
