@@ -39,7 +39,14 @@ check(!hL.includes('~') && !hL.includes('est') && !hL.includes('<span'), 'listed
 check(hI.includes('~') && hI.includes('est') && hI.includes('italic'), 'inferred renders as a marked estimate');
 check(hD.includes('co.') && !hD.includes('~'), 'company-direct is marked but not shown as an estimate');
 check(hN === '·', 'no comp information renders as ·');
-check(inferred.comp === null, 'the imputed row carries NO listed comp (fields stay separate)');
+// The invariant is that an imputed row carries no listed SALARY — not that `comp` is absent
+// entirely. A JD that mentions equity but states no range extracts as
+// `{min:null, max:null, currency:null, equity:true}`, which is a real fact worth keeping and is
+// still correctly imputed (COMPUTERS.comp falls through to the band on `c.max ?? c.min`).
+// 73 rows look like this after the re-extraction pass; asserting `comp === null` tested the
+// object's presence rather than the separation of listed and imputed figures.
+check(inferred.comp?.min == null && inferred.comp?.max == null,
+  'the imputed row carries NO listed salary figures (fields stay separate)');
 // the whole point: an estimate must be visually distinguishable from a listed figure
 check(hL !== hI && hI !== hD, 'all three states render differently');
 // provenance must be inspectable
