@@ -36,10 +36,33 @@ is a deterministic helper only.
           computed — "EST" is ambiguous, "America/New_York" is not.
           Capture it whenever the JD states working hours, core hours, or an overlap requirement
           ("must overlap 9-5 ET", "East Coast hours", "EST +/- 2"), even if the location is
-          "Remote - Canada". If the JD only names an office and says nothing about hours, use
-          `unclear` — do NOT infer the zone from the office, because a remote role's hours are
-          frequently not its headquarters'. `unclear` skips the dimension; a guess penalises a job
-          that never made the demand. -->
+          "Remote - Canada".
+          A NAMED CITY SETS THE TIMEZONE. If the posting anchors the role to a specific city —
+          "Toronto, Canada (Remote)", "Remote (Toronto, CA)", "Ottawa, Ontario" — infer the zone
+          from that city, even when no hours are stated. A company that posts one metro is
+          telling you where the working day sits; treating that as unknown throws away the
+          strongest hours signal most JDs carry. (This reverses an earlier rule that said never
+          to infer from an office: it left a Toronto-anchored, NYC-headquartered role scoring as
+          if its hours were unknown.)
+          A MULTI-CITY list resolves to the city CLOSEST TO HOME, not to `unclear`. A role open in
+          "San Francisco, Toronto, New York" would be taken on the San Francisco end, so record
+          America/Los_Angeles — the candidate picks, so score the reachable option rather than
+          throwing the whole signal away. Same for a list that crosses continents:
+          "Warsaw, Poland; Mississauga, Canada" is America/Toronto.
+          Two traps in that closest-city rule, both found in real postings:
+            - A NAMED REGION BEATS A NAMED FOREIGN CITY. "Canada, remote, United Kingdom" is a
+              Canada-remote role, but only "United Kingdom" is a place a city table can match, so
+              a naive closest-city pass hands it Europe/London and scores it 0. When a reachable
+              region (Canada / US / North America) appears next to foreign cities, the reachable
+              option has no stated city — that is `unclear`, not the foreign zone.
+            - AN EXPLICIT HOURS RANGE OUTRANKS EVERY CITY. "Senior Engineer (remote from GMT-7 to
+              GMT+4 timezones)" is Belgrade-based, but it states outright that GMT-7 — Mountain —
+              is permitted, so it is America/Edmonton. Stated hours always win; the city is only
+              the fallback when the JD says nothing about when you work.
+          Only one case stays `unclear`: a REGION with no city at all ("Remote - Canada",
+          "Remote - Americas", "USA - Remote"). There is genuinely no zone to infer, and this is
+          the case the old never-infer rule was protecting.
+          `unclear` skips the dimension entirely rather than scoring it badly. -->
 
      "remote_policy": "remote|hybrid|onsite|unclear",
      "geo_eligibility": "canada|us_only|eu_only|global|unclear",
