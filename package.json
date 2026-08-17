@@ -19,7 +19,8 @@
     "dashboard:decisions": "node web/server.mjs",
     "comp:jd": "node ingest/jd-comp.mjs",
     "aggregate:companies": "node company-aggregates.mjs",
-    "test:e2e": "bash test/e2e-comp.sh"
+    "test:e2e": "bash test/e2e-comp.sh",
+    "test:linkedin": "node test/linkedin-extract.mjs"
   },
   "keywords": [
     "ai",

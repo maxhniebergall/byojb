@@ -1,0 +1,17 @@
+<!doctype html><html><head><title>Messages | LinkedIn</title></head>
+<body>
+<a href="/in/jazguram/">sidebar link</a>
+<p>Some unrelated shell paragraph text that is long enough to look like content.</p>
+<div id="host"></div>
+<script>
+  const r = document.getElementById('host').attachShadow({mode:'open'});
+  r.innerHTML = `
+    <ul>
+      <li class="msg-s-event-listitem msg-s-event-listitem--other">
+        <p class="msg-s-event-listitem__body">Thanks for reaching out! What are you working on now?</p></li>
+      <li class="msg-s-event-listitem">
+        <p class="msg-s-event-listitem__body">Mostly distributed systems work at Northwind these days.</p></li>
+    </ul>
+    <div class="msg-form__contenteditable" contenteditable="true">Sending my resume now.</div>`;
+</script>
+</body></html>
