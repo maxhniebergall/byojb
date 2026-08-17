@@ -418,11 +418,43 @@ function writeRawSnapshot(matched, priorByKey, meta) {
 // portals.yml groups companies by provider, so thousands of consecutive entries
 // share one host (job-boards.greenhouse.io, jobs.ashbyhq.com, …). Scanned in that
 // order, all CONCURRENCY workers pile onto the same host and serialize on its
-// per-host rate limiter — concurrency is wasted and the run crawls. Round-robin
-// the targets across their hosts so the workers hit many distinct hosts at once.
+// per-host rate limiter — concurrency is wasted and the run crawls. Spread the
+// targets across their hosts so the workers hit many distinct hosts at once.
+//
+// Spreading has to be weighted by bucket depth, not flat round-robin. Host
+// buckets are wildly uneven: Workday gives every tenant its own host (~6k
+// buckets of 1), while Greenhouse/Ashby/Lever put thousands of companies behind
+// one hostname each (a handful of buckets of ~6k). Taking one item per bucket
+// per pass emits ~6k Workday entries for every 1 Greenhouse entry, so the
+// single-item hosts — the only ones that actually parallelize — all drain in the
+// first minutes. The tail is then pure shared-host work, every worker serialized
+// on the same few rate limiters. Measured on the 2026-08-17 run: 374 companies/min
+// for the first 25 minutes, 77/min for the rest.
+//
+// Instead give each item a virtual position (i + phase) / bucketSize and sort by
+// it. Every bucket is then spread evenly over the whole sequence in proportion
+// to its size, so the mix stays representative at any point in the run: the
+// shared hosts stay continuously fed, and there is always single-host work left
+// to fill the worker slots they cannot use.
+//
+// `phase` is a per-host constant in [0,1), not a flat 0.5. With a fixed 0.5 every
+// size-1 bucket resolves to exactly 0.5 and all ~6k Workday tenants stack on the
+// midpoint — the same clustering as flat round-robin, just moved to the middle of
+// the run. Deriving the phase from the hostname scatters those singletons
+// uniformly while keeping the order deterministic across runs.
 function targetHost(t) {
   const u = t.api || t.careers_url || '';
   try { return new URL(u).hostname; } catch { return t._provider?.id || 'other'; }
+}
+
+// FNV-1a, mapped to [0,1). Only needs to be well-spread, not cryptographic.
+function hostPhase(host) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < host.length; i++) {
+    h ^= host.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) % 100000) / 100000;
 }
 
 function interleaveByHost(items) {
@@ -432,12 +464,17 @@ function interleaveByHost(items) {
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(it);
   }
-  const buckets = [...groups.values()];
-  const out = [];
-  for (let i = 0; out.length < items.length; i++) {
-    for (const b of buckets) if (i < b.length) out.push(b[i]);
+  const spread = [];
+  for (const [host, bucket] of groups) {
+    const phase = hostPhase(host);
+    for (let i = 0; i < bucket.length; i++) {
+      spread.push({ pos: (i + phase) / bucket.length, host, item: bucket[i] });
+    }
   }
-  return out;
+  // Tie-break on host so equal positions stay deterministic rather than
+  // depending on sort stability across engines.
+  spread.sort((a, b) => a.pos - b.pos || (a.host < b.host ? -1 : a.host > b.host ? 1 : 0));
+  return spread.map(s => s.item);
 }
 
 // ── Parallel fetch with concurrency limit ───────────────────────────
