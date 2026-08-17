@@ -42,7 +42,8 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { execSync } from 'child_process';
 
-import { makeHttpCtx, httpStats } from './providers/_http.mjs';
+import { makeHttpCtx, httpStats, schedulerSnapshot } from './providers/_http.mjs';
+import { schedulerTunables } from './providers/_host-scheduler.mjs';
 import { canonicalUrl } from './posting-core.mjs';
 
 const parseYaml = yaml.load;
@@ -67,8 +68,6 @@ const PROVIDERS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 
 // Ensure required directories exist (fresh setup)
 mkdirSync('data', { recursive: true });
-
-const CONCURRENCY = 10;
 
 function envInt(name, fallback) {
   const raw = process.env[name];
@@ -414,86 +413,76 @@ function writeRawSnapshot(matched, priorByKey, meta) {
   return { carried: carried.length, fresh: matched.length };
 }
 
-// ── Interleave targets by host ──────────────────────────────────────
-// portals.yml groups companies by provider, so thousands of consecutive entries
-// share one host (job-boards.greenhouse.io, jobs.ashbyhq.com, …). Scanned in that
-// order, all CONCURRENCY workers pile onto the same host and serialize on its
-// per-host rate limiter — concurrency is wasted and the run crawls. Spread the
-// targets across their hosts so the workers hit many distinct hosts at once.
+// ── Partition targets by host ───────────────────────────────────────
+// Companies are grouped into one chain per host, and each chain walks its own companies
+// in order. There is deliberately NO global work list and no shared worker pool.
 //
-// Spreading has to be weighted by bucket depth, not flat round-robin. Host
-// buckets are wildly uneven: Workday gives every tenant its own host (~6k
-// buckets of 1), while Greenhouse/Ashby/Lever put thousands of companies behind
-// one hostname each (a handful of buckets of ~6k). Taking one item per bucket
-// per pass emits ~6k Workday entries for every 1 Greenhouse entry, so the
-// single-item hosts — the only ones that actually parallelize — all drain in the
-// first minutes. The tail is then pure shared-host work, every worker serialized
-// on the same few rate limiters. Measured on the 2026-08-17 run: 374 companies/min
-// for the first 25 minutes, 77/min for the rest.
+// The shared FIFO this replaced could not be fixed by ordering it. Rate limiting is
+// per-host and blocks the caller, so a worker holding a saturated host was a dead slot
+// and the item behind it — for an idle host — waited too. Reordering only moves which
+// items collide: flat round-robin drained the ~6k single-company Workday hosts first and
+// left a tail where every worker serialised on the same few gates (374 companies/min for
+// 25 minutes, then 77/min for the rest of the 2026-08-17 run), and depth-proportional
+// spreading just picks a different constant share for hosts whose real capacity is
+// discovered at runtime.
 //
-// Instead give each item a virtual position (i + phase) / bucketSize and sort by
-// it. Every bucket is then spread evenly over the whole sequence in proportion
-// to its size, so the mix stays representative at any point in the run: the
-// shared hosts stay continuously fed, and there is always single-host work left
-// to fill the worker slots they cannot use.
-//
-// `phase` is a per-host constant in [0,1), not a flat 0.5. With a fixed 0.5 every
-// size-1 bucket resolves to exactly 0.5 and all ~6k Workday tenants stack on the
-// midpoint — the same clustering as flat round-robin, just moved to the middle of
-// the run. Deriving the phase from the hostname scatters those singletons
-// uniformly while keeping the order deterministic across runs.
+// Per-host chains make ordering irrelevant instead of important. Request concurrency and
+// spacing come from providers/_host-scheduler.mjs, which adapts per host; a chain is
+// sequential at the company level because one company's requests already fan out there.
 function targetHost(t) {
   const u = t.api || t.careers_url || '';
   try { return new URL(u).hostname; } catch { return t._provider?.id || 'other'; }
 }
 
-// FNV-1a, mapped to [0,1). Only needs to be well-spread, not cryptographic.
-function hostPhase(host) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < host.length; i++) {
-    h ^= host.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
+function groupByHost(targets) {
+  const byHost = new Map();
+  for (const t of targets) {
+    const host = targetHost(t);
+    let list = byHost.get(host);
+    if (!list) { list = []; byHost.set(host, list); }
+    list.push(t);
   }
-  return ((h >>> 0) % 100000) / 100000;
+  return byHost;
 }
 
-function interleaveByHost(items) {
-  const groups = new Map();
-  for (const it of items) {
-    const k = targetHost(it);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(it);
-  }
-  const spread = [];
-  for (const [host, bucket] of groups) {
-    const phase = hostPhase(host);
-    for (let i = 0; i < bucket.length; i++) {
-      spread.push({ pos: (i + phase) / bucket.length, host, item: bucket[i] });
-    }
-  }
-  // Tie-break on host so equal positions stay deterministic rather than
-  // depending on sort stability across engines.
-  spread.sort((a, b) => a.pos - b.pos || (a.host < b.host ? -1 : a.host > b.host ? 1 : 0));
-  return spread.map(s => s.item);
+// ── Run every host's companies concurrently ─────────────────────────
+// One group per host, all started at once. This is not a global worker pool: total
+// concurrency is the sum of what the per-host windows allow, bounded only by the
+// scheduler's ceiling, rather than a fixed count chosen up front. `CONCURRENCY = 10`
+// used to be that count, and it was low because raising it worsened contention on the
+// shared FIFO — exactly the coupling this removes.
+//
+// Each host runs FANOUT companies at a time rather than one. A strictly sequential
+// chain looks tidier and is wrong: with one company in flight per host, and a
+// company's own requests awaited in sequence (pagination, one search term after
+// another), each host would hold exactly one request at a time. The adaptive window
+// in the scheduler would then never have more than one request to admit — cwnd
+// becomes dead code — and Greenhouse's ~6.4k companies would drain single-file at
+// roughly a second each, about 107 minutes, worse than the shared FIFO it replaced.
+//
+// FANOUT does not need to be tuned for politeness. It only decides how much work is
+// OFFERED to a host; the host's own window and gap decide how much is actually
+// dispatched, and they adapt. Offering more than CWND_MAX cannot help, since the
+// window will never admit more than that at once, so that is the default.
+const HOST_FANOUT = envInt('BYOJB_SCAN_HOST_FANOUT', schedulerTunables.CWND_MAX);
+
+async function runByHost(byHost, runCompany) {
+  await Promise.all([...byHost].map(async ([host, companies]) => {
+    let next = 0;
+    const worker = async () => {
+      while (next < companies.length) {
+        const i = next++;
+        // Remaining unstarted companies for this host: the backlog that decides
+        // priority if the global ceiling is ever contended.
+        await runCompany(companies[i], companies.length - next);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(HOST_FANOUT, companies.length) }, worker),
+    );
+  }));
 }
 
-// ── Parallel fetch with concurrency limit ───────────────────────────
-
-async function parallelFetch(tasks, limit) {
-  const results = [];
-  let i = 0;
-
-  async function next() {
-    while (i < tasks.length) {
-      const task = tasks[i++];
-      results.push(await task());
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => next());
-  await Promise.all(workers);
-  return results;
-}
 
 // ── Main ────────────────────────────────────────────────────────────
 
@@ -718,7 +707,12 @@ async function main() {
     }
     if (CHECKPOINT_EVERY > 0 && done % CHECKPOINT_EVERY === 0) checkpoint();
     if (quiet) return;
-    const line = `  [${done}/${total}] ok:${okCount} err:${errCount} new:${newOffers.length} 429:${httpStats.rateLimited} — ${name}`;
+    // `inflight` and `gwait` are the scheduler's health. A flat inflight well under the
+    // ceiling with gwait at 0 is the intended state; gwait climbing means the global
+    // ceiling is throttling rather than guarding, and wants BYOJB_HTTP_GLOBAL_MAX raised.
+    const sched = schedulerSnapshot();
+    const line = `  [${done}/${total}] ok:${okCount} err:${errCount} new:${newOffers.length} `
+      + `429:${httpStats.rateLimited} inflight:${sched.inFlight} gwait:${sched.globalWaits} — ${name}`;
     if (isTty) {
       process.stdout.write('\r\x1b[2K' + line.slice(0, (process.stdout.columns || 120) - 1));
     } else if (done === total || done % 25 === 0) {
@@ -726,11 +720,11 @@ async function main() {
     }
   };
 
-  // Round-robin across hosts so workers don't all pile onto one shared ATS host.
-  const scanOrder = interleaveByHost(targets);
-  const tasks = scanOrder.map(company => async () => {
+  // One chain per host; `remaining` is that host's backlog behind this company.
+  const byHost = groupByHost(targets);
+  const scanCompany = async (company, remaining) => {
     let provider = company._provider;
-    const ctx = makeHttpCtx();
+    const ctx = makeHttpCtx({ backlog: remaining });
     let sourceName = provider.id === 'local-parser' ? 'local-parser' : `${provider.id}-api`;
     let taskOk = false;
     let taskError = null;
@@ -806,10 +800,23 @@ async function main() {
     } finally {
       reportProgress(company.name, taskOk, jobsFound, taskError, company.careers_url);
     }
-  });
+  };
 
-  await parallelFetch(tasks, CONCURRENCY);
+  await runByHost(byHost, scanCompany);
   if (isTty && !quiet && total > 0) process.stdout.write('\n');
+
+  // Scheduler post-mortem. The global ceiling is a resource guardrail, not a throttle, so
+  // a non-zero wait count is a finding: it means requests queued behind the ceiling and
+  // hosts that should have been independent were competing for slots after all.
+  {
+    const s = schedulerSnapshot();
+    console.log(`  scheduler: ${s.hosts} hosts, peak in-flight ${s.globalPeak}/${s.globalMax}`
+      + `, global waits ${s.globalWaits}`);
+    if (s.globalWaits > 0) {
+      console.log(`  ⚠️  the global ceiling bound ${s.globalWaits} time(s) — raise `
+        + `BYOJB_HTTP_GLOBAL_MAX (currently ${s.globalMax}) so per-host limits are what throttle.`);
+    }
+  }
 
   // 5.4. Final checkpoint — flush any remaining new offers (non-verify path),
   // the scan ledger, and the raw postings snapshot for rank-postings.mjs. Carries

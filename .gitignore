@@ -63,7 +63,10 @@ bun.lock
 .claude/settings.local.json
 .claude/memory/
 career-dashboard
-package-lock.json
+# package-lock.json is intentionally TRACKED. The scanner's HTTP path now depends on
+# p-queue, and an unpinned tree there means every outbound request runs through code
+# resolved at install time. The lockfile is what makes `npm ci` reproducible and what
+# makes a dependency-tree change show up in review.
 
 # Custom additions (NEW components)
 # Python venv for JobSpy ingestion (machine-specific)

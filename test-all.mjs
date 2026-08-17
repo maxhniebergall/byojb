@@ -2071,6 +2071,177 @@ try {
   fail(`JD dump truncation tests crashed: ${e.message}`);
 }
 
+// ── 27. Per-host scheduler ───────────────────────────────────────
+//
+// The property that matters is ISOLATION: a saturated host must delay only its own queue.
+// The design this replaced put every company in one FIFO drained by a fixed worker pool, so a
+// worker blocked on a rate-limited host was a dead slot and the item behind it — for an idle
+// host — waited too. Throughput decayed 374 -> 77 companies/min within a single run as the
+// parallelisable hosts drained and only shared-host work was left.
+//
+// Ordering the FIFO cannot fix that (the sustainable rate per host is learned at runtime), so
+// these assert the replacement: independent per-host queues, AIMD windows, and a global ceiling
+// that guards resources without re-coupling hosts.
+console.log('\n27. Per-host scheduler: isolation, AIMD, and the global ceiling');
+try {
+  const sched = await import('./providers/_host-scheduler.mjs');
+  const { schedule, penalizeHost, rewardHost, hostState, resetScheduler,
+          schedulerSnapshot, schedulerTunables: T } = sched;
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  // (a) The core fix. A host held busy must not delay a different host.
+  resetScheduler();
+  const order = [];
+  const slow = schedule('slow.example', async () => { await sleep(300); order.push('slow'); });
+  await sleep(10);
+  const fast = schedule('fast.example', async () => { order.push('fast'); });
+  await Promise.all([slow, fast]);
+  if (order[0] === 'fast' && order[1] === 'slow') {
+    pass('a busy host does not delay a different host');
+  } else {
+    fail(`host isolation broken — completion order was ${JSON.stringify(order)}`);
+  }
+
+  // (b) cwnd opens additively: it takes cwnd successes to gain one slot, so growth slows as
+  //     the window widens. A multiplicative increase here is what makes a host oscillate.
+  resetScheduler();
+  await schedule('grow.example', async () => {});
+  const startCwnd = hostState('grow.example').cwnd;
+  rewardHost('grow.example');
+  const afterOne = hostState('grow.example').cwnd;
+  const delta = afterOne - startCwnd;
+  if (Math.abs(delta - 1 / startCwnd) < 1e-9) {
+    pass(`one success widens cwnd by 1/cwnd (${startCwnd} -> ${afterOne.toFixed(3)})`);
+  } else {
+    fail(`cwnd increase should be additive 1/cwnd, got +${delta}`);
+  }
+
+  // (c) A 429 halves the window and widens the gap — multiplicative decrease.
+  resetScheduler();
+  await schedule('pen.example', async () => {});
+  for (let i = 0; i < 40; i++) rewardHost('pen.example');
+  const before = hostState('pen.example');
+  penalizeHost('pen.example', 0);
+  const after = hostState('pen.example');
+  if (Math.abs(after.cwnd - before.cwnd / 2) < 1e-9 && after.gap > before.gap) {
+    pass(`a 429 halves cwnd (${before.cwnd.toFixed(2)} -> ${after.cwnd.toFixed(2)}) and widens the gap`);
+  } else {
+    fail(`429 must halve cwnd and widen gap — cwnd ${before.cwnd}->${after.cwnd}, gap ${before.gap}->${after.gap}`);
+  }
+
+  // (d) Bounds hold under sustained pressure in both directions.
+  resetScheduler();
+  await schedule('bound.example', async () => {});
+  for (let i = 0; i < 50; i++) penalizeHost('bound.example', 0);
+  const floored = hostState('bound.example');
+  if (floored.cwnd >= T.CWND_MIN && floored.concurrency >= 1 && floored.gap <= T.MAX_HOST_GAP_MS) {
+    pass('sustained 429s floor cwnd at 1 and cap the gap rather than stalling the host');
+  } else {
+    fail(`bounds violated under pressure: ${JSON.stringify(floored)}`);
+  }
+  resetScheduler();
+  await schedule('ceil.example', async () => {});
+  for (let i = 0; i < 500; i++) rewardHost('ceil.example');
+  const opened = hostState('ceil.example');
+  if (opened.cwnd <= T.CWND_MAX && opened.gap >= T.MIN_HOST_GAP_MS) {
+    pass(`cwnd stops at CWND_MAX (${opened.cwnd}) and the gap at its floor (${opened.gap}ms)`);
+  } else {
+    fail(`unbounded growth: cwnd ${opened.cwnd} (max ${T.CWND_MAX}), gap ${opened.gap}`);
+  }
+
+  // (e) The gap spaces successive requests to one host. Without this a host with a wide
+  //     window gets its whole window fired as a burst.
+  resetScheduler();
+  const stamps = [];
+  await Promise.all([0, 1, 2].map(() =>
+    schedule('gap.example', async () => { stamps.push(Date.now()); })));
+  stamps.sort((a, b) => a - b);
+  const spacings = [stamps[1] - stamps[0], stamps[2] - stamps[1]];
+  // Allow slop for timer coarseness; the point is that they are not simultaneous.
+  if (spacings.every(s => s >= T.MIN_HOST_GAP_MS * 0.7)) {
+    pass(`successive same-host requests are spaced (${spacings.join('ms, ')}ms)`);
+  } else {
+    fail(`same-host requests fired as a burst: spacings ${spacings.join(', ')}ms`);
+  }
+
+  // (f) The global ceiling is never exceeded. This is the guardrail's whole job, and the
+  //     slot must transfer directly to a waiter — decrementing and then waking one lets a
+  //     synchronous fast-path caller slip in and over-subscribe.
+  resetScheduler();
+  let live = 0;
+  let peak = 0;
+  await Promise.all(Array.from({ length: 60 }, (_, i) =>
+    schedule(`h${i}.example`, async () => {
+      live++;
+      if (live > peak) peak = live;
+      await sleep(5);
+      live--;
+    })));
+  const snap = schedulerSnapshot();
+  if (peak <= T.GLOBAL_MAX && snap.inFlight === 0) {
+    pass(`global in-flight never exceeded the ceiling (peak ${peak}/${T.GLOBAL_MAX}) and drained to 0`);
+  } else {
+    fail(`ceiling breached or leaked: peak ${peak}/${T.GLOBAL_MAX}, left in-flight ${snap.inFlight}`);
+  }
+
+  // (g) Under contention, admission favours the larger backlog. Otherwise a host with
+  //     thousands of companies queues behind thousands of one-company hosts, which is the
+  //     original head-of-line blocking rebuilt on the semaphore.
+  const savedMax = process.env.BYOJB_HTTP_GLOBAL_MAX;
+  process.env.BYOJB_HTTP_GLOBAL_MAX = '1';
+  const fresh = await import(`./providers/_host-scheduler.mjs?contended=${Date.now()}`);
+  const admitted = [];
+  // Occupy the single slot, then queue three waiters with ascending backlog behind it.
+  const blocker = fresh.schedule('block.example', async () => { await sleep(120); }, 0);
+  await sleep(20);
+  const waiters = [
+    fresh.schedule('low.example', async () => { admitted.push('low'); }, 1),
+    fresh.schedule('mid.example', async () => { admitted.push('mid'); }, 50),
+    fresh.schedule('high.example', async () => { admitted.push('high'); }, 5000),
+  ];
+  await Promise.all([blocker, ...waiters]);
+  if (savedMax === undefined) delete process.env.BYOJB_HTTP_GLOBAL_MAX;
+  else process.env.BYOJB_HTTP_GLOBAL_MAX = savedMax;
+  if (admitted[0] === 'high') {
+    pass(`a contended ceiling admits the largest backlog first (${admitted.join(' < ')})`);
+  } else {
+    fail(`backlog priority ignored — admission order was ${JSON.stringify(admitted)}`);
+  }
+
+  // (h) The counter that turns "the ceiling never binds" into a measurement. Without it a
+  //     throttling ceiling is indistinguishable from a healthy run.
+  if (fresh.schedulerSnapshot().globalWaits >= 3) {
+    pass('globalWaits counts acquisitions that actually waited, so a binding ceiling is visible');
+  } else {
+    fail(`globalWaits did not record the contention: ${fresh.schedulerSnapshot().globalWaits}`);
+  }
+
+  // (i) The escape hatch the old gate needed must not come back. MAX_SLOT_WAIT_MS existed
+  //     because unbounded workers each pushed nextStart further out; with a real queue only
+  //     `concurrency` requests are ever pacing, so two mechanisms disagreeing about who holds
+  //     a slot is a regression, not a safety net.
+  const httpSrc = readFile('providers/_http.mjs');
+  const schedSrc = readFile('providers/_host-scheduler.mjs');
+  if (!/MAX_SLOT_WAIT_MS/.test(httpSrc) && !/MAX_SLOT_WAIT_MS/.test(schedSrc)) {
+    pass('no bounded slot-wait escape hatch alongside the queue');
+  } else {
+    fail('MAX_SLOT_WAIT_MS is back — the queue and the timeout will disagree about slot ownership');
+  }
+
+  // (j) scan.mjs must not reintroduce a global work list or a fixed worker pool.
+  const scanSrc = readFile('scan.mjs');
+  if (!/parallelFetch|interleaveByHost/.test(scanSrc) && /runByHost/.test(scanSrc)) {
+    pass('scan.mjs partitions by host instead of ordering one shared work list');
+  } else {
+    fail('scan.mjs still carries the shared FIFO (parallelFetch/interleaveByHost)');
+  }
+
+  resetScheduler();
+} catch (e) {
+  fail(`per-host scheduler tests crashed: ${e.message}`);
+}
+
 // ── SUMMARY ─────────────────────────────────────────────────────
 
 console.log('\n' + '='.repeat(50));

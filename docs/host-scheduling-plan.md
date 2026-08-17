@@ -1,6 +1,7 @@
 # Host-aware scan scheduling
 
-Status: proposed, not implemented. Written 2026-08-17.
+Status: **implemented** 2026-08-17. Three things changed during the build; see "As built" at the
+end for what deviated from the plan below and why.
 
 ## The problem
 
@@ -287,3 +288,63 @@ Ordered so each step is independently testable.
 Whether to take the `p-queue` dependency at all, given the provenance gap and the blast radius, or
 to write the ~60-line per-key queue in-house and stay at zero dependencies. Needs a decision before
 step 2.
+
+Resolved: took `p-queue`, pinned exactly, lockfile committed. Resolved tree is the predicted three
+packages. `package-lock.json` had to be removed from `.gitignore` to make that pinning meaningful.
+
+## As built
+
+Three deviations from the plan above, all found during implementation or validation.
+
+### 1. Per-host groups run FANOUT companies at a time, not one
+
+The plan said each host's chain could be sequential, on the reasoning that per-host request
+concurrency already comes from `cwnd`. That was wrong, and the single-company smoke test showed it:
+`peak in-flight 1`. A company's own requests are awaited in sequence (pagination, then one search
+term after another), so with one company in flight per host, a host holds exactly one request at a
+time. The window would never have more than one request to admit — `cwnd` would be dead code — and
+Greenhouse's ~6.4k companies would drain single-file at roughly a second each, about 107 minutes,
+*worse* than the shared FIFO being replaced.
+
+Each host now runs `HOST_FANOUT` companies concurrently, defaulting to `CWND_MAX`. Fanout does not
+need tuning for politeness: it only decides how much work is offered to a host, while the host's own
+window and gap decide how much is dispatched. Offering more than `CWND_MAX` cannot help.
+
+### 2. Backlog rides on the request instead of being keyed by host
+
+`setHostBacklog(host, n)` would have filed the backlog under the wrong gate. Companies are
+partitioned by their `careers_url` host, but requests may go to a different API host
+(`job-boards.greenhouse.io` vs `boards-api.greenhouse.io`), so the declared key and the key requests
+actually use are not the same string. The backlog is now a parameter on `makeHttpCtx`, carried
+through `fetchWithTimeout` into `schedule()`, so it always reaches the gate that arbitrates.
+
+### 3. A Workday pagination bug, found while validating
+
+Unrelated to scheduling, but it neutered the ceiling raise committed earlier the same day. Workday
+reports `total` on the FIRST page of a search and then sends `total: 0` on every page after it. The
+loop's break test compared against that per-page value, so on page two `offset + PAGE_SIZE >= total`
+was `40 >= 0` — trivially true. **Every Workday board stopped at 40 postings**, no matter whether the
+ceiling was 100 or 2000. The sticky `reportedTotal` was already being tracked but was only used for
+the warning, not the break.
+
+Fixed by treating a short page as the end-of-results signal and using `reportedTotal` for the
+early-stop shortcut. On Autodesk alone this took the scan from 149 to 341 jobs found and surfaced 15
+new postings that the cap had been hiding.
+
+### Measured result
+
+Greenhouse in isolation (`--dry-run --provider greenhouse`): 2,650 companies in ~400s, about **400
+companies/min**, with `429:0` and `gwait:0`. In-flight sat at 1–4, which is the 150ms gap floor
+binding rather than the window — i.e. that host is running at its configured maximum rate. The
+pre-change baseline was 374/min at the very start of a run decaying to 77/min for the entire scan.
+
+Test suite: 322 passed, 5 failed. The 5 are the pre-existing hardcoded-absolute-path failures in
+`extract-script.mjs`, unchanged from the 311/5 baseline. The 11 new tests are section 27.
+
+### Not yet done
+
+A full production run has not been made against the new scheduler — the pre-change scan was still
+running throughout this work, and starting a second full scan would have double-hit every host.
+Validation was a single-company dry run plus a bounded Greenhouse provider slice. The success
+criteria in "Testing and verification" that need a full run — flat per-minute rate, no rise in total
+429s, `globalWaits` zero for shared-host ATS — remain to be confirmed.
