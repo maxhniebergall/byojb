@@ -1965,6 +1965,112 @@ try {
   fail(`jd-fetch tests crashed: ${e.message}`);
 }
 
+// ── 26. JD dump must never silently truncate a body ──────────────
+//
+// REGRESSION GUARD. dump-jd-batch.mjs once carried a bare `.slice(0, 6000)` on the body. Benefits,
+// PTO and salary bands live at the END of a job description, so the cap removed precisely the text
+// that carries them — and left no trace that anything was missing. 41 of 168 postings in a single
+// extraction pass recorded `pto_policy: "unclear"` for policies sitting in the file, and several
+// recorded `comp: null` for published salary bands (Tailscale's $218,420–$302,840 CAD among them).
+//
+// The scores are computed from the facets, so a truncated read produces a confident number derived
+// from a JD nobody fully saw. These tests assert the three properties that make that impossible:
+//   (a) the default cap is far above any real JD, so normal operation never truncates;
+//   (b) if a cap ever does bite, the output SHOUTS and the process exits non-zero;
+//   (c) no bare slice/substr on the body sneaks back in.
+console.log('\n26. JD dump: bodies are never silently truncated');
+try {
+  const dumpPath = join(ROOT, 'dump-jd-batch.mjs');
+  const src = readFileSync(dumpPath, 'utf-8');
+  const { MAX_BODY_DEFAULT, TRUNCATION_BANNER, truncationBanner } =
+    await import(pathToFileURL(dumpPath).href);
+
+  // (a) The cap is a catastrophic-bug guard, not a token budget. Longest real JD seen is ~20k.
+  if (MAX_BODY_DEFAULT >= 100000) {
+    pass(`default body cap is ${MAX_BODY_DEFAULT} chars — far above any real JD (~20k)`);
+  } else {
+    fail(`default body cap dropped to ${MAX_BODY_DEFAULT} — real JDs will be silently cut`);
+  }
+
+  // (b) A truncated body must announce itself, name the posting, and say how to recover.
+  const banner = truncationBanner('https://example.com/job/1', 30000, 10000);
+  const shouts = banner.includes(TRUNCATION_BANNER)
+    && banner.includes('https://example.com/job/1')
+    && banner.includes('20000')            // chars withheld
+    && banner.includes('--max-body 31000') // the recovery command
+    && /INCOMPLETE/.test(banner);
+  if (shouts) {
+    pass('truncation banner names the posting, the chars withheld, and the re-dump command');
+  } else {
+    fail('truncation banner is not loud/actionable enough');
+  }
+
+  // ...and the run must FAIL, so a truncated dump can't be mistaken for a complete one.
+  if (/process\.exit\(3\)/.test(src) && /truncated\.length/.test(src)) {
+    pass('a truncated dump exits non-zero instead of returning a partial dump as success');
+  } else {
+    fail('truncation no longer fails the process — a partial dump can pass for a complete one');
+  }
+
+  // (c) The original bug, textually. It was `…join('\n').slice(0, 6000)` — chained onto the
+  // body-building expression, so a check anchored to a variable name misses it. The general rule
+  // that does catch it: truncation must always go through the named cap, never a magic number.
+  // Any `.slice(0, <numeric literal>)` / `.substring|substr(0, <literal>)` is the bug's shape.
+  // (`.slice(2)` on the line array is a header skip, not a truncation, so require a 0 start.)
+  // Strip comments first — the file documents the old bug in prose, and the guard must read code.
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const magicCuts = [...code.matchAll(/\.\s*(?:slice|substring|substr)\s*\(\s*0\s*,\s*(\d+)\s*\)/g)]
+    .map(m => m[0].trim());
+  if (magicCuts.length === 0) {
+    pass('no magic-number truncation anywhere — every cut goes through the named cap');
+  } else {
+    fail(`magic-number truncation found (the 6000-char bug's shape): ${magicCuts.join(' | ')}`);
+  }
+
+  // Behavioural end-to-end: a body longer than the cap must produce the banner AND exit 3.
+  const tmp = mkdtempSync(join(tmpdir(), 'byojb-trunc-'));
+  try {
+    const key = 'https://example.com/jobs/huge';
+    const skKey = (await import(pathToFileURL(join(ROOT, 'posting-core.mjs')).href)).sk(key);
+    mkdirSync(join(tmp, 'data', 'posting-research'), { recursive: true });
+    // Line 3 onward is the body (the dump skips the 2-line title/url header).
+    const body = 'HEAD-MARKER\n' + 'x'.repeat(9000) + '\nTAIL-MARKER-PTO-20-DAYS';
+    writeFileSync(join(tmp, 'data', 'posting-research', skKey + '.md'), `# T\n${key}\n\n${body}`);
+    writeFileSync(join(tmp, 'data', 'posting-research.jsonl'),
+      JSON.stringify({ key, company: 'C', title: 'T', location: 'Remote', has_body: true, live: true }) + '\n');
+    writeFileSync(join(tmp, 'data', 'postings-personal.jsonl'),
+      JSON.stringify({ key, decision: 'undecided', llm_rank: 5 }) + '\n');
+    writeFileSync(join(tmp, 'keys.txt'), key + '\n');
+
+    // Default cap: the whole body comes through, tail included, and the run succeeds.
+    const okOut = run(NODE, [dumpPath, '--keys', join(tmp, 'keys.txt')], { cwd: tmp });
+    if (okOut && okOut.includes('TAIL-MARKER-PTO-20-DAYS') && !okOut.includes(TRUNCATION_BANNER)) {
+      pass('a 9k-char body is dumped in full under the default cap');
+    } else {
+      fail('default cap truncated a 9k body, or swallowed its tail');
+    }
+
+    // Forced tiny cap: banner present, tail gone, exit code 3.
+    let cutOut = '', cutCode = 0;
+    try {
+      cutOut = execFileSync(NODE, [dumpPath, '--keys', join(tmp, 'keys.txt'), '--max-body', '500'],
+        { cwd: tmp, encoding: 'utf-8', timeout: 30000, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      cutOut = (e.stdout || '') + (e.stderr || '');
+      cutCode = e.status;
+    }
+    if (cutOut.includes(TRUNCATION_BANNER) && !cutOut.includes('TAIL-MARKER') && cutCode === 3) {
+      pass('a forced cap shouts, drops the tail, and exits 3 (never a silent partial)');
+    } else {
+      fail(`forced truncation was not loud enough (exit ${cutCode}, banner ${cutOut.includes(TRUNCATION_BANNER)})`);
+    }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+} catch (e) {
+  fail(`JD dump truncation tests crashed: ${e.message}`);
+}
+
 // ── SUMMARY ─────────────────────────────────────────────────────
 
 console.log('\n' + '='.repeat(50));
