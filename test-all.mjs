@@ -2217,16 +2217,62 @@ try {
     fail(`globalWaits did not record the contention: ${fresh.schedulerSnapshot().globalWaits}`);
   }
 
-  // (i) The escape hatch the old gate needed must not come back. MAX_SLOT_WAIT_MS existed
-  //     because unbounded workers each pushed nextStart further out; with a real queue only
-  //     `concurrency` requests are ever pacing, so two mechanisms disagreeing about who holds
-  //     a slot is a regression, not a safety net.
-  const httpSrc = readFile('providers/_http.mjs');
-  const schedSrc = readFile('providers/_host-scheduler.mjs');
-  if (!/MAX_SLOT_WAIT_MS/.test(httpSrc) && !/MAX_SLOT_WAIT_MS/.test(schedSrc)) {
-    pass('no bounded slot-wait escape hatch alongside the queue');
+  // (i) STALL REGRESSION. nextStart advances by `gap` on every scheduled attempt, and the retry
+  //     loop re-enters schedule() up to MAX_RETRIES + 1 times per request while penalizeHost
+  //     widens the gap it advances BY. Unclamped, a handful of retrying companies scheduled one
+  //     host nine minutes out and it compounded: a real scan stalled dead with zero sockets open,
+  //     zero in flight and the process asleep on a timer hours away. The clamp is what makes
+  //     forward progress structural rather than lucky.
+  // Scaled down via env so the assertion runs in about a second: a 2000ms gap ceiling against a
+  // 300ms schedule-ahead bound. Each request is awaited in turn, so this measures the SCHEDULE
+  // bound and not queue depth — queueing work ahead of the probe would only time the backlog.
+  const savedAhead = process.env.BYOJB_HTTP_MAX_SCHEDULE_AHEAD_MS;
+  const savedGapMax = process.env.BYOJB_HTTP_HOST_GAP_MAX_MS;
+  process.env.BYOJB_HTTP_MAX_SCHEDULE_AHEAD_MS = '300';
+  process.env.BYOJB_HTTP_HOST_GAP_MAX_MS = '2000';
+  const bounded = await import(`./providers/_host-scheduler.mjs?storm=${Date.now()}`);
+  for (let i = 0; i < 20; i++) bounded.penalizeHost('storm.example', 0);   // drive gap to its ceiling
+  let worst = 0;
+  for (let i = 0; i < 5; i++) {
+    const t0 = Date.now();
+    await bounded.schedule('storm.example', async () => {});
+    worst = Math.max(worst, Date.now() - t0);
+  }
+  if (savedAhead === undefined) delete process.env.BYOJB_HTTP_MAX_SCHEDULE_AHEAD_MS;
+  else process.env.BYOJB_HTTP_MAX_SCHEDULE_AHEAD_MS = savedAhead;
+  if (savedGapMax === undefined) delete process.env.BYOJB_HTTP_HOST_GAP_MAX_MS;
+  else process.env.BYOJB_HTTP_HOST_GAP_MAX_MS = savedGapMax;
+  if (worst <= 600) {
+    pass(`a retry storm cannot schedule a host past the bound (worst wait ${worst}ms against a 300ms bound)`);
   } else {
-    fail('MAX_SLOT_WAIT_MS is back — the queue and the timeout will disagree about slot ownership');
+    fail(`nextStart ran away: worst wait ${worst}ms against a 300ms schedule-ahead bound`);
+  }
+
+  // (k) Recovery has to be able to outrun the penalty. Shaving a fixed 8ms off the gap meant 982
+  //     successes to walk back from the ceiling, at a rate the throttle itself had capped at
+  //     0.13 req/s — 131 minutes from one burst. Additive in RATE keeps the step proportional.
+  resetScheduler();
+  await schedule('recover.example', async () => {});
+  for (let i = 0; i < 20; i++) penalizeHost('recover.example', 0);
+  const pinned = hostState('recover.example').gap;
+  let steps = 0;
+  while (hostState('recover.example').gap > T.MIN_HOST_GAP_MS + 0.01 && steps < 5000) {
+    rewardHost('recover.example');
+    steps++;
+  }
+  if (pinned >= T.MAX_HOST_GAP_MS && steps <= 200) {
+    pass(`recovery from the ${pinned}ms ceiling takes ${steps} successes, not ~1000`);
+  } else {
+    fail(`recovery too slow or host not pinned: gap ${pinned}ms, ${steps} successes to floor`);
+  }
+
+  // (l) One refused request must not compound into 2^MAX_RETRIES of gap growth. The retry loop
+  //     penalises only the first attempt and extends the cooldown thereafter.
+  const httpSrc = readFile('providers/_http.mjs');
+  if (/attempt === 0\) penalizeHost/.test(httpSrc) && /coolHost/.test(httpSrc)) {
+    pass('only the first refusal of a request widens the gap; later retries extend the cooldown');
+  } else {
+    fail('the retry loop penalises every attempt — one 429 will drive the host to the gap ceiling');
   }
 
   // (j) scan.mjs must not reintroduce a global work list or a fixed worker pool.

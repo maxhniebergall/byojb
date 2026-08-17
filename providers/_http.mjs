@@ -21,7 +21,7 @@
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; byojb/1.3)';
 
-import { schedule, penalizeHost, rewardHost, hostOf } from './_host-scheduler.mjs';
+import { schedule, penalizeHost, coolHost, rewardHost, hostOf } from './_host-scheduler.mjs';
 
 export { schedulerSnapshot, hostState, resetScheduler } from './_host-scheduler.mjs';
 
@@ -156,9 +156,13 @@ async function fetchWithTimeout(url, { timeoutMs = DEFAULT_TIMEOUT_MS, headers =
       }
     }
     // Retryable failure: slow the whole host, then back off before retrying.
+    // Only the FIRST refusal of a request widens the gap and halves the window. Penalising
+    // every attempt compounded one 429 into 2^MAX_RETRIES of gap growth, pinning the host at
+    // the ceiling. Subsequent attempts only extend the shared cooldown.
     httpStats.retries++;
     const wait = backoffMs(attempt, lastErr?.retryAfterMs);
-    penalizeHost(host, wait);
+    if (attempt === 0) penalizeHost(host, wait);
+    else coolHost(host, wait);
     await sleep(wait);
   }
   throw lastErr;

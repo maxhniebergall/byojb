@@ -45,10 +45,23 @@ function envInt(name, fallback) {
 //
 // Multiplicative back-off, additive recovery: the gap rises fast under pressure and returns to the
 // floor slowly, so a host settles at a sustainable rate instead of oscillating around it.
+//
+// Recovery is additive IN RATE, not in milliseconds of gap. That distinction is the whole of AIMD
+// and getting it wrong nearly bricks a host. Shaving a fixed 8ms off the gap is a rate increase of
+// wildly different size depending on where the gap sits: at the 150ms floor it is a big step, at
+// the 8000ms ceiling it is almost nothing. A host driven to the ceiling needed 982 consecutive
+// successes to walk back to the floor — and since it was only permitted 0.13 req/s while pinned
+// there, that is 131 minutes of recovery from a single burst of 429s. Recovery could not outrun
+// the penalty.
+//
+// Adding a constant to the RATE fixes the asymmetry: it is a large proportional step when the host
+// is heavily throttled and a small one when it is already fast, which is the behaviour the
+// original comment describes and the millisecond version failed to deliver.
 const MIN_HOST_GAP_MS = envInt('BYOJB_HTTP_HOST_GAP_MS', 150);       // floor for the adaptive gap
 const MAX_HOST_GAP_MS = envInt('BYOJB_HTTP_HOST_GAP_MAX_MS', 8000);  // ceiling for the adaptive gap
 const GAP_GROWTH = 2.0;                                             // multiply gap on a 429
-const GAP_RECOVERY_MS = envInt('BYOJB_HTTP_GAP_RECOVERY_MS', 8);     // shave per success
+// Requests/second added to a host's permitted rate per clean response.
+const RATE_RECOVERY_PER_SUCCESS = Number(process.env.BYOJB_HTTP_RATE_RECOVERY || 0.05);
 
 // ── Per-host concurrency (the congestion window) ────────────────────
 // This replaced a fixed cap of 3 in-flight per host. A constant cannot be right for every host:
@@ -91,6 +104,21 @@ const CWND_MAX = envInt('BYOJB_HTTP_CWND_MAX', 8);
 //     a shared-host ATS means the ceiling is throttling and needs raising, and without the counter
 //     "it never binds in practice" is an assumption rather than a measurement.
 const GLOBAL_MAX = envInt('BYOJB_HTTP_GLOBAL_MAX', 256);
+
+// ── Bound on how far ahead a request may be scheduled ────────────────
+// `nextStart` advances by `gap` on every scheduled attempt, and without a ceiling it runs away
+// from the clock. The retry loop in _http.mjs is what does it: one failing request re-enters
+// schedule() up to MAX_RETRIES + 1 times, and each attempt both pushes nextStart out and (via
+// penalizeHost) widens the gap it is pushed out BY. Eight companies retrying on one host is
+// enough to schedule that host nine minutes into the future, and it compounds — a scan with
+// 63 rate-limited responses stalled completely: zero sockets open, zero in flight, ledger
+// frozen, process asleep on a timer hours out.
+//
+// This is deliberately NOT the old MAX_SLOT_WAIT_MS, which was a race between a waiter and a
+// timeout and could hand out a slot the gate had not released. It clamps the SCHEDULE rather
+// than abandoning the wait: a request may be delayed at most this long, and nextStart may not
+// be pushed further than this beyond the present, so forward progress is structural.
+const MAX_SCHEDULE_AHEAD_MS = envInt('BYOJB_HTTP_MAX_SCHEDULE_AHEAD_MS', 15_000);
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -209,15 +237,14 @@ export function schedule(host, fn, backlog = 0) {
   return gate.queue.add(async () => {
     // Spacing and cooldown, waited out before we hold anything global.
     //
-    // There is deliberately no ceiling on this wait, unlike the version this replaced. That code
-    // let every worker pile into the gate at once, each one pushing nextStart further out, so
-    // accumulated spacing could park a worker for minutes and a 20s escape hatch was needed to
-    // guarantee progress. Only `concurrency` requests per host can be in this phase now, so
-    // nextStart cannot run away from the clock, and cooldownUntil is bounded by the retry backoff
-    // cap. Two mechanisms disagreeing about who holds a slot was the bug, not the fix.
+    // Both the wait and the accumulation are clamped to MAX_SCHEDULE_AHEAD_MS. Clamping the wait
+    // alone is not enough: if nextStart keeps growing, every subsequent request clamps too and the
+    // host dispatches in a burst that ignores its own spacing. Capping nextStart itself keeps the
+    // gap meaningful while guaranteeing the host is never scheduled further out than the bound.
     const now = Date.now();
-    const startAt = Math.max(now, gate.nextStart, gate.cooldownUntil);
-    gate.nextStart = startAt + gate.gap;
+    const ceiling = now + MAX_SCHEDULE_AHEAD_MS;
+    const startAt = Math.min(Math.max(now, gate.nextStart, gate.cooldownUntil), ceiling);
+    gate.nextStart = Math.min(startAt + gate.gap, ceiling);
     const wait = startAt - now;
     if (wait > 0) await sleep(wait);
 
@@ -232,6 +259,12 @@ export function schedule(host, fn, backlog = 0) {
 
 // Slow the whole host down after a 429/503: widen the gap, halve the window, and impose a shared
 // cooldown so queued requests also wait out `waitMs` rather than only the one that was refused.
+//
+// Call this ONCE per refused request, not once per retry attempt. The retry loop makes up to
+// MAX_RETRIES + 1 attempts, so penalising each one multiplied the gap by 2^8 — a single unlucky
+// request slammed its host from the 150ms floor to the 8000ms ceiling in one go, which is both a
+// wild overreaction to one 429 and how the stall above got started. Later attempts of the same
+// request extend the cooldown instead, via coolHost.
 export function penalizeHost(host, waitMs) {
   const gate = getGate(host);
   gate.gap = Math.min(gate.gap * GAP_GROWTH, MAX_HOST_GAP_MS);
@@ -240,11 +273,20 @@ export function penalizeHost(host, waitMs) {
   applyCwnd(gate);
 }
 
+// Extend the host-wide pause without compounding the gap or the window. Used for retries after
+// the first, where the host has already been told to slow down for this request.
+export function coolHost(host, waitMs) {
+  const gate = getGate(host);
+  gate.cooldownUntil = Math.max(gate.cooldownUntil, Date.now() + waitMs);
+}
+
 // A clean response nudges the gap down toward the floor and opens the window slightly. Both
 // recoveries are additive, so one burst of successes cannot erase a host's learned limit.
 export function rewardHost(host) {
   const gate = getGate(host);
-  gate.gap = Math.max(MIN_HOST_GAP_MS, gate.gap - GAP_RECOVERY_MS);
+  const rate = 1000 / gate.gap;                       // current permitted req/s
+  const widened = 1000 / (rate + RATE_RECOVERY_PER_SUCCESS);
+  gate.gap = Math.min(MAX_HOST_GAP_MS, Math.max(MIN_HOST_GAP_MS, widened));
   gate.cwnd = Math.min(CWND_MAX, gate.cwnd + 1 / gate.cwnd);
   applyCwnd(gate);
 }
@@ -289,6 +331,6 @@ export function resetScheduler() {
 }
 
 export const schedulerTunables = {
-  MIN_HOST_GAP_MS, MAX_HOST_GAP_MS, GAP_GROWTH, GAP_RECOVERY_MS,
-  CWND_INIT, CWND_MIN, CWND_MAX, GLOBAL_MAX,
+  MIN_HOST_GAP_MS, MAX_HOST_GAP_MS, GAP_GROWTH, RATE_RECOVERY_PER_SUCCESS,
+  CWND_INIT, CWND_MIN, CWND_MAX, GLOBAL_MAX, MAX_SCHEDULE_AHEAD_MS,
 };
