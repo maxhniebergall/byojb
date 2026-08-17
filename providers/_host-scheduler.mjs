@@ -219,6 +219,7 @@ function getGate(host) {
       gap: MIN_HOST_GAP_MS,
       nextStart: 0,      // earliest time the next request to this host may start
       cooldownUntil: 0,  // hard host-wide floor applied after a 429
+      penaltyUntil: 0,   // suppresses repeat decreases for one incident (see penalizeHost)
     };
     gates.set(host, gate);
   }
@@ -260,17 +261,28 @@ export function schedule(host, fn, backlog = 0) {
 // Slow the whole host down after a 429/503: widen the gap, halve the window, and impose a shared
 // cooldown so queued requests also wait out `waitMs` rather than only the one that was refused.
 //
-// Call this ONCE per refused request, not once per retry attempt. The retry loop makes up to
-// MAX_RETRIES + 1 attempts, so penalising each one multiplied the gap by 2^8 — a single unlucky
-// request slammed its host from the 150ms floor to the 8000ms ceiling in one go, which is both a
-// wild overreaction to one 429 and how the stall above got started. Later attempts of the same
-// request extend the cooldown instead, via coolHost.
+// AT MOST ONE multiplicative decrease per penalty window, however many refusals arrive.
+//
+// A host does not refuse one request at a time. With a window of 8, eight requests are in flight
+// together and all eight come back 429 within milliseconds — the live run showed 429 counts
+// climbing in jumps of exactly 8. Applying the decrease to each compounds 2x into 2^8, so one
+// incident slams the host from the 150ms floor to the 8000ms ceiling, and throughput collapses
+// from 450/min to 34/min while the run oscillates instead of settling.
+//
+// TCP has exactly this rule for exactly this reason: the congestion window is reduced once per
+// round trip, not once per lost packet. Refusals arriving inside the window we already backed off
+// for are the same incident, so they only extend the cooldown.
 export function penalizeHost(host, waitMs) {
   const gate = getGate(host);
+  const now = Date.now();
+  gate.cooldownUntil = Math.max(gate.cooldownUntil, now + waitMs);
+  if (now < gate.penaltyUntil) return;   // same incident — already backed off for it
   gate.gap = Math.min(gate.gap * GAP_GROWTH, MAX_HOST_GAP_MS);
-  gate.cooldownUntil = Math.max(gate.cooldownUntil, Date.now() + waitMs);
   gate.cwnd = Math.max(CWND_MIN, gate.cwnd / 2);
   applyCwnd(gate);
+  // Hold off further decreases for one post-backoff interval: long enough that the requests
+  // already in flight when we backed off cannot each trigger another cut.
+  gate.penaltyUntil = now + Math.max(gate.gap, waitMs);
 }
 
 // Extend the host-wide pause without compounding the gap or the window. Used for retries after

@@ -2251,19 +2251,44 @@ try {
   // (k) Recovery has to be able to outrun the penalty. Shaving a fixed 8ms off the gap meant 982
   //     successes to walk back from the ceiling, at a rate the throttle itself had capped at
   //     0.13 req/s — 131 minutes from one burst. Additive in RATE keeps the step proportional.
-  resetScheduler();
-  await schedule('recover.example', async () => {});
-  for (let i = 0; i < 20; i++) penalizeHost('recover.example', 0);
-  const pinned = hostState('recover.example').gap;
+  // A low gap ceiling keeps this fast: reaching it needs penalties SPACED past the
+  // once-per-incident window, which is itself the previous test's guarantee.
+  const savedCeil = process.env.BYOJB_HTTP_HOST_GAP_MAX_MS;
+  process.env.BYOJB_HTTP_HOST_GAP_MAX_MS = '1200';
+  const rec = await import(`./providers/_host-scheduler.mjs?recover=${Date.now()}`);
+  for (let i = 0; i < 4; i++) {
+    rec.penalizeHost('recover.example', 0);
+    await sleep(rec.hostState('recover.example').gap + 20);   // outlast penaltyUntil
+  }
+  const pinned = rec.hostState('recover.example').gap;
   let steps = 0;
-  while (hostState('recover.example').gap > T.MIN_HOST_GAP_MS + 0.01 && steps < 5000) {
-    rewardHost('recover.example');
+  while (rec.hostState('recover.example').gap > T.MIN_HOST_GAP_MS + 0.01 && steps < 5000) {
+    rec.rewardHost('recover.example');
     steps++;
   }
-  if (pinned >= T.MAX_HOST_GAP_MS && steps <= 200) {
-    pass(`recovery from the ${pinned}ms ceiling takes ${steps} successes, not ~1000`);
+  if (savedCeil === undefined) delete process.env.BYOJB_HTTP_HOST_GAP_MAX_MS;
+  else process.env.BYOJB_HTTP_HOST_GAP_MAX_MS = savedCeil;
+  // Additive-in-rate: (floorRate - pinnedRate) / RATE_RECOVERY steps, independent of the ceiling.
+  const expected = Math.ceil((1000 / T.MIN_HOST_GAP_MS - 1000 / pinned) / T.RATE_RECOVERY_PER_SUCCESS);
+  if (pinned >= 1200 && steps <= expected + 2) {
+    pass(`recovery from the ${pinned}ms ceiling takes ${steps} successes (rate-additive), not ~${Math.round((pinned - T.MIN_HOST_GAP_MS) / 8)}`);
   } else {
-    fail(`recovery too slow or host not pinned: gap ${pinned}ms, ${steps} successes to floor`);
+    fail(`recovery too slow or host not pinned: gap ${pinned}ms, ${steps} successes (expected <=${expected + 2})`);
+  }
+
+  // (m) One INCIDENT must produce one decrease, however many refusals it contains. A host with a
+  //     window of 8 refuses all 8 in-flight requests within milliseconds — observed live as 429
+  //     counts climbing in jumps of exactly 8 — and cutting per refusal compounds 2x into 2^8,
+  //     pinning the host at the ceiling and collapsing throughput from 450/min to 34/min.
+  resetScheduler();
+  await schedule('burst.example', async () => {});
+  const preBurst = hostState('burst.example');
+  for (let i = 0; i < 8; i++) penalizeHost('burst.example', 0);   // 8 concurrent refusals, one incident
+  const postBurst = hostState('burst.example');
+  if (Math.abs(postBurst.gap - preBurst.gap * T.GAP_GROWTH) < 1e-9) {
+    pass(`8 simultaneous refusals cut the gap once, not 8 times (${preBurst.gap} -> ${postBurst.gap}ms)`);
+  } else {
+    fail(`concurrent refusals compounded: gap ${preBurst.gap} -> ${postBurst.gap}ms, expected ${preBurst.gap * T.GAP_GROWTH}ms`);
   }
 
   // (l) One refused request must not compound into 2^MAX_RETRIES of gap growth. The retry loop
