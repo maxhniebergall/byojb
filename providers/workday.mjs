@@ -15,7 +15,12 @@
 const HOST_RE = /^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/i;
 const LOCALE_RE = /^[a-z]{2}-[A-Z]{2}$/;
 const PAGE_SIZE = 20;          // Workday caps `limit` at 20
-const DEFAULT_MAX_PER_SEARCH = 100;
+// Ceiling per search, not a target. It used to be 100, which silently dropped the tail of any
+// board bigger than that: Clio publishes 154 postings, so 54 were never fetched — and because
+// Workday's result ORDER is not stable between calls, *which* 54 changed run to run. Coverage of
+// a big board was effectively a per-scan sample with no signal that anything was missing.
+// 2000 clears every board seen; a search that reaches it is reported, never swallowed.
+const DEFAULT_MAX_PER_SEARCH = 2000;
 
 function parseWorkday(entry) {
   const url = entry.careers_url || entry.api || '';
@@ -46,6 +51,7 @@ function jobUrl(info, externalPath) {
 
 async function searchPages(ctx, info, searchText, maxResults) {
   const out = [];
+  let reportedTotal = 0;
   for (let offset = 0; offset < maxResults; offset += PAGE_SIZE) {
     let json;
     try {
@@ -61,7 +67,16 @@ async function searchPages(ctx, info, searchText, maxResults) {
     const postings = Array.isArray(json?.jobPostings) ? json.jobPostings : [];
     out.push(...postings);
     const total = Number(json?.total) || 0;
+    if (total) reportedTotal = total;
     if (postings.length < PAGE_SIZE || offset + PAGE_SIZE >= total) break;
+  }
+  // A board bigger than the ceiling is a partial scan. Say so — the old silent version made
+  // "we found N jobs" indistinguishable from "we found the first N of M jobs".
+  if (reportedTotal > out.length) {
+    const term = searchText ? ` (search "${searchText}")` : '';
+    console.warn(`  ⚠️  workday ${info.tenant}/${info.site}${term}: fetched ${out.length} of `
+      + `${reportedTotal} postings — ${reportedTotal - out.length} NOT scanned. `
+      + `Raise workday_max, or set workday_search to narrow the board at the source.`);
   }
   return out;
 }
