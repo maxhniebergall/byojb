@@ -68,7 +68,13 @@ async function searchPages(ctx, info, searchText, maxResults) {
     out.push(...postings);
     const total = Number(json?.total) || 0;
     if (total) reportedTotal = total;
-    if (postings.length < PAGE_SIZE || offset + PAGE_SIZE >= total) break;
+    // Compare against reportedTotal, NOT this page's `total`. Workday reports the count on the
+    // FIRST page and then sends total: 0 for every page after it, so `offset + PAGE_SIZE >= total`
+    // was 40 >= 0 on the second page — trivially true. Every Workday board stopped at 40 postings
+    // no matter how high the ceiling went, which silently neutered raising it from 100 to 2000.
+    // A short page is the honest end-of-results signal; the total is only a shortcut to stop early.
+    if (postings.length < PAGE_SIZE) break;
+    if (reportedTotal && offset + PAGE_SIZE >= reportedTotal) break;
   }
   // A board bigger than the ceiling is a partial scan. Say so — the old silent version made
   // "we found N jobs" indistinguishable from "we found the first N of M jobs".
