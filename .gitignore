@@ -14,6 +14,9 @@ data/essay-answers.jsonl
 data/application-snapshots/
 data/pipeline.md
 data/scan-history.tsv
+# one row per company per scan, appended every run — ~13MB after a few full scans,
+# and regenerable by `node scan.mjs`. Same class of artifact as scan-history.tsv above.
+data/scan-ledger.tsv
 data/parser-output/**/*.json
 !data/parser-output/.gitkeep
 !data/parser-output/**/.gitkeep
